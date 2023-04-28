@@ -684,6 +684,7 @@ class model_settings(settings):
         self.welcome     = self.welcome_default
         self._koboldai_vars = koboldai_vars
         self.alt_multi_gen = False
+        self.bit_8_available = None
         
     def reset_for_model_load(self):
         self.simple_randomness = 0 #Set first as this affects other outputs
@@ -1211,7 +1212,7 @@ class system_settings(settings):
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
                          'generating_image', 'bit_8_available', 'bit_4_available', 'host', 'hascuda', 'usegpu', 'rng_states',
-                         'comregex_ai', 'comregex_ui']
+                         'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1295,20 +1296,9 @@ class system_settings(settings):
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
-        #check if bitsandbytes is installed
-        self.bit_8_available = False
-        if importlib.util.find_spec("bitsandbytes") is not None and sys.platform.startswith('linux'): #We can install bitsandbytes, but it doesn't work on windows, so limit it here
-            if torch.cuda.is_available():
-                for device in range(torch.cuda.device_count()):
-                    if torch.cuda.get_device_properties(device).major > 7:
-                        self.bit_8_available = True
-                        break
-                    elif torch.cuda.get_device_properties(device).major == 7 and torch.cuda.get_device_properties(device).minor >= 2:
-                        self.bit_8_available = True
-                        break
-        # Check if repos/gptq exists for 4-bit mode
-        self.bit_4_available = os.path.isdir("repos/gptq")
         self.seen_messages = []
+        self.git_repository = ""
+        self.git_branch = ""
         
         
         @dataclass
@@ -1760,6 +1750,13 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
     
+    def go_forward(self):
+        action_step = self.action_count+1
+        if action_step in self.actions:
+            if len(self.get_current_options()) == 1:
+                logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
+                self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
+    
     def use_option(self, option_number, action_step=None):
         if action_step is None:
             action_step = self.action_count+1
@@ -1803,7 +1800,8 @@ class KoboldStoryRegister(object):
             old_text = self.actions[action_id]["Selected Text"]
             old_length = self.actions[action_id]["Selected Text Length"]
             if keep:
-                self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
+                if {"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False} not in self.actions[action_id]["Options"]:
+                    self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             if "wi_highlighted_text" in self.actions[action_id]:
                 del self.actions[action_id]["wi_highlighted_text"]
@@ -1828,7 +1826,7 @@ class KoboldStoryRegister(object):
             
     def get_current_options(self):
         if self.action_count+1 in self.actions:
-            return self.actions[self.action_count+1]["Options"]
+            return [x for x in self.actions[self.action_count+1]["Options"] if x['Edited'] != True]
         else:
             return []
             

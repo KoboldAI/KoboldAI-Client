@@ -41,6 +41,10 @@ socket.on("generated_wi", showGeneratedWIData);
 // Must be done before any elements are made; we track their changes.
 initalizeTooltips();
 
+//setup an observer on the game text
+var chunk_delete_observer = new MutationObserver(function (records) {gametextwatcher(records)});
+
+
 var vars_sync_time = {};
 var presets = {};
 var current_chunk_number = null;
@@ -75,6 +79,8 @@ var story_commentary_characters = {};
 var generating_summary = false;
 const on_colab = $el("#on_colab").textContent == "true";
 let story_id = -1;
+var dirty_chunks = [];
+var initial_socketio_connection_occured = false;
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -213,6 +219,10 @@ var current_action;
 function connect() {
 	console.log("connected");
 	//reset_story();
+	if (initial_socketio_connection_occured) {
+		location.reload();
+	}
+	initial_socketio_connection_occured = true;
 	for (item of document.getElementsByTagName("body")) {
 		item.classList.remove("NotConnected");
 	}
@@ -257,7 +267,9 @@ function disruptStoryState() {
 
 function reset_story() {
 	console.log("Resetting story");
+	location.reload();
 	disruptStoryState();
+	chunk_delete_observer.disconnect();
 	clearTimeout(calc_token_usage_timeout);
 	clearTimeout(game_text_scroll_timeout);
 	clearTimeout(font_size_cookie_timout);
@@ -280,7 +292,6 @@ function reset_story() {
 	for (const item of temp) { 
 		item.remove();
 	}
-	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
 	
 	//clear any options
 	var option_area = document.getElementById("Select Options");
@@ -309,11 +320,18 @@ function reset_story() {
 		text += "\xa0 ";
 	}
 	document.getElementById("welcome_text").innerText = text;
-	document.getElementById("welcome_container").classList.remove("hidden");
+	document.getElementById("Selected Text").setAttribute("contenteditable", "false");
+	if (document.getElementById("story_prompt").innerText == "") {
+		document.getElementById("welcome_container").classList.remove("hidden");
+		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
+		
+	}
 	document.getElementById('main-grid').setAttribute('option_length', 0);
 
 	$(".chat-message").remove();
 	addInitChatMessage();
+	
+	chunk_delete_observer.observe(document.getElementById('Selected Text'), { subtree: true, childList: true, characterData: true });
 }
 
 function fix_text(val) {
@@ -344,7 +362,7 @@ function create_options(action) {
 	seen_prev_selection = false;
 	show_options = false;
 	for (item of action.action.Options) {
-		if (!(item['Previous Selection'])) {
+		if (!(item['Previous Selection']) && !(item['Edited'])) {
 			show_options = true;
 			break;
 		} else if (item['Previous Selection']) {
@@ -557,14 +575,27 @@ function do_story_text_updates(action) {
 			item.id = 'Selected Text Chunk '+action.id;
 			item.classList.add("rawtext");
 			item.setAttribute("chunk", action.id);
+			item.setAttribute("tabindex", parseInt(action.id)+1);
+			//item.addEventListener("focus", (event) => {
+			//	set_edit(event.target);
+			//});
+			
 			//need to find the closest element
-			next_id = action.id+1;
-			if (Math.max.apply(null,Object.keys(actions_data).map(Number)) <= next_id) {
-				story_area.append(item);
+			closest_element = document.getElementById("story_prompt");
+			eval_element = 0
+			while (eval_element < action.id ) {
+				if (document.getElementById("Selected Text Chunk " + eval_element)) {
+					closest_element = document.getElementById("Selected Text Chunk " + eval_element);
+				}
+				eval_element += 1;
+			}
+			if (closest_element.nextElementSibling) {
+				story_area.insertBefore(item, closest_element.nextElementSibling);
 			} else {
-				story_area.prepend(item);
+				story_area.append(item);
 			}
 		}
+		
 		
 		if (action.action['Selected Text'].charAt(0) == ">") {
 			item.classList.add("action_mode_input");
@@ -596,6 +627,10 @@ function do_story_text_updates(action) {
 }
 
 function do_prompt(data) {
+	if (!document.getElementById("story_prompt")) {
+		//Someone deleted our prompt. Just refresh to clean things up
+		location.reload();
+	}
 	let full_text = "";
 	for (chunk of data.value) {
 		full_text += chunk['text'];
@@ -626,7 +661,7 @@ function do_prompt(data) {
 				}
 				item.append(chunk_element);
 			}
-			item.setAttribute("old_text", full_text);
+			item.original_text = full_text;
 			item.classList.remove("pulse");
 			assign_world_info_to_action(-1, null);
 		}
@@ -657,9 +692,9 @@ function do_prompt(data) {
 function do_story_text_length_updates(action) {
 	if (document.getElementById('Selected Text Chunk '+action.id)) {
 		document.getElementById('Selected Text Chunk '+action.id).setAttribute("token_length", action.action["Selected Text Length"]);
-	} else {
-		console.log('Selected Text Chunk '+action.id);
-		console.log(action);
+	//} else {
+		//console.log('Selected Text Chunk '+action.id);
+		//console.log(action);
 	}
 	
 }
@@ -3027,137 +3062,166 @@ function toggle_adventure_mode(button) {
 	
 }
 
-function select_game_text(event) {
-	if (!((event === null) || ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(event.code))) return;
-
-	let anchorNode = window.getSelection().anchorNode;
-	let new_selected_game_chunk = null;
-
-	if (document.selection) {
-		if (document.selection.createRange().parentElement().id == 'story_prompt') {
-			new_selected_game_chunk = document.selection.createRange().parentElement();
-		} else if (document.selection.createRange().parentElement().id == 'gamescreen') {
-			new_selected_game_chunk = null;
-			//console.log("Do nothing");
-		} else {
-			new_selected_game_chunk = document.selection.createRange().parentElement().parentElement();
-		}
-	} else if (anchorNode != null && anchorNode.tagName === "SPAN") {
-		// If clicking to the right of an action, the event target is actually
-		// the whole of gametext, and the anchorNode is a child span of an
-		// action rather than a text node.
-		new_selected_game_chunk = anchorNode.parentNode;
-	} else if (anchorNode != null ) {
-		if(anchorNode.parentNode) {
-			if (anchorNode.parentNode.id == 'story_prompt') {
-				new_selected_game_chunk = anchorNode.parentNode;
-			} else if (anchorNode.parentNode.id == "gamescreen") {
-				new_selected_game_chunk = null;
-				//console.log("Do nothing");
-			} else {
-				new_selected_game_chunk = anchorNode.parentNode.parentNode;
+function set_edit(event) {
+	//get the element sitting on
+	var game_text = document.getElementById("Selected Text");
+	if ((event.key === undefined) || (event.key == 'ArrowDown') || (event.key == 'ArrowUp') || (event.key == 'ArrowLeft') || (event.key == 'ArrowRight')) {
+		var chunk = window.getSelection().anchorNode;
+		while (chunk != game_text) {
+			if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+				break;
 			}
-		} else {
-			new_selected_game_chunk = null;
+			chunk = chunk.parentNode;
 		}
-	}
-
-	//if we've moved to a new game chunk we need to save the old chunk
-	if (((new_selected_game_chunk != selected_game_chunk) && (selected_game_chunk != null)) || (document.activeElement != document.getElementById("Selected Text"))) {
-		if ((selected_game_chunk != null) && (selected_game_chunk.innerText != selected_game_chunk.original_text) && (selected_game_chunk != document.getElementById("welcome_text"))) {
-			if (selected_game_chunk.id == 'story_prompt') {
-				edit_game_text(-1);
-			} else {
-				edit_game_text(parseInt(selected_game_chunk.getAttribute("chunk")));
-			}
-		}
-	}
-	
-	//Check to see if new selection is a game chunk or something else
-	if (new_selected_game_chunk == null) {
-		selected_game_chunk = null;
 		for (item of document.getElementsByClassName("editing")) {
 			item.classList.remove("editing");
 		}
-		window.getSelection().removeAllRanges()
-	} else if (((new_selected_game_chunk.id == "story_prompt") || (new_selected_game_chunk.id.slice(0,20) == "Selected Text Chunk ")) && (document.activeElement.isContentEditable)) {
-		if (new_selected_game_chunk != selected_game_chunk) {
-			for (item of document.getElementsByClassName("editing")) {
-				item.classList.remove("editing");
+		if (chunk != game_text) {
+			chunk.classList.add("editing");
+		}
+	}
+	return true;
+}
+
+function check_game_after_paste() {
+	setTimeout(function() {savegametextchanges();}, 500);
+}
+
+function gametextwatcher(records) {
+	//Here we want to take care of two possible events
+	//User deleted an action. For this we'll restore the action and set it's text to "" and mark it as dirty
+	//User changes text. For this we simply mark it as dirty
+	var game_text = document.getElementById("Selected Text");
+	for (const record of records) {
+		if ((record.type === "childList") && (record.removedNodes.length > 0)) {
+			for (const chunk of record.removedNodes) {
+				//we've deleted a node. Let's find the chunk span and put it back
+				//Skip over deletes that are not chunks
+				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+					if (!document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk"))) {
+						//Node was actually deleted. 
+						if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
+							dirty_chunks.push(chunk.getAttribute("chunk"));
+							//Stupid firefox sometimes looses focus as you type after deleting stuff. Fix that here
+							var sel = window.getSelection();
+							if (sel.anchorNode instanceof HTMLElement) {
+								sel.anchorNode.focus();
+							} else {
+								game_text.focus();
+							}
+						}
+					}
+				}
 			}
-			selected_game_chunk = new_selected_game_chunk;
-			selected_game_chunk.classList.add("editing");
-			update_story_picture(selected_game_chunk.getAttribute("chunk"));
 		}
-		
-	} else {
-		selected_game_chunk = null;
-		for (item of document.getElementsByClassName("editing")) {
-			item.classList.remove("editing");
+		//get the actual chunk rather than the sub-node
+		//console.log(record);
+		var chunk = record.target;
+		var found_chunk = false;
+		while (chunk != game_text) {
+			if (chunk) {
+				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
+					found_chunk = true;
+					break;
+				}
+				chunk = chunk.parentNode;
+			} else {
+				break;
+			}
 		}
-		window.getSelection().removeAllRanges()
+		if ((found_chunk) && (chunk.original_text != chunk.innerText)) {;
+			if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
+				dirty_chunks.push(chunk.getAttribute("chunk"));
+			}
+		} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
+			if (!dirty_chunks.includes("game_text")) {
+				dirty_chunks.push("game_text");
+			}
+		}
+	}
+	//console.log(dirty_chunks);
+}
+
+function fix_dirty_game_text() {
+	//This should get fired if we have deleted chunks or have added text outside of a node.
+	//We wait until after the game text has lost focus to fix things otherwise it messes with typing
+	var game_text = document.getElementById("Selected Text");
+	//Fix missing story prompt
+	if (dirty_chunks.includes("-1")) {
+		if (!document.getElementById("story_prompt")) {
+			story_prompt = document.createElement("span");
+			story_prompt.id = "story_prompt";
+			story_prompt.classList.add("var_sync_story_prompt");
+			story_prompt.classList.add("var_sync_alt_story_prompt_in_ai");
+			story_prompt.classList.add("rawtext");
+			story_prompt.setAttribute("chunk", "-1");
+			game_text.prepend(story_prompt);
+		}
+	}
+	if (dirty_chunks.includes("game_text")) {
+		dirty_chunks = dirty_chunks.filter(item => item != "game_text");
+		console.log("Firing Fix messed up text");
+		//Fixing text outside of chunks
+		for (node of game_text.childNodes) {
+			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.textContent.trim() != "")) {
+				console.log("Found Node that needs to be combined");
+				console.log(node);
+				//We have a text only node. It should be moved into the previous chunk
+				if (node instanceof HTMLElement) {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.innerText;
+				} else {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.data;
+				}
+				if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+					dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
+				}
+				node.remove();
+			}
+		}
 	}
 }
 
-function edit_game_text(id) {
-	update_game_text(id)
-	//OK, now we need to go backwards and forwards until we find something that didn't change
-	
-	let check_id = id-1;
-	while (check_id >= 0) {
-		if (document.getElementById("Selected Text Chunk " + check_id)) {
-			let temp = document.getElementById("Selected Text Chunk " + check_id);
-			if (temp.textContent == temp.original_text) {
-				break;
-			} else {
-				update_game_text(check_id);
-			}
+function savegametextchanges() {
+	fix_dirty_game_text();
+	for (item of document.getElementsByClassName("editing")) {
+		item.classList.remove("editing");
+	}
+	if (dirty_chunks.length > 0) {
+		console.log("Firing save");
+	}
+	for (const chunk_id of dirty_chunks) {
+		if (chunk_id == -1) {
+			chunk = document.getElementById("story_prompt");
 		} else {
-			update_game_text(check_id);
+			chunk = document.getElementById("Selected Text Chunk " + chunk_id);
 		}
-		check_id -= 1;
-	}
-	if (document.getElementById("story_prompt")) {
-		let temp = document.getElementById("story_prompt");
-		if (temp.textContent != temp.original_text) {
-			update_game_text(-1);
-		}
-	} else {
-		update_game_text(-1);
-	}
-	
-	check_id = id+1;
-	while (check_id <= Math.max.apply(null,Object.keys(actions_data).map(Number))) {
-		if (document.getElementById("Selected Text Chunk " + check_id)) {
-			let temp = document.getElementById("Selected Text Chunk " + check_id);
-			if (temp.textContent == temp.original_text) {
-				break;
-			} else {
-				update_game_text(check_id);
-			}
+		if (chunk) {
+			update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
 		} else {
-			update_game_text(check_id);
+			update_game_text(parseInt(chunk_id), "");
 		}
-		check_id += 1;
 	}
+	dirty_chunks = [];
 }
 
-function update_game_text(id) {
+
+function update_game_text(id, new_text) {
 	let temp = null;
-	let new_text = ""
 	if (id == -1) {
-		temp = document.getElementById("story_prompt");
-		new_text = temp.innerText;
-		sync_to_server(temp);
-		temp.original_text = new_text;
-		temp.classList.add("pulse");
-	} else {
-		temp = document.getElementById("Selected Text Chunk " + id);
-		if (temp) {
-			new_text = temp.innerText;
-			socket.emit("Set Selected Text", {"id": id, "text": new_text});
+		if (document.getElementById("story_prompt")) {
+			temp = document.getElementById("story_prompt");
 			temp.original_text = new_text;
 			temp.classList.add("pulse");
+			sync_to_server(temp);
+		} else {
+			socket.emit("var_change", {"ID": 'story_prompt', "value": new_text});
+		}
+	} else {
+		if (document.getElementById("Selected Text Chunk " + id)) {
+			temp = document.getElementById("Selected Text Chunk " + id);
+			temp.original_text = new_text;
+			temp.classList.add("pulse");
+			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 		} else {
 			socket.emit("Set Selected Text", {"id": id, "text": ""});
 		}
@@ -3180,6 +3244,20 @@ function set_4_bit_mode(invert=true) {
 
 
 //--------------------------------------------General UI Functions------------------------------------
+function put_cursor_at_element(element) {
+	var range = document.createRange();
+	var sel = window.getSelection();
+	if ((element.lastChild) && (element.lastChild instanceof HTMLElement)) {
+		range.setStart(element.lastChild, element.lastChild.innerText.length);
+	} else {
+		range.setStart(element, element.innerText.length);
+	}
+	range.collapse(true);
+	sel.removeAllRanges();
+	sel.addRange(range);
+
+}
+
 function set_ui_level(level) {
 	for (classname of ['setting_container', 'setting_container_single', 'setting_container_single_wide', 'biasing', 'palette_area', 'advanced_theme']) {
 		for (element of document.getElementsByClassName(classname)) {

@@ -1494,6 +1494,18 @@ def general_startup(override_args=None):
     global args
     global enable_whitelist
     global allowed_ips
+    import configparser
+    #Figure out what git we're on if that's available
+    config = configparser.ConfigParser()
+    if os.path.exists('.git/config'):
+        config.read('.git/config')
+        koboldai_vars.git_repository = config['remote "origin"']['url']
+        for item in config.sections():
+            if "branch" in item:
+                koboldai_vars.git_branch = item.replace("branch ", "").replace('"', '')
+    
+        logger.info("Running on Repo: {} Branch: {}".format(koboldai_vars.git_repository, koboldai_vars.git_branch))
+    
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
     parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
@@ -1620,7 +1632,7 @@ def general_startup(override_args=None):
         koboldai_vars.quiet = True
 
     if args.nobreakmodel:
-        koboldai_vars.nobreakmodel = True;
+        koboldai_vars.nobreakmodel = True
 
     if args.remote:
         koboldai_vars.host = True;
@@ -7594,17 +7606,6 @@ def loadRequest(loadpath, filename=None):
     if not loadpath:
         return
     
-    #Original UI only sends the story name and assumes it's always a .json file... here we check to see if it's a directory to load that way
-    if not isinstance(loadpath, dict) and not os.path.exists(loadpath):
-        if os.path.exists(loadpath.replace(".json", "")):
-            loadpath = loadpath.replace(".json", "")
-
-    if not isinstance(loadpath, dict) and os.path.isdir(loadpath):
-        if not valid_v3_story(loadpath):
-            raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
-        koboldai_vars.update_story_path_structure(loadpath)
-        loadpath = os.path.join(loadpath, "story.json")
-
     start_time = time.time()
     # Leave Edit/Memory mode before continuing
     exitModes()
@@ -7612,6 +7613,17 @@ def loadRequest(loadpath, filename=None):
     # Read file contents into JSON object
     start_time = time.time()
     if(isinstance(loadpath, str)):
+		#Original UI only sends the story name and assumes it's always a .json file... here we check to see if it's a directory to load that way
+        if not isinstance(loadpath, dict) and not os.path.exists(loadpath):
+            if os.path.exists(loadpath.replace(".json", "")):
+                loadpath = loadpath.replace(".json", "")
+
+        if not isinstance(loadpath, dict) and os.path.isdir(loadpath):
+            if not valid_v3_story(loadpath):
+                raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
+            koboldai_vars.update_story_path_structure(loadpath)
+            loadpath = os.path.join(loadpath, "story.json")
+            
         with open(loadpath, "r", encoding="utf-8") as file:
             js = json.load(file)
             from_file=loadpath
@@ -8884,8 +8896,7 @@ def UI_2_back(data):
 def UI_2_redo(data):
     if koboldai_vars.aibusy:
         return
-    if len(koboldai_vars.actions.get_current_options()) == 1:
-        koboldai_vars.actions.use_option(0)
+    koboldai_vars.actions.go_forward()
     
 
 #==================================================================#
