@@ -28,10 +28,9 @@ class GenericTokenizer:
         return ret.ids
 
     def decode(self, tokens: Union[int, List[int], torch.Tensor]) -> str:
-        if isinstance(tokens, int):
-            tokens = [tokens]
-
         # TODO: Figure out why this breaks softprompts on some models
+        # if isinstance(tokens, int):
+        #     tokens = [tokens]
         # if isinstance(tokens, list):
         #     tokens = torch.tensor(tokens)
         # elif isinstance(tokens, torch.Tensor):
