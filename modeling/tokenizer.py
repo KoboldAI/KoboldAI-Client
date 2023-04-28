@@ -29,15 +29,16 @@ class GenericTokenizer:
         return ret.ids
 
     def decode(self, tokens: Union[int, List[int], torch.Tensor]) -> str:
+        return self.tokenizer.decode(tokens)
         if isinstance(tokens, torch.Tensor):
             tokens = tokens.cpu().tolist()
 
         if isinstance(tokens, int):
             tokens = [tokens]
         
-        for t in tokens:
-            if t not in self.valid_tokens:
-                print(f"WHAT ON EARTH IS {t}")
+        # Sometimes soft token placeholders aren't in the vocab, which causes
+        # errors on decode. Obviously we can't express these tokens as text so
+        # we can probably slice 'em out without too much issue
         tokens = [t for t in tokens if t in self.valid_tokens]
 
         return self.tokenizer.decode(tokens)
