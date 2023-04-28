@@ -31,9 +31,10 @@ class GenericTokenizer:
         if isinstance(tokens, int):
             tokens = [tokens]
 
-        if isinstance(tokens, list):
-            tokens = torch.tensor(tokens)
-        elif isinstance(tokens, torch.Tensor):
-            tokens = tokens.cpu()
+        # TODO: Figure out why this breaks softprompts on some models
+        # if isinstance(tokens, list):
+        #     tokens = torch.tensor(tokens)
+        # elif isinstance(tokens, torch.Tensor):
+        #     tokens = tokens.cpu()
 
         return self.tokenizer.decode(tokens)
