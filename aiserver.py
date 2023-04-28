@@ -10988,6 +10988,12 @@ def run():
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     koboldai_vars.port = port
+
+    # TODO: Top-level tpu_mtj_backend will be removed in modularity PR
+    if koboldai_vars.use_colab_tpu:
+        import tpu_mtj_backend
+        tpu_mtj_backend.socketio = socketio
+        print("DBGCOLAB")
     
     if(koboldai_vars.host):
         if(args.localtunnel):
