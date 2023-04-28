@@ -8382,6 +8382,7 @@ class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
 
 class ModelSelectionSchema(KoboldSchema):
     model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+    gpu_layers: Optional[str] = fields.Str(validate=validate.Regexp(r"^(\b,?\d+,?\b)+$"), metadata={"description": "Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM."})
 
 def _generate_text(body: GenerationInputSchema):
     if koboldai_vars.aibusy or koboldai_vars.genseqs:
@@ -8666,7 +8667,8 @@ def put_model(body: ModelSelectionSchema):
     old_model = koboldai_vars.model
     koboldai_vars.model = body.model.strip()
     try:
-        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
+        use_gpu = len(body.gpu_layers) > 0 and sum(map(int, body.gpu_layers.split(","))) > 0
+        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=not use_gpu, use_gpu=use_gpu, gpu_layers=body.gpu_layers)
     except Exception as e:
         koboldai_vars.model = old_model
         raise e
