@@ -216,6 +216,7 @@ def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarra
     '''
     for sid in jnp.array(sampler_order, int):
         # sid = int(sid)
+        sid = sid.astype(int)
         warper = warpers.Warper.from_id(sid)
         if not warper.value_is_valid():
             continue
