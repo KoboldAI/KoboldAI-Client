@@ -684,6 +684,7 @@ class model_settings(settings):
         self.welcome     = self.welcome_default
         self._koboldai_vars = koboldai_vars
         self.alt_multi_gen = False
+        self.bit_8_available = None
         
     def reset_for_model_load(self):
         self.simple_randomness = 0 #Set first as this affects other outputs
