@@ -10975,6 +10975,8 @@ print("", end="", flush=True)
 @logger.catch
 def run():
     global app
+    global tpu_mtj_backend
+
     general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
@@ -10993,7 +10995,6 @@ def run():
     if koboldai_vars.use_colab_tpu:
         import tpu_mtj_backend
         tpu_mtj_backend.socketio = socketio
-        print("DBGCOLAB")
     
     if(koboldai_vars.host):
         if(args.localtunnel):
