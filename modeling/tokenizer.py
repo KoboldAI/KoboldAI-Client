@@ -9,6 +9,7 @@ class GenericTokenizer:
 
     def __init__(self, tokenizer: Union[Tokenizer, PreTrainedTokenizer]) -> None:
         self.tokenizer = tokenizer
+        self.valid_tokens = set(self.tokenizer.vocab.values())
 
     def __getattr__(self, name: str) -> Any:
         # Fall back to tokenizer for non-generic stuff
@@ -33,5 +34,10 @@ class GenericTokenizer:
 
         if isinstance(tokens, int):
             tokens = [tokens]
+        
+        for t in tokens:
+            if t not in self.valid_tokens:
+                print(f"WHAT ON EARTH IS {t}")
+        tokens = [t for t in tokens if t in self.valid_tokens]
 
-        return self.tokenizer.decode(tokens, skip_special_tokens=True)
+        return self.tokenizer.decode(tokens)
