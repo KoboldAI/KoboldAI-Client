@@ -122,7 +122,6 @@ class Stoppers:
         input_ids: torch.LongTensor,
     ) -> bool:
                 
-        print(f"[stop_sequence_stopper] Input ids: {input_ids}")
         data = [model.tokenizer.decode(x) for x in input_ids]
         # null_character = model.tokenizer.encode(chr(0))[0]
         if "completed" not in model.gen_state:
