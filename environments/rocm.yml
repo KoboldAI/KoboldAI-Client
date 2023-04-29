@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - colorama
+  - flask=2.2.3
   - flask-socketio=5.3.2
   - flask-session=0.4.0
   - python-socketio=5.7.2
