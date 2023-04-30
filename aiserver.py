@@ -3225,6 +3225,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
                 if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
                     koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "[]")]
+                    if koboldai_vars.newlinemode == "n":
+                        koboldai_vars.badwordsids.append([tokenizer.eos_token_id])
                 patch_causallm(model)
 
                 if(koboldai_vars.hascuda):
