@@ -1088,6 +1088,24 @@ def loadmodelsettings():
         if(not koboldai_vars.gamestarted):
             koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
 
+    gptq_legacy_files = glob.glob(os.path.join(koboldai_vars.custmodpth, "4bit*.pt")) + glob.glob(os.path.join(koboldai_vars.custmodpth, "4bit*.safetensors"))
+    if "gptq_bits" in js:
+        koboldai_vars.gptq_model = True
+        koboldai_vars.gptq_bits = js["gptq_bits"]
+        koboldai_vars.gptq_groupsize = js.get("gptq_groupsize", -1)
+        safetensors_file = os.path.join(koboldai_vars.custmodpth, "model.safetensors")
+        pt_file = os.path.join(koboldai_vars.custmodpth, "model.ckpt")
+        koboldai_vars.gptq_file = safetensors_file if os.path.isfile(safetensors_file) else pt_file
+    elif gptq_legacy_files:
+        koboldai_vars.gptq_model = True
+        koboldai_vars.gptq_bits = 4
+        koboldai_vars.gptq_file = gptq_legacy_files[0]
+        fname = Path(koboldai_vars.gptq_file).parts[-1]
+        g = re.findall("^(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
+        koboldai_vars.gptq_groupsize = int(g[0]) if g else -1
+    else:
+        koboldai_vars.gptq_model = False
+
 #==================================================================#
 #  Take settings from koboldai_vars and write them to client settings file
 #==================================================================#
@@ -1777,7 +1795,7 @@ def unload_model():
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
     
     
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False, use_4_bit=False):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
     global model
     global tokenizer
     global model_config
@@ -1957,7 +1975,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             except:
                 pass
 
-        if use_4_bit:
+        if koboldai_vars.gptq_model:
             from modeling.inference_models.hf_torch_4bit import HFTorch4BitInferenceModel
             model = HFTorch4BitInferenceModel(
                 koboldai_vars.model,
@@ -6495,7 +6513,7 @@ def UI_2_load_model(data):
     koboldai_vars.model = data['model']
     koboldai_vars.custmodpth = data['path']
     print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'], use_4_bit=data['use_4_bit'])
+    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
 #==================================================================#
 # Event triggered when load story is clicked
