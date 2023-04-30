@@ -12,7 +12,7 @@
 	{% if (item['unit'] != 'bool') and (item['unit'] != 'text') and (item['uitype'] != 'dropdown') %}
 		<input autocomplete="off" class="setting_value var_sync_{{ item['classname'] }}_{{ item['name'] }}" id="{{ item['classname'] }}_{{ item['name'] }}_cur"
 			   value="{{ item['default'] }}" item_id="{{ item['classname'] }}_{{ item['name'] }}" 
-			   {% if item['unit'] == 'float' %} inputmode="decimal"{% elif item['unit'] == 'float' %} inputmode="numeric"{% endif %}
+			   {% if item['unit'] == 'float' %} inputmode="decimal"{% elif item['unit'] == 'int' %} inputmode="numeric"{% endif %}
 			   onchange="document.getElementById(this.getAttribute('item_id')).value = this.value; socket.emit('var_change', {'ID': this.id.replace('_cur', ''), 'value': this.value});">
 	{% endif %}
 	<!---Bottom Row---->
