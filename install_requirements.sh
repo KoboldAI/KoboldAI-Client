@@ -1,4 +1,5 @@
 #!/bin/bash
+export PYTHONNOUSERSITE=1
 git submodule update --init --recursive
 if [[ $1 = "cuda" || $1 = "CUDA" ]]; then
 wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba

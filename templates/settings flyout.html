@@ -488,7 +488,8 @@
 	</div>
 	<div id="settings_footer" class="settings_footer">
 		<span>Execution Time: <span id="Execution Time"></span></span> | 
-		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | <span class="var_sync_actions_Action_Count"></span>
-		<a onclick='socket.emit("get_log", {});openPopup("log-popup");' class='cursor'>Log</a>
+		<span>Remaining Time: <span class="var_sync_model_tqdm_rem_time"></span></span> | 
+		<a onclick='socket.emit("get_log", {});openPopup("log-popup");' class='cursor'>Log</a> |
+		<a onclick='openPopup("version-popup");' class='cursor'>Version</a>
 	</div>
 </div>
