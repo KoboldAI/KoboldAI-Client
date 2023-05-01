@@ -220,6 +220,8 @@ class HFTorchInferenceModel(HFInferenceModel):
         new_sample.old_sample = transformers.GenerationMixin.sample
         use_core_manipulations.sample = new_sample
 
+        return super()._post_load()
+
     def _raw_generate(
         self,
         prompt_tokens: Union[List[int], torch.Tensor],

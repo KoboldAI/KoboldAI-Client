@@ -239,16 +239,6 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                                 )
                     shutil.rmtree("cache/")
 
-        if (
-            utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
-            and utils.koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")
-        ):
-            utils.koboldai_vars.badwordsids = [
-                [v]
-                for k, v in self.tokenizer.get_vocab().items()
-                if any(c in str(k) for c in "[]")
-            ]
-
         self.patch_embedding()
 
         if utils.koboldai_vars.hascuda:

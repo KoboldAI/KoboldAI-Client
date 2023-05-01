@@ -3,6 +3,7 @@ from typing import Optional
 from transformers import AutoConfig
 
 import utils
+import koboldai_settings
 from logger import logger
 from modeling.inference_model import InferenceModel
 
@@ -15,6 +16,23 @@ class HFInferenceModel(InferenceModel):
 
         self.model = None
         self.tokenizer = None
+
+    def _post_load(self) -> None:
+        # Clean up tokens that cause issues
+        if (
+            utils.koboldai_vars.badwordsids == koboldai_settings.badwordsids_default
+            and utils.koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")
+        ):
+            utils.koboldai_vars.badwordsids = [
+                [v]
+                for k, v in self.tokenizer.get_vocab().items()
+                if any(c in str(k) for c in "[]")
+            ]
+
+            if utils.koboldai_vars.newlinemode == "n":
+                utils.koboldai_vars.badwordsids.append([self.tokenizer.eos_token_id])
+
+        return super()._post_load()
 
     def get_local_model_path(
         self, legacy: bool = False, ignore_existance: bool = False
