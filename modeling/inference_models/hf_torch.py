@@ -288,10 +288,17 @@ class HFTorchInferenceModel(HFInferenceModel):
         try:
             return AutoModelForCausalLM.from_pretrained(location, **tf_kwargs)
         except Exception as e:
-            if "out of memory" in traceback.format_exc().lower():
+            traceback_string = traceback.format_exc().lower()
+
+            if "out of memory" in traceback_string:
                 raise RuntimeError(
                     "One of your GPUs ran out of memory when KoboldAI tried to load your model."
                 )
+
+            # Model corrupted or serious loading problem. Stop here.
+            if "invalid load key" in traceback_string:
+                logger.error("Invalid load key! Aborting.")
+                raise
 
             logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
             try:
