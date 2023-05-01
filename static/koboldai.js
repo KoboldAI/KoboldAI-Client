@@ -3081,7 +3081,6 @@ function gametextwatcher(records) {
 	//Here we want to take care of two possible events
 	//User deleted an action. For this we'll restore the action and set it's text to "" and mark it as dirty
 	//User changes text. For this we simply mark it as dirty
-	console.log(records);
 	var game_text = document.getElementById("Selected Text");
 	for (const record of records) {
 		if ((record.type === "childList") && (record.removedNodes.length > 0)) {
@@ -3130,7 +3129,6 @@ function gametextwatcher(records) {
 			}
 		}
 	}
-	console.log(dirty_chunks);
 }
 
 function fix_dirty_game_text() {
@@ -3155,8 +3153,6 @@ function fix_dirty_game_text() {
 		//Fixing text outside of chunks
 		for (node of game_text.childNodes) {
 			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.textContent.trim() != "")) {
-				console.log("Found Node that needs to be combined");
-				console.log(node);
 				//We have a text only node. It should be moved into the previous chunk
 				if (node instanceof HTMLElement) {
 					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.innerText;
