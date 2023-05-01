@@ -111,10 +111,8 @@ class HFMTJInferenceModel(HFInferenceModel):
                 _, _, _, used_world_info = utils.koboldai_vars.calc_ai_text(
                     submitted_text=decoded
                 )
-                print(utils.koboldai_vars.calc_ai_text())
                 # found -= excluded_world_info[i]
                 if used_world_info:
-                    print("lets regen")
                     regeneration_required = True
                     break
             return regeneration_required, halt
@@ -321,8 +319,6 @@ class HFMTJInferenceModel(HFInferenceModel):
                 if utils.koboldai_vars.abort or halt or not regeneration_required:
                     break
 
-                print("(regeneration triggered)")
-
                 encoded = []
                 for i in range(utils.koboldai_vars.numseqs):
                     txt = utils.decodenewlines(self.tokenizer.decode(past[i]))
@@ -365,7 +361,6 @@ class HFMTJInferenceModel(HFInferenceModel):
             # )
             # print(genout)
             # print(type(genout))
-            print(context)
             genout = np.array(genout)
 
         return GenerationResult(
