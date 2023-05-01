@@ -9,6 +9,7 @@ class GenericTokenizer:
 
     def __init__(self, tokenizer: Union[Tokenizer, PreTrainedTokenizer]) -> None:
         self.tokenizer = tokenizer
+        self.valid_tokens = set(self.tokenizer.vocab.values())
 
     def __getattr__(self, name: str) -> Any:
         # Fall back to tokenizer for non-generic stuff
@@ -33,5 +34,10 @@ class GenericTokenizer:
 
         if isinstance(tokens, int):
             tokens = [tokens]
+
+        # HACK: Sometimes soft token placeholders aren't in the vocab, which
+        # causes errors on decode. Obviously we can't express these tokens as
+        # text so we can probably slice 'em out without too much issue.
+        tokens = [t for t in tokens if t in self.valid_tokens]
 
         return self.tokenizer.decode(tokens)

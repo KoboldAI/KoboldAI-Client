@@ -6,13 +6,12 @@ import torch
 import shutil
 from typing import Union
 
-from transformers import AutoModelForCausalLM, GPTNeoForCausalLM
-from modeling.inference_model import SuperLegacyModelError
+from transformers import AutoModelForCausalLM, GPTNeoForCausalLM, GPT2LMHeadModel
 
 import utils
 import modeling.lazy_loader as lazy_loader
 import koboldai_settings
-from logger import logger, set_logger_verbosity, quiesce_logger
+from logger import logger
 
 try:
     import breakmodel
@@ -80,17 +79,12 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             ):
                 try:
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
+                    utils.layers_module_names = utils.get_layers_module_names(metamodel)
+                    utils.module_names = list(metamodel.state_dict().keys())
+                    utils.named_buffers = list(metamodel.named_buffers(recurse=True))
                 except Exception as e:
-                    logger.error(f"Fell back to neo for metamodel due to {e}")
-                    try:
-                        metamodel = GPTNeoForCausalLM.from_config(self.model_config)
-                    except Exception as e:
-                        logger.error(f"Falling back again due to {e}")
-                        raise SuperLegacyModelError
-
-                utils.layers_module_names = utils.get_layers_module_names(metamodel)
-                utils.module_names = list(metamodel.state_dict().keys())
-                utils.named_buffers = list(metamodel.named_buffers(recurse=True))
+                    logger.warning(f"Gave up on lazy loading due to {e}")
+                    self.lazy_load = False
 
         # Download model from Huggingface if it does not exist, otherwise load locally
         with self._maybe_use_float16(), lazy_loader.use_lazy_load(

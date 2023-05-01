@@ -17,8 +17,6 @@ from modeling import logits_processors
 
 import utils
 
-class SuperLegacyModelError(RuntimeError):
-    pass
 
 # We only want to use logit manipulations and such on our core text model
 class use_core_manipulations:

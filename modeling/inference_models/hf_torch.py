@@ -18,6 +18,7 @@ import transformers
 from transformers import (
     StoppingCriteria,
     GPTNeoForCausalLM,
+    GPT2LMHeadModel,
     AutoModelForCausalLM,
     LogitsProcessorList,
 )
@@ -131,10 +132,14 @@ class HFTorchInferenceModel(HFInferenceModel):
         if not utils.koboldai_vars.model_type:
             utils.koboldai_vars.model_type = m_self.get_model_type()
 
-        # Model specific overrides if a model has bad defaults
+        # These are model specific overrides if a model has bad defaults
         if utils.koboldai_vars.model_type == "llama":
             m_self.tokenizer.decode_with_prefix_space = True
             m_self.tokenizer.add_bos_token = False
+        elif utils.koboldai_vars.model_type == "opt":
+            m_self.tokenizer._koboldai_header = m_self.tokenizer.encode("")
+            m_self.tokenizer.add_bos_token = False
+            m_self.tokenizer.add_prefix_space = False
 
         # Patch stopping_criteria
         class PTHStopper(StoppingCriteria):
@@ -265,27 +270,33 @@ class HFTorchInferenceModel(HFInferenceModel):
         )
 
     def _get_model(self, location: str, tf_kwargs: Dict):
-        try:
-            return AutoModelForCausalLM.from_pretrained(
-                location,
-                revision=utils.koboldai_vars.revision,
-                cache_dir="cache",
-                **tf_kwargs,
-            )
-        except Exception as e:
-            logger.warning(f"Fell back to GPTNeoForCausalLM due to {e}")
+        tf_kwargs["revision"] = utils.koboldai_vars.revision
+        tf_kwargs["cache_dir"] = "cache"
 
+        # If we have model hints for legacy model, use them rather than fall back.
+        try:
+            if self.model_name == "GPT2Custom":
+                return GPT2LMHeadModel.from_pretrained(location, **tf_kwargs)
+            elif self.model_name == "NeoCustom":
+                return GPTNeoForCausalLM.from_pretrained(location, **tf_kwargs)
+        except Exception as e:
+            logger.warning(f"{self.model_name} is a no-go; {e} - Falling back to auto.")
+
+        # Try to determine model type from either AutoModel or falling back to legacy
+        try:
+            return AutoModelForCausalLM.from_pretrained(location, **tf_kwargs)
+        except Exception as e:
             if "out of memory" in traceback.format_exc().lower():
                 raise RuntimeError(
                     "One of your GPUs ran out of memory when KoboldAI tried to load your model."
                 )
 
-            return GPTNeoForCausalLM.from_pretrained(
-                location,
-                revision=utils.koboldai_vars.revision,
-                cache_dir="cache",
-                **tf_kwargs,
-            )
+            logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
+            try:
+                return GPT2LMHeadModel.from_pretrained(location, **tf_kwargs)
+            except Exception as e:
+                logger.warning(f"Fell back to GPTNeoForCausalLM due to {e}")
+                return GPTNeoForCausalLM.from_pretrained(location, **tf_kwargs)
 
     def get_hidden_size(self) -> int:
         return self.model.get_input_embeddings().embedding_dim

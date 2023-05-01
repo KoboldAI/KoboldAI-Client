@@ -12,7 +12,6 @@ import random
 import shutil
 import eventlet
 
-from modeling.inference_model import SuperLegacyModelError
 eventlet.monkey_patch(all=True, thread=False, os=False)
 import os, inspect
 os.system("")
@@ -235,7 +234,7 @@ model_menu = {
         MenuFolder("Untuned Fairseq Dense", "fsdlist"),
         MenuFolder("Untuned Bloom", "bloomlist"),
         MenuFolder("Untuned XGLM", "xglmlist"),
-        MenuFolder("Untuned RWKV-4 (Experimental)", "rwkvlist"),
+        MenuFolder("Untuned RWKV-4 (Experimental)", "rwkvlist", experimental=True),
         MenuFolder("Untuned GPT2", "gpt2list"),
         MenuFolder("Online Services", "apilist"),
         MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER),
@@ -1939,7 +1938,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
     # TODO: InferKit
     if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
-        print(":P")
+        pass
     elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
         koboldai_vars.colaburl = url or koboldai_vars.colaburl
         koboldai_vars.usegpu = False
@@ -1982,37 +1981,18 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 lazy_load=koboldai_vars.lazy_load,
                 low_mem=args.lowmem
             )
-
-            model.load(
-                save_model=not (args.colab or args.cacheonly) or args.savemodel,
-                initial_load=initial_load,
-            )
         else:
-            try:
-                from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
-                model = GenericHFTorchInferenceModel(
-                    koboldai_vars.model,
-                    lazy_load=koboldai_vars.lazy_load,
-                    low_mem=args.lowmem
-                )
+            from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
+            model = GenericHFTorchInferenceModel(
+                koboldai_vars.model,
+                lazy_load=koboldai_vars.lazy_load,
+                low_mem=args.lowmem
+            )
 
-                model.load(
-                    save_model=not (args.colab or args.cacheonly) or args.savemodel,
-                    initial_load=initial_load,
-                )
-            except SuperLegacyModelError:
-                from modeling.inference_models.legacy_gpt2_hf import CustomGPT2HFTorchInferenceModel
-                model = CustomGPT2HFTorchInferenceModel(
-                    koboldai_vars.model,
-                    lazy_load=koboldai_vars.lazy_load,
-                    low_mem=args.lowmem
-                )
-
-                model.load(
-                    save_model=not (args.colab or args.cacheonly) or args.savemodel,
-                    initial_load=initial_load,
-                )
-
+        model.load(
+            save_model=not (args.colab or args.cacheonly) or args.savemodel,
+            initial_load=initial_load,
+        )
         logger.info(f"Pipeline created: {koboldai_vars.model}")
     else:
         # TPU
@@ -2353,7 +2333,7 @@ def lua_encode(string):
         from transformers import GPT2Tokenizer
         global tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-    return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
+    return tokenizer.encode(utils.encodenewlines(string))
 
 #==================================================================#
 #  Computes context given a submission, Lua array of entry UIDs and a Lua array
@@ -11032,6 +11012,8 @@ print("", end="", flush=True)
 @logger.catch
 def run():
     global app
+    global tpu_mtj_backend
+
     general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
@@ -11045,6 +11027,11 @@ def run():
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     koboldai_vars.port = port
+
+    # TODO: Top-level tpu_mtj_backend will be removed in modularity PR
+    if koboldai_vars.use_colab_tpu:
+        import tpu_mtj_backend
+        tpu_mtj_backend.socketio = socketio
     
     if(koboldai_vars.host):
         if(args.localtunnel):

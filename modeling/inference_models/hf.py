@@ -24,6 +24,24 @@ class HFInferenceModel(InferenceModel):
         If ignore_existance is true, it will always return a path.
         """
 
+        if self.model_name in ["NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]:
+            model_path = utils.koboldai_vars.custmodpth
+            assert model_path
+
+            # Path can be absolute or relative to models directory
+            if os.path.exists(model_path):
+                return model_path
+
+            model_path = os.path.join("models", model_path)
+
+            try:
+                assert os.path.exists(model_path)
+            except AssertionError:
+                logger.error(f"Custom model does not exist at '{utils.koboldai_vars.custmodpth}' or '{model_path}'.")
+                raise
+
+            return model_path
+
         basename = utils.koboldai_vars.model.replace("/", "_")
         if legacy:
             ret = basename
