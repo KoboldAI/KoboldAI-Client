@@ -54,6 +54,7 @@ from mesh_transformer.transformer_shard import CausalTransformer, CausalTransfor
 from mesh_transformer.util import to_bf16
 import time
 
+import modeling.warpers as warpers
 
 socketio = None
 
@@ -88,7 +89,7 @@ def new_rng_state(seed: int):
 def warper_callback(logits) -> np.array:
     raise NotImplementedError("`tpu_mtj_backend.warper_callback()` needs to be defined")
 
-def stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
+def stopping_callback(generated, n_generated) -> Tuple[bool, bool]:
     raise NotImplementedError("`tpu_mtj_backend.stopping_callback()` needs to be defined")
 
 def settings_callback() -> dict:
@@ -126,22 +127,6 @@ def show_spinner(queue):
         bar.update(i)
         time.sleep(0.1)
         i += 1
-
-class Send_to_socketio(object):
-    def write(self, bar):
-        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
-        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
-            #logger.info(bar)
-            print('\r' + bar, end='')
-            time.sleep(0.01)
-            try:
-                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-            except:
-                pass
-        
-    def flush(self):
-        pass
-
 
 __F = TypeVar("__F", bound=Callable)
 __T = TypeVar("__T")
@@ -229,333 +214,203 @@ def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarra
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
     before picking one token using the modified logits
     '''
-    # Top-k (keep only the k tokens with the highest logits and remove
-    # the rest, by setting their logits to negative infinity)
-    def top_k_filter(logits):
-        # After sorting the logits array in descending order,
-        # sorted_indices_to_remove is a 1D array that is True for tokens
-        # in the sorted logits array we want to remove and False for ones
-        # we want to keep, in this case the first top_k elements will be
-        # False and the rest will be True
-        sorted_indices_to_remove = np.arange(len(logits)) >= top_k
-        # Unsort the logits array back to its original configuration and
-        # remove tokens we need to remove
-        _, indices_to_remove = jax.lax.sort_key_val(
-            np.argsort(-logits),
-            sorted_indices_to_remove,
-        )
-        return np.where(indices_to_remove, -np.inf, logits)
-    # Top-a (remove all tokens that have softmax probability less than
-    # a*m^2 where m is the maximum softmax probability)
-    def top_a_filter(logits):
-        # Replace every element in the logits array
-        # with e (Euler's number) to the power of that element, and divide
-        # each element of the new array by the sum of the elements in the
-        # new array
-        probabilities = np.array(jax.nn.softmax(logits), copy=True)
-        # Find the largest probability
-        probs_max = probabilities.max()
-        # Remove tokens
-        return np.where(probabilities < probs_max * probs_max * top_a, -np.inf, logits)
-    # Top-p (after sorting the remaining tokens again in descending order of
-    # logit, remove the ones that have cumulative softmax probability
-    # greater than p)
-    def top_p_filter(logits):
-        # Sort the logits array in descending order, replace every element
-        # with e (Euler's number) to the power of that element, and divide
-        # each element of the new array by the sum of the elements in the
-        # new array
-        sorted_logits = -np.sort(-logits)
-        probabilities = np.array(jax.nn.softmax(sorted_logits), copy=True)
-        # Calculate cumulative_probabilities as the prefix-sum array of
-        # probabilities
-        cumulative_probabilities = np.cumsum(probabilities, axis=-1)
-        # We want to remove tokens with cumulative probability higher
-        # than top_p
-        sorted_indices_to_remove = cumulative_probabilities > top_p
-        # Don't ever remove the token with the highest logit, even if
-        # the probability is higher than top_p
-        sorted_indices_to_remove[0] = False
-        # Unsort and remove
-        _, indices_to_remove = jax.lax.sort_key_val(
-            np.argsort(-logits),
-            sorted_indices_to_remove,
-        )
-        return np.where(indices_to_remove, -np.inf, logits)
-    # Tail free sampling (basically top-p a second time on remaining tokens
-    # except it's the "cumulative normalized absolute second finite
-    # differences of the softmax probabilities" instead of just the
-    # cumulative softmax probabilities)
-    def tail_free_filter(logits):
-        # Sort in descending order
-        sorted_logits = -np.sort(-logits)
-        # Softmax again
-        probabilities = np.array(jax.nn.softmax(sorted_logits), copy=True)
-        # Calculate the second finite differences of that array (i.e.
-        # calculate the difference array and then calculate the difference
-        # array of the difference array)
-        d2 = np.diff(np.diff(probabilities))
-        # Get the absolute values of all those second finite differences
-        d2 = np.abs(d2)
-        # Normalize (all elements in the array are divided by the sum of the
-        # array's elements)
-        d2 = d2 / d2.sum(axis=-1, keepdims=True)
-        # Get the prefix-sum array
-        cumulative_d2 = np.cumsum(d2, axis=-1)
-        # We will remove the tokens with a cumulative normalized absolute
-        # second finite difference larger than the TFS value
-        sorted_indices_to_remove = cumulative_d2 > tfs
-        # Don't remove the token with the highest logit
-        sorted_indices_to_remove[0] = False
-        # Since the d2 array has two fewer elements than the logits array,
-        # we'll add two extra Trues to the end
-        sorted_indices_to_remove = np.pad(
-            sorted_indices_to_remove,
-            (0, 2),
-            constant_values=True,
-        )
-        # Unsort and remove
-        _, indices_to_remove = jax.lax.sort_key_val(
-            np.argsort(-logits),
-            sorted_indices_to_remove,
-        )
-        return np.where(indices_to_remove, -np.inf, logits)
-    # Typical sampling (https://arxiv.org/pdf/2202.00666.pdf)
-    def typical_filter(logits):
-        # Compute softmax probabilities and the natural logarithms of them
-        probs = jax.nn.softmax(logits)
-        with np.errstate(divide="ignore"):
-            log_probs = np.log(probs)
-        # Compute the negative of entropy, which is the sum of p*ln(p) for all p
-        # in the set of softmax probabilities of the logits
-        neg_entropy = np.nansum(probs * log_probs, axis=-1, keepdims=True)
-        # Determine absolute difference between the negative entropy and the
-        # log probabilities
-        entropy_deviation = np.abs(neg_entropy - log_probs)
-        # Keep certain tokens such that the sum of the entropy_deviation of the
-        # kept tokens is the smallest possible value such that the sum of the
-        # softmax probabilities of the kept tokens is at least the threshold
-        # value (by sorting the tokens in ascending order of entropy_deviation
-        # and then keeping the smallest possible number of tokens from the
-        # beginning such that sum of softmax probabilities is at or above the
-        # threshold)
-        _, sorted_logits = jax.lax.sort_key_val(entropy_deviation, probs)
-        sorted_indices_to_remove = np.cumsum(sorted_logits, axis=-1) >= typical
-        sorted_indices_to_remove = np.roll(sorted_indices_to_remove, 1, axis=-1)
-        sorted_indices_to_remove[0] = False
-        # Unsort and remove
-        _, indices_to_remove = jax.lax.sort_key_val(
-            jnp.argsort(entropy_deviation),
-            sorted_indices_to_remove,
-        )
-        return np.where(indices_to_remove, -jnp.inf, logits)
-    # Temperature (just divide the logits by the temperature)
-    def temp_filter(logits):
-        return logits / temp
-    for k in sampler_order:
-        if k == 0 and top_k > 0: logits = top_k_filter(logits)
-        if k == 1 and top_a > 0.0: logits = top_a_filter(logits)
-        if k == 2 and top_p < 1.0: logits = top_p_filter(logits)
-        if k == 3 and tfs < 1.0: logits = tail_free_filter(logits)
-        if k == 4 and typical < 1.0: logits = typical_filter(logits)
-        if k == 5 and temp != 1.0: logits = temp_filter(logits)
-        if k == 6 and rpargs[1] != 1.0: logits = apply_repetition_penalty_dynamic(logits, *rpargs)
+    for sid in jnp.array(sampler_order, int):
+        sid = int(sid)
+        warper = warpers.Warper.from_id(sid)
+
+        if not warper.value_is_valid():
+            continue
+
+        # Repetition Penalty needs more info about the context
+        if warper == warpers.RepetitionPenalty:
+            logits = warper.jax_dynamic(logits, *rpargs)
+        else:
+            logits = warper.jax_dynamic(logits)
+
     # Finally, pick one token using the softmax thingy again (it gives
     # an array whose elements sum to 1 so it can be used nicely as a
     # probability distribution)
     return jax.random.categorical(key, logits, -1).astype(np.uint32)
 
-def apply_repetition_penalty_static(logits, tokens, repetition_penalty, generated_index, gen_length, rpslope, rprange):
-    '''
-    This gets called by generate_loop_fn to apply repetition penalty
-    to the 1D array logits using the provided 1D array of tokens to penalize
-    '''
-    rpslope = jnp.int32(rpslope)
-    rprange = jnp.int32(rprange)
-    clipped_rprange = jax.lax.cond(rprange > 0, lambda x: x, lambda x: tokens.shape[-1], rprange)
-    penalty_arange = jnp.roll(jnp.arange(tokens.shape[-1]) + (clipped_rprange - tokens.shape[-1]), generated_index, axis=-1)
-    # Make a new array with the same length as the tokens array but with
-    # each element replaced by the value at the corresponding index in the
-    # logits array; e.g.
-    # if logits is [77, 5, 3, 98] and tokens is [0, 1, 2, 3, 2, 3, 1],
-    # then penalty_logits will be [77, 5, 3, 98, 3, 98, 5]
-    penalty_logits = jnp.take(logits, tokens)
-    # Repetition penalty slope
-    def apply_slope(carry):
-        repetition_penalty, rprange = carry
-        _penalty = (penalty_arange/(rprange - 1)) * 2 - 1
-        _penalty = (rpslope * _penalty) / (1 + jnp.abs(_penalty) * (rpslope - 1))
-        _penalty = 1 + ((_penalty + 1) / 2) * (repetition_penalty - 1)
-        return _penalty
-    repetition_penalty = jax.lax.cond(
-        (rpslope != 0.0) & (rprange > 0),  # Not a typo; do not use `and` here, it makes JAX crash
-        apply_slope,
-        lambda carry: jnp.full(tokens.shape, carry[0]),
-        (repetition_penalty, rprange),
-    )
-    # Divide positive values by repetition_penalty and multiply negative
-    # values by repetition_penalty (the academic publication that described
-    # this technique actually just only divided, but that would cause tokens
-    # with negative logits to become more likely, which is obviously wrong)
-    if koboldai_vars.use_alt_rep_pen:
-        penalty_logits = jnp.where(
-            penalty_arange >= 0,
-            penalty_logits - jnp.log(repetition_penalty),
-            penalty_logits,
-        )
-    else:
-        penalty_logits = jnp.where(
-            penalty_arange >= 0,
-            jnp.where(
-                penalty_logits > 0,
-                penalty_logits/repetition_penalty,
-                penalty_logits*repetition_penalty,
-            ),
-            penalty_logits,
-        )
-    # Finally, put those penalized logit values back into their original
-    # positions in the logits array
-    return logits.at[tokens].set(penalty_logits)
-
-def kobold_sample_static(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
+def kobold_sample_static(
+    key,
+    logits,
+    rpargs,
+    sampler_order: Optional[np.ndarray] = None,
+    top_p=0.9,
+    temp=0.5,
+    top_k=0,
+    tfs=1.0,
+    typical=1.0,
+    top_a=0.0,
+):
     '''
     This gets called by generate_loop_fn to apply a series of 6 filters
     to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
     before picking one token using the modified logits
     '''
-    # Top-k (keep only the k tokens with the highest logits and remove
-    # the rest, by setting their logits to negative infinity)
-    def top_k_filter(logits):
-        # After sorting the logits array in descending order,
-        # sorted_indices_to_remove is a 1D array that is True for tokens
-        # in the sorted logits array we want to remove and False for ones
-        # we want to keep, in this case the first top_k elements will be
-        # False and the rest will be True
-        sorted_indices_to_remove = jnp.arange(len(logits)) >= top_k
-        # Unsort the logits array back to its original configuration and
-        # remove tokens we need to remove
+
+    # Lame to have these here instead of modeling/warpers.py but JAX JIT stuff >:(
+    # For documentation see modeling/warpers.py
+    def sample_top_k(scores: jnp.array) -> jnp.array:
+        sorted_indices_to_remove = jnp.arange(len(scores)) >= top_k
+
         _, indices_to_remove = jax.lax.sort_key_val(
-            jnp.argsort(-logits),
+            jnp.argsort(-scores),
             sorted_indices_to_remove,
         )
-        return jnp.where(indices_to_remove, -jnp.inf, logits)
-    # Top-a (remove all tokens that have softmax probability less than
-    # a*m^2 where m is the maximum softmax probability)
-    def top_a_filter(logits):
-        # Replace every element in the logits array
-        # with e (Euler's number) to the power of that element, and divide
-        # each element of the new array by the sum of the elements in the
-        # new array
-        probabilities = jax.nn.softmax(logits)
-        # Find the largest probability
+        return jnp.where(indices_to_remove, -jnp.inf, scores)
+
+
+    def sample_top_a(scores: jnp.array) -> jnp.array:
+        probabilities = jax.nn.softmax(scores)
         probs_max = probabilities.max()
-        # Remove tokens
-        return jnp.where(probabilities < probs_max * probs_max * top_a, -jnp.inf, logits)
-    # Top-p (after sorting the remaining tokens again in descending order of
-    # logit, remove the ones that have cumulative softmax probability
-    # greater than p)
-    def top_p_filter(logits):
-        # Sort the logits array in descending order, replace every element
-        # with e (Euler's number) to the power of that element, and divide
-        # each element of the new array by the sum of the elements in the
-        # new array
-        sorted_logits = -jnp.sort(-logits)
+        return jnp.where(
+            probabilities < probs_max * probs_max * top_a, -jnp.inf, scores
+        )
+
+
+    def sample_top_p(scores: jnp.array) -> jnp.array:
+        sorted_logits = -jnp.sort(-scores)
         probabilities = jax.nn.softmax(sorted_logits)
-        # Calculate cumulative_probabilities as the prefix-sum array of
-        # probabilities
+
         cumulative_probabilities = jnp.cumsum(probabilities, axis=-1)
-        # We want to remove tokens with cumulative probability higher
-        # than top_p
         sorted_indices_to_remove = cumulative_probabilities > top_p
-        # Don't ever remove the token with the highest logit, even if
-        # the probability is higher than top_p
+
         sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
-        # Unsort and remove
         _, indices_to_remove = jax.lax.sort_key_val(
-            jnp.argsort(-logits),
+            jnp.argsort(-scores),
             sorted_indices_to_remove,
         )
-        return jnp.where(indices_to_remove, -jnp.inf, logits)
-    # Tail free sampling (basically top-p a second time on remaining tokens
-    # except it's the "cumulative normalized absolute second finite
-    # differences of the softmax probabilities" instead of just the
-    # cumulative softmax probabilities)
-    def tail_free_filter(logits):
-        # Sort in descending order
-        sorted_logits = -jnp.sort(-logits)
-        # Softmax again
+        return jnp.where(indices_to_remove, -jnp.inf, scores)
+
+
+    def sample_tail_free(scores: jnp.array) -> jnp.array:
+        sorted_logits = -jnp.sort(-scores)
         probabilities = jax.nn.softmax(sorted_logits)
-        # Calculate the second finite differences of that array (i.e.
-        # calculate the difference array and then calculate the difference
-        # array of the difference array)
+
         d2 = jnp.diff(jnp.diff(probabilities))
-        # Get the absolute values of all those second finite differences
         d2 = jnp.abs(d2)
-        # Normalize (all elements in the array are divided by the sum of the
-        # array's elements)
         d2 = d2 / d2.sum(axis=-1, keepdims=True)
-        # Get the prefix-sum array
+
         cumulative_d2 = jnp.cumsum(d2, axis=-1)
-        # We will remove the tokens with a cumulative normalized absolute
-        # second finite difference larger than the TFS value
         sorted_indices_to_remove = cumulative_d2 > tfs
-        # Don't remove the token with the highest logit
         sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
-        # Since the d2 array has two fewer elements than the logits array,
-        # we'll add two extra Trues to the end
         sorted_indices_to_remove = jnp.pad(
             sorted_indices_to_remove,
             (0, 2),
             constant_values=True,
         )
-        # Unsort and remove
+
         _, indices_to_remove = jax.lax.sort_key_val(
-            jnp.argsort(-logits),
+            jnp.argsort(-scores),
             sorted_indices_to_remove,
         )
-        return jnp.where(indices_to_remove, -jnp.inf, logits)
-    # Typical sampling (https://arxiv.org/pdf/2202.00666.pdf)
-    def typical_filter(logits):
-        # Compute softmax probabilities and the natural logarithms of them
-        probs = jax.nn.softmax(logits)
+        return jnp.where(indices_to_remove, -jnp.inf, scores)
+
+
+    def sample_typical(scores: jnp.array) -> jnp.array:
+        probs = jax.nn.softmax(scores)
         log_probs = jnp.log(probs)
-        # Compute the negative of entropy, which is the sum of p*ln(p) for all p
-        # in the set of softmax probabilities of the logits
+
         neg_entropy = jnp.nansum(probs * log_probs, axis=-1, keepdims=True)
-        # Determine absolute difference between the negative entropy and the
-        # log probabilities
         entropy_deviation = jnp.abs(neg_entropy - log_probs)
-        # Keep certain tokens such that the sum of the entropy_deviation of the
-        # kept tokens is the smallest possible value such that the sum of the
-        # softmax probabilities of the kept tokens is at least the threshold
-        # value (by sorting the tokens in ascending order of entropy_deviation
-        # and then keeping the smallest possible number of tokens from the
-        # beginning such that sum of softmax probabilities is at or above the
-        # threshold)
+
         _, sorted_logits = jax.lax.sort_key_val(entropy_deviation, probs)
         sorted_indices_to_remove = jnp.cumsum(sorted_logits, axis=-1) >= typical
         sorted_indices_to_remove = jnp.roll(sorted_indices_to_remove, 1, axis=-1)
         sorted_indices_to_remove = sorted_indices_to_remove.at[0].set(False)
-        # Unsort and remove
+
         _, indices_to_remove = jax.lax.sort_key_val(
             jnp.argsort(entropy_deviation),
             sorted_indices_to_remove,
         )
-        return jnp.where(indices_to_remove, -jnp.inf, logits)
-    # Temperature (just divide the logits by the temperature)
-    def temp_filter(logits):
-        return logits / temp
+        return jnp.where(indices_to_remove, -jnp.inf, scores)
+
+
+    def sample_temperature(scores: jnp.array) -> jnp.array:
+        return scores / temp
+
+
+    def sample_repetition_penalty(
+        logits: jnp.array,
+        tokens: jnp.array,
+        repetition_penalty,
+        generated_index,
+        rpslope,
+        rprange
+    ) -> jnp.array:
+        """
+        This gets called to apply repetition penalty to the 1D array logits
+        using the provided 1D array of tokens to penalize
+        """
+        rpslope = jnp.int32(rpslope)
+        rprange = jnp.int32(rprange)
+
+        clipped_rprange = jax.lax.cond(
+            rprange > 0, lambda x: x, lambda x: tokens.shape[-1], rprange
+        )
+
+        penalty_arange = jnp.roll(
+            jnp.arange(tokens.shape[-1]) + (clipped_rprange - tokens.shape[-1]),
+            generated_index,
+            axis=-1,
+        )
+        # Make a new array with the same length as the tokens array but with
+        # each element replaced by the value at the corresponding index in the
+        # logits array; e.g.
+        # if logits is [77, 5, 3, 98] and tokens is [0, 1, 2, 3, 2, 3, 1],
+        # then penalty_logits will be [77, 5, 3, 98, 3, 98, 5]
+        penalty_logits = jnp.take(logits, tokens)
+
+        # Repetition penalty slope
+        def apply_slope(carry):
+            repetition_penalty, rprange = carry
+            _penalty = (penalty_arange / (rprange - 1)) * 2 - 1
+            _penalty = (rpslope * _penalty) / (1 + jnp.abs(_penalty) * (rpslope - 1))
+            _penalty = 1 + ((_penalty + 1) / 2) * (repetition_penalty - 1)
+            return _penalty
+
+        repetition_penalty = jax.lax.cond(
+            (rpslope != 0.0)
+            & (rprange > 0),  # Not a typo; do not use `and` here, it makes JAX crash
+            apply_slope,
+            lambda carry: jnp.full(tokens.shape, carry[0]),
+            (repetition_penalty, rprange),
+        )
+        # Divide positive values by repetition_penalty and multiply negative
+        # values by repetition_penalty (the academic publication that described
+        # this technique actually just only divided, but that would cause tokens
+        # with negative logits to become more likely, which is obviously wrong)
+        if koboldai_vars.use_alt_rep_pen:
+            penalty_logits = jnp.where(
+                penalty_arange >= 0,
+                penalty_logits - jnp.log(repetition_penalty),
+                penalty_logits,
+            )
+        else:
+            penalty_logits = jnp.where(
+                penalty_arange >= 0,
+                jnp.where(
+                    penalty_logits > 0,
+                    penalty_logits / repetition_penalty,
+                    penalty_logits * repetition_penalty,
+                ),
+                penalty_logits,
+            )
+        # Finally, put those penalized logit values back into their original
+        # positions in the logits array
+        return logits.at[tokens].set(penalty_logits)
+
+
     for k in sampler_order:
-        logits = jax.lax.cond(jnp.logical_and(k == 0, top_k > 0), top_k_filter, lambda x: x, logits)
-        logits = jax.lax.cond(jnp.logical_and(k == 1, top_a > 0.0), top_a_filter, lambda x: x, logits)
-        logits = jax.lax.cond(jnp.logical_and(k == 2, top_p < 1.0), top_p_filter, lambda x: x, logits)
-        logits = jax.lax.cond(jnp.logical_and(k == 3, tfs < 1.0), tail_free_filter, lambda x: x, logits)
-        logits = jax.lax.cond(jnp.logical_and(k == 4, typical < 1.0), typical_filter, lambda x: x, logits)
-        logits = jax.lax.cond(jnp.logical_and(k == 5, temp != 1.0), temp_filter, lambda x: x, logits)
-        logits = jax.lax.cond(jnp.logical_and(k == 6, rpargs[1] != 1.0), lambda x: apply_repetition_penalty_static(*x), lambda x: x[0], (logits, *rpargs))
-    # Finally, pick one token using the softmax thingy again (it gives
-    # an array whose elements sum to 1 so it can be used nicely as a
-    # probability distribution)
+        logits = jax.lax.cond(jnp.logical_and(k == 0, top_k > 0), sample_top_k, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 1, top_a > 0.0), sample_top_a, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 2, top_p < 1.0), sample_top_p, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 3, tfs < 1.0), sample_tail_free, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 4, typical < 1.0), sample_typical, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 5, temp != 1.0), sample_temperature, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 6, rpargs[1] != 1.0), lambda x: sample_repetition_penalty(*x), lambda x: x[0], (logits, *rpargs))
     return jax.random.categorical(key, logits, -1).astype(jnp.uint32)
 
 pad_token_id = 50256
@@ -582,11 +437,7 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
             logits,
             (
                 generated,
-                repetition_penalty,
                 generated_index, 
-                gen_length,
-                rpslope,
-                rprange,
             ),
             **sampler_options,
         )
@@ -674,7 +525,6 @@ class PenalizingCausalTransformer(CausalTransformer):
                             generated,
                             repetition_penalty,
                             generated_index,
-                            gen_length,
                             rpslope,
                             rprange,
                         ),
@@ -788,8 +638,7 @@ class PenalizingCausalTransformer(CausalTransformer):
             out_axes=["shard", "batch", ...],
             axis_resources={'shard': 'mp', 'batch': 'dp'},
         )
-    def generate_dynamic(self, ctx, ctx_length, gen_length, numseqs, return_logits=False, soft_embeddings=None, excluded_world_info=None, use_callback=True):
-        assert excluded_world_info is not None
+    def generate_dynamic(self, ctx, ctx_length, gen_length, numseqs, return_logits=False, soft_embeddings=None, use_callback=True):
         assert not return_logits
         assert gen_length.ndim == 1
         assert soft_embeddings is not None
@@ -832,7 +681,7 @@ class PenalizingCausalTransformer(CausalTransformer):
                 generate_data[i][3] = np.tile(sample_data[i][0][sample_data[i][1]-1][np.newaxis, np.newaxis], (params["cores_per_replica"], 1, 1))
             if use_callback:
                 generated = np.uint32(tuple(d[0] for d in sample_data))
-                excluded_world_info, regeneration_required, halt = stopping_callback(generated, n_generated, excluded_world_info)
+                regeneration_required, halt = stopping_callback(generated, n_generated)
                 if regeneration_required or halt:
                     break
             else:
@@ -865,10 +714,8 @@ def infer_dynamic(
     gen_len=80,
     soft_embeddings: Optional[np.array] = None,
     soft_tokens: Optional[np.array] = None,
-    excluded_world_info = None,
     use_callback=True,
 ) -> Tuple[List[np.array], int, bool, bool]:
-    assert excluded_world_info is not None
     maps.thread_resources.env = thread_resources_env
     total_batch = 1
     tokens = context
@@ -885,7 +732,6 @@ def infer_dynamic(
         np.ones(total_batch, dtype=np.uint32) * gen_len,
         numseqs,
         soft_embeddings=soft_embeddings,
-        excluded_world_info=excluded_world_info,
         use_callback=use_callback,
     )
     for out in output[0]:
@@ -993,7 +839,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
     import torch
     import torch.utils.dlpack
-    import torch_lazy_loader
+    import modeling.lazy_loader as lazy_loader
     from tqdm.auto import tqdm
 
     move_xmap = jax.experimental.maps.xmap(
@@ -1031,7 +877,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
     if socketio is None:
         bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint")
     else:
-        bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint", file=Send_to_socketio())
+        bar = tqdm(total=tqdm_length, desc="Loading from NeoX checkpoint", file=utils.UIProgressBarFile(socketio.emit))
     koboldai_vars.status_message = "Loading TPU"
     koboldai_vars.total_layers = tqdm_length
     koboldai_vars.loaded_layers = 0
@@ -1041,7 +887,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
             continue
         layer = checkpoint_layer - 2
         shards = []
-        with torch_lazy_loader.use_custom_unpickler(torch_lazy_loader.RestrictedUnpickler):
+        with lazy_loader.use_custom_unpickler(lazy_loader.RestrictedUnpickler):
             for checkpoint_shard in range(checkpoint_shards):
                 shards.append(torch.load(path_template.format(layer=checkpoint_layer, shard=checkpoint_shard), map_location="cpu"))
         for key in shards[0]:
@@ -1098,9 +944,9 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params, pad_token_id
 
-    if "pad_token_id" in kwargs:
+    if kwargs.get("pad_token_id"):
         pad_token_id = kwargs["pad_token_id"]
-    elif "eos_token_id" in kwargs:
+    elif kwargs.get("eos_token_id"):
         pad_token_id = kwargs["eos_token_id"]
 
     if not hasattr(koboldai_vars, "sampler_order") or not koboldai_vars.sampler_order:
@@ -1139,6 +985,7 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
             "tokenizer_class": "GPT2Tokenizer",
             "tokenizer": "gpt2",
         }
+
 
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
@@ -1310,7 +1157,7 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
                 model_spec[key] = spec["mtj"].copy()
                 model_spec[key]["module"] = "causal_transformer_shard/~/" + model_spec[key]["module"].format(layer=layer)
 
-    import torch_lazy_loader
+    import modeling.lazy_loader as lazy_loader
     import torch
     from tqdm.auto import tqdm
     import functools
@@ -1334,10 +1181,11 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
                         num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
                     else:
                         num_tensors = len(model_dict)
+
                     if socketio is None:
                         utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
                     else:
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio())
+                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=utils.UIProgressBarFile(socketio.emit))
                     koboldai_vars.status_message = "Loading model"
                     koboldai_vars.loaded_layers = 0
                     koboldai_vars.total_layers = num_tensors
@@ -1373,7 +1221,7 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
                         current_offset = model_dict[key].seek_offset
                     spec = model_spec[model_spec_key]
                     transforms = set(spec.get("transforms", ()))
-                    if not isinstance(model_dict[key], torch_lazy_loader.LazyTensor):
+                    if not isinstance(model_dict[key], lazy_loader.LazyTensor):
                         error = f"Duplicate key {repr(key)}"
                         print("\n\nERROR:  " + error, file=sys.stderr)
                         raise RuntimeError(error)
@@ -1454,7 +1302,7 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
         import shutil
         shutil.move(koboldai_vars.model.replace('/', '_'), "models/{}".format(koboldai_vars.model.replace('/', '_')))
     print("\n", flush=True)
-    with torch_lazy_loader.use_lazy_torch_load(callback=callback, dematerialized_modules=True):
+    with lazy_loader.use_lazy_load(callback=callback, dematerialized_modules=True):
         if(os.path.isdir(koboldai_vars.custmodpth)):
             try:
                 tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)

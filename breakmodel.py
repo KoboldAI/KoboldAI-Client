@@ -235,11 +235,9 @@ gpu_blocks = []
 disk_blocks = 0
 primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
 
-
-if utils.HAS_ACCELERATE:
-    from accelerate.hooks import attach_align_device_hook_on_blocks
-    from accelerate.utils import OffloadedWeightsLoader, check_device_map, extract_submodules_state_dict, offload_state_dict
-    from accelerate import dispatch_model
+from accelerate.hooks import attach_align_device_hook_on_blocks
+from accelerate.utils import OffloadedWeightsLoader, check_device_map, extract_submodules_state_dict, offload_state_dict
+from accelerate import dispatch_model
 
 def dispatch_model_ex(
     model: nn.Module,
