@@ -223,7 +223,8 @@ class InferenceModel:
         for i, try_get_tokenizer in enumerate(suppliers):
             try:
                 return GenericTokenizer(try_get_tokenizer())
-            except:
+            except Exception as e:
+                logger.warn(f"Tokenizer falling back due to {e}")
                 # If we error on each attempt, raise the last one
                 if i == len(suppliers) - 1:
                     raise
