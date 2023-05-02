@@ -498,6 +498,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         utils.get_sharded_checkpoint_num_tensors(
                             utils.from_pretrained_model_name,
                             utils.from_pretrained_index_filename,
+                            is_safetensors=is_safetensors,
                             **utils.from_pretrained_kwargs,
                         )
                     )
