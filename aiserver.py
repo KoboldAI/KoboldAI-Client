@@ -5728,7 +5728,14 @@ def show_folder_soft_prompt(data):
 def show_folder_usersripts(data):
     file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=True, item_check=None)
 
-    
+#==================================================================#
+# KoboldAI Lite Server
+#==================================================================#
+@app.route('/lite')
+@require_allowed_ip
+@logger.catch
+def lite_html():
+    return render_template('klite.html')
 
 #==================================================================#
 # UI V2 CODE
