@@ -5735,7 +5735,7 @@ def show_folder_usersripts(data):
 @require_allowed_ip
 @logger.catch
 def lite_html():
-    return render_template('klite.html')
+    return send_from_directory('static', "klite.html")
 
 #==================================================================#
 # UI V2 CODE
