@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import glob
 import json
 import torch
 import re
@@ -9,7 +10,6 @@ import sys
 from typing import Union
 
 from transformers import AutoModelForCausalLM, GPTNeoForCausalLM, AutoTokenizer, LlamaTokenizer
-from modeling.inference_model import SuperLegacyModelError
 
 import utils
 import modeling.lazy_loader as lazy_loader
@@ -33,6 +33,66 @@ from gptneox import load_quant as gptneox_load_quant
 from llama import load_quant as llama_load_quant
 from opt import load_quant as opt_load_quant
 from offload import load_quant_offload
+monkey_patched_4bit = False
+
+
+def prepare_4bit_load(modelpath):
+    path_4bit = os.path.join(modelpath, "model.safetensors")
+    if os.path.isfile(path_4bit):
+        return path_4bit, False
+
+    path_4bit = os.path.join(modelpath, "model.ckpt")
+    if os.path.isfile(path_4bit):
+        return path_4bit, False
+
+    # Legacy format support
+    paths_4bit = ["4bit*.safetensors", "4bit*.pt"]
+    paths_4bit_old = ["4bit-old.pt", "4bit-old.safetensors"]
+    result = False
+    groupsize = -1
+    for p in paths_4bit:
+        p = os.path.join(modelpath, p)
+        val = [v for v in glob.glob(p) if "4bit-old" not in v]
+        if val:
+            result = val[0]
+            fname = Path(result).parts[-1]
+            g = re.findall("^(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
+            if g:
+                groupsize = int(g[0])
+            break
+
+    global monkey_patched_4bit
+
+    # Monkey-patch in old-format pt-file support
+    if not result:
+        print("4-bit file not found, falling back to old format.")
+        for p in paths_4bit_old:
+            p = os.path.join(modelpath, p)
+            if os.path.isfile(p):
+                result = p
+                break
+
+        if not result:
+            print("4-bit old-format file not found, loading failed.")
+            raise RuntimeError("4-bit load failed. PT/Safetensors-File not found.")
+
+        import llama, opt, gptneox, gptj, old_quant
+        llama.make_quant = old_quant.old_make_quant
+        opt.make_quant = old_quant.old_make_quant
+        gptneox.make_quant = old_quant.old_make_quant
+        gptj.make_quant = old_quant.old_make_quant
+        monkey_patched_4bit = True
+    elif monkey_patched_4bit:
+        # Undo monkey patch
+        print("Undoing 4-bit old format monkey patch")
+        import llama, opt, gptneox, gptj, quant
+        llama.make_quant = quant.make_quant
+        opt.make_quant = quant.make_quant
+        gptneox.make_quant = quant.make_quant
+        gptj.make_quant = quant.make_quant
+        monkey_patched_4bit = False
+
+    return result, groupsize
 
 
 class HFTorch4BitInferenceModel(HFTorchInferenceModel):
@@ -87,17 +147,12 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
             ):
                 try:
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
+                    utils.layers_module_names = utils.get_layers_module_names(metamodel)
+                    utils.module_names = list(metamodel.state_dict().keys())
+                    utils.named_buffers = list(metamodel.named_buffers(recurse=True))
                 except Exception as e:
-                    logger.error(f"Fell back to neo for metamodel due to {e}")
-                    try:
-                        metamodel = GPTNeoForCausalLM.from_config(self.model_config)
-                    except Exception as e:
-                        logger.error(f"Falling back again due to {e}")
-                        raise SuperLegacyModelError
-
-                utils.layers_module_names = utils.get_layers_module_names(metamodel)
-                utils.module_names = list(metamodel.state_dict().keys())
-                utils.named_buffers = list(metamodel.named_buffers(recurse=True))
+                    logger.warning(f"Gave up on lazy loading due to {e}")
+                    self.lazy_load = False
 
         # Download model from Huggingface if it does not exist, otherwise load locally
         with self._maybe_use_float16(), lazy_loader.use_lazy_load(
@@ -276,8 +331,15 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
         utils.koboldai_vars.modeldim = self.get_hidden_size()
 
     def _get_model(self, location: str, tf_kwargs: Dict):
-        path_4bit = utils.koboldai_vars.gptq_file
+        if not utils.koboldai_vars.custmodpth:
+            pass
         groupsize = utils.koboldai_vars.gptq_groupsize
+
+        path_4bit, legacy_groupsize = prepare_4bit_load(utils.koboldai_vars.custmodpth)
+
+        if legacy_groupsize is not False:
+            groupsize = legacy_groupsize
+
         print(f"Using 4-bit file: {path_4bit}, groupsize {groupsize}")
 
         print(f"Trying to load {utils.koboldai_vars.model_type} model in 4-bit")

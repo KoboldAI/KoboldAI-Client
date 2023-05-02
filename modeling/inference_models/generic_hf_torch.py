@@ -24,7 +24,7 @@ from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
 
 class GenericHFTorchInferenceModel(HFTorchInferenceModel):
-    def _load(self, save_model: bool, initial_load: bool) -> None:
+    def load_config(self) -> None:
         utils.koboldai_vars.allowsp = True
 
         # Make model path the same as the model name to make this consistent
@@ -49,6 +49,9 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             )
 
         self.init_model_config()
+
+    def _load(self, save_model: bool, initial_load: bool) -> None:
+        self.load_config()
 
         tf_kwargs = {
             "low_cpu_mem_usage": True,

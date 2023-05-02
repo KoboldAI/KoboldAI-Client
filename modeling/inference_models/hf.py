@@ -61,6 +61,14 @@ class HFInferenceModel(InferenceModel):
                 cache_dir="cache",
             )
             utils.koboldai_vars.model_type = self.model_config.model_type
+
+            if "gptq_bits" in dir(self.model_config):
+                utils.koboldai_vars.gptq_model = True
+                utils.koboldai_vars.gptq_bits = self.model_config.gptq_bits
+                utils.koboldai_vars.gptq_groupsize = self.model_config.gptq_groupsize
+                utils.koboldai_vars.gptq_file = None
+            else:
+                utils.koboldai_vars.gptq_model = False
         except ValueError:
             utils.koboldai_vars.model_type = {
                 "NeoCustom": "gpt_neo",

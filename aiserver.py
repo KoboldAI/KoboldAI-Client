@@ -50,6 +50,8 @@ import multiprocessing
 import numpy as np
 from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
+import glob
+from pathlib import Path
 
 import requests
 import html
@@ -84,18 +86,6 @@ global tpu_mtj_backend
 global allowed_ips
 allowed_ips = set()  # empty set
 enable_whitelist = False
-
-
-# 4-bit dependencies
-from pathlib import Path
-import glob
-sys.path.insert(0, os.path.abspath(Path("repos/gptq")))
-from gptj import load_quant as gptj_load_quant
-from gptneox import load_quant as gptneox_load_quant
-from llama import load_quant as llama_load_quant
-from opt import load_quant as opt_load_quant
-from offload import load_quant_offload
-monkey_patched_4bit = False
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
@@ -1974,6 +1964,16 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             except:
                 pass
 
+        if not koboldai_vars.gptq_model:
+            # Run generic HF model load_config first to check what model it is
+            from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
+            model = GenericHFTorchInferenceModel(
+                koboldai_vars.model,
+                lazy_load=koboldai_vars.lazy_load,
+                low_mem=args.lowmem
+            )
+            model.load_config()
+
         if koboldai_vars.gptq_model:
             from modeling.inference_models.hf_torch_4bit import HFTorch4BitInferenceModel
             model = HFTorch4BitInferenceModel(
@@ -1981,14 +1981,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 lazy_load=koboldai_vars.lazy_load,
                 low_mem=args.lowmem
             )
-        else:
-            from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
-            model = GenericHFTorchInferenceModel(
-                koboldai_vars.model,
-                lazy_load=koboldai_vars.lazy_load,
-                low_mem=args.lowmem
-            )
-
         model.load(
             save_model=not (args.colab or args.cacheonly) or args.savemodel,
             initial_load=initial_load,
