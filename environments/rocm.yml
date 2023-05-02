@@ -24,14 +24,14 @@ dependencies:
   - Pillow
   - psutil
   - pip:
-    - --extra-index-url https://download.pytorch.org/whl/rocm5.2
-    - torch==1.13.1+rocm5.2
+    - --extra-index-url https://download.pytorch.org/whl/rocm5.4.2
+    - torch==2.0.0+rocm5.4.2
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
     - lupa==1.10
     - transformers==4.28.0
-    - git+https://github.com/huggingface/datasets@test-pandas-2.0.0rc
+    - datasets
     - huggingface_hub==0.12.1
     - safetensors
     - accelerate==0.18.0
@@ -42,3 +42,5 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
+    - --find-links=https://0cc4m.github.io/KoboldAI/gptq-whl-links.html
+    - quant_rocm
