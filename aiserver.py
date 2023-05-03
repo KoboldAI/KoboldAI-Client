@@ -1916,9 +1916,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if koboldai_vars.model == "ReadOnly":
         koboldai_vars.noai = True
 
-    loadmodelsettings()
-    loadsettings()
-
     # TODO: InferKit
     if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
         pass
@@ -1983,6 +1980,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     # TODO: Convert everywhere to use model.tokenizer
     if model:
         tokenizer = model.tokenizer
+
+    loadmodelsettings()
+    loadsettings()
 
     lua_startup()
     # Load scripts

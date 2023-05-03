@@ -197,12 +197,6 @@ class InferenceModel:
         Returns:
             AutoTokenizer: Tokenizer deemed fit for the location string. May be a fallback tokenizer.
         """
-        if utils.koboldai_vars.model_type == "xglm":
-            # Default to </s> newline mode if using XGLM
-            utils.koboldai_vars.newlinemode = "s"
-        elif utils.koboldai_vars.model_type in ["opt", "bloom"]:
-            # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
-            utils.koboldai_vars.newlinemode = "ns"
 
         std_kwargs = {"revision": utils.koboldai_vars.revision, "cache_dir": "cache"}
 

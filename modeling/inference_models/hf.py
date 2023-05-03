@@ -18,6 +18,23 @@ class HFInferenceModel(InferenceModel):
         self.tokenizer = None
 
     def _post_load(self) -> None:
+        # These are model specific tokenizer overrides if a model has bad defaults
+        if utils.koboldai_vars.model_type == "llama":
+            self.tokenizer.decode_with_prefix_space = True
+            self.tokenizer.add_bos_token = False
+        elif utils.koboldai_vars.model_type == "opt":
+            self.tokenizer._koboldai_header = self.tokenizer.encode("")
+            self.tokenizer.add_bos_token = False
+            self.tokenizer.add_prefix_space = False
+
+        # Change newline behavior to match model quirks
+        if utils.koboldai_vars.model_type == "xglm":
+            # Default to </s> newline mode if using XGLM
+            utils.koboldai_vars.newlinemode = "s"
+        elif utils.koboldai_vars.model_type in ["opt", "bloom"]:
+            # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
+            utils.koboldai_vars.newlinemode = "ns"
+
         # Clean up tokens that cause issues
         if (
             utils.koboldai_vars.badwordsids == koboldai_settings.badwordsids_default
