@@ -21,7 +21,6 @@ class HFInferenceModel(InferenceModel):
         # These are model specific tokenizer overrides if a model has bad defaults
         if utils.koboldai_vars.model_type == "llama":
             # Note: self.tokenizer is a GenericTokenizer, and self.tokenizer.tokenizer is the actual LlamaTokenizer
-            self.tokenizer.decode_with_prefix_space = True # Note, not supported anymore, hence the workaround below.
             self.tokenizer.add_bos_token = False
 
             # HF transformers no longer supports decode_with_prefix_space
