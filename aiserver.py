@@ -6308,7 +6308,7 @@ def UI_2_download_story():
 @logger.catch
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
-        print("Updating Selected Text: {}".format(data))
+        logger.info("Updating Selected Text: {}".format(data))
     action_id = int(data["id"])
 
     if not koboldai_vars.actions.actions[action_id].get("Original Text"):
