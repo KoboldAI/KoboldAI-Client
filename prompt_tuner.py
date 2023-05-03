@@ -38,7 +38,7 @@ import logging
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 import breakmodel
-import torch_lazy_loader
+import modeling.lazy_loader as lazy_loader
 import utils
 
 use_breakmodel = True
@@ -755,7 +755,7 @@ class TrainerBase(abc.ABC):
 
         device_list(ram_blocks, primary=breakmodel.primary_device)
 
-        def lazy_load_callback(model_dict: Dict[str, Union[torch_lazy_loader.LazyTensor, torch.Tensor]], f, **_):
+        def lazy_load_callback(model_dict: Dict[str, Union[lazy_loader.LazyTensor, torch.Tensor]], f, **_):
             if lazy_load_callback.nested:
                 return
             lazy_load_callback.nested = True
@@ -768,7 +768,7 @@ class TrainerBase(abc.ABC):
 
             for key, value in model_dict.items():
                 original_key = get_original_key(key)
-                if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
+                if isinstance(value, lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
                     device_map[key] = gpu_device if hascuda and usegpu else "cpu" if not hascuda or not use_breakmodel else breakmodel.primary_device
                 else:
                     layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
@@ -855,7 +855,7 @@ class TrainerBase(abc.ABC):
         lazy_load_callback.nested = False
 
         # Since we're using lazy loader, we need to figure out what the model's hidden layers are called
-        with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
+        with lazy_loader.use_lazy_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
             try:
                 metamodel = AutoModelForCausalLM.from_config(model_config)
             except Exception as e:
@@ -864,7 +864,7 @@ class TrainerBase(abc.ABC):
             utils.module_names = list(metamodel.state_dict().keys())
             utils.named_buffers = list(metamodel.named_buffers(recurse=True))
 
-        with torch_lazy_loader.use_lazy_torch_load(callback=lazy_load_callback, dematerialized_modules=True):
+        with lazy_loader.use_lazy_load(callback=lazy_load_callback, dematerialized_modules=True):
             if(os.path.isdir(self.data.ckpt_path)):
                 try:
                     model     = AutoPromptTuningLM.from_pretrained(self.data.ckpt_path, revision=REVISION, cache_dir="cache")

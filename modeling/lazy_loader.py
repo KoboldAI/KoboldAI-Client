@@ -1,4 +1,4 @@
-'''
+"""
 This file is AGPL-licensed.
 
 Some of the code in this file is copied from PyTorch.
@@ -41,7 +41,7 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-'''
+"""
 
 
 import contextlib
@@ -53,13 +53,22 @@ import torch
 import numpy as np
 import collections
 import _codecs
-import utils
 import os
 from torch.nn import Module
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
+# Safetensors is a dependency for the local version, TPU/Colab doesn't
+# support it yet.
+try:
+    import safetensors
+    HAS_SAFETENSORS = True
+except ModuleNotFoundError:
+    HAS_SAFETENSORS = False
 
-_EXTRA_STATE_KEY_SUFFIX = '_extra_state'
+import utils
+
+
+_EXTRA_STATE_KEY_SUFFIX = "_extra_state"
 
 
 STORAGE_TYPE_MAP = {
@@ -77,7 +86,22 @@ STORAGE_TYPE_MAP = {
 
 
 class LazyTensor:
-    def __init__(self, storage_type, key: str, location: str, dtype: Optional[torch.dtype] = None, seek_offset: Optional[int] = None, shape: Optional[Tuple[int, ...]] = None, stride: Optional[Tuple[int, ...]] = None, requires_grad=False, backward_hooks: Any = None):
+    pass
+
+
+class TorchLazyTensor(LazyTensor):
+    def __init__(
+        self,
+        storage_type,
+        key: str,
+        location: str,
+        dtype: Optional[torch.dtype] = None,
+        seek_offset: Optional[int] = None,
+        shape: Optional[Tuple[int, ...]] = None,
+        stride: Optional[Tuple[int, ...]] = None,
+        requires_grad=False,
+        backward_hooks: Any = None,
+    ):
         self.storage_type = storage_type
         self.key = key
         self.location = location
@@ -94,11 +118,25 @@ class LazyTensor:
     def __repr__(self):
         return self.__view(repr)
 
-    def materialize(self, checkpoint: Union[zipfile.ZipFile, zipfile.ZipExtFile], map_location=None, no_grad=True, filename="pytorch_model.bin") -> torch.Tensor:
-        filename = os.path.basename(os.path.normpath(filename)).split('.')[0]
+    def materialize(
+        self,
+        checkpoint: Union[zipfile.ZipFile, zipfile.ZipExtFile],
+        map_location=None,
+        no_grad=True,
+        filename="pytorch_model.bin",
+    ) -> torch.Tensor:
+        filename = os.path.basename(os.path.normpath(filename)).split(".")[0]
         size = reduce(lambda x, y: x * y, self.shape, 1)
         dtype = self.dtype
-        nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
+        nbytes = (
+            size
+            if dtype is torch.bool
+            else size
+            * (
+                (torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits
+                >> 3
+            )
+        )
         if isinstance(checkpoint, zipfile.ZipFile):
             try:
                 f = checkpoint.open(f"archive/data/{self.key}", "r")
@@ -112,12 +150,37 @@ class LazyTensor:
         finally:
             if isinstance(checkpoint, zipfile.ZipFile):
                 f.close()
-        storage = torch.serialization._get_restore_location(map_location)(storage, self.location)
+        storage = torch.serialization._get_restore_location(map_location)(
+            storage, self.location
+        )
         tensor = torch.tensor([], dtype=storage.dtype, device=storage.device)
         tensor.set_(storage, 0, self.shape, self.stride)
         tensor.requires_grad = not no_grad and self.requires_grad
         tensor._backward_hooks = self.backward_hooks
         return tensor
+
+
+class SafetensorsLazyTensor(LazyTensor):
+    def __init__(self, checkpoint_file: str, key: str, location: str):
+        self.checkpoint_file = checkpoint_file
+        self.key = key
+        self.location = location
+
+    def __view(self, f: Callable):
+        return f"{type(self).__name__}(checkpoint_file={f(self.checkpoint_file)}, key={f(self.key)}, location={f(self.location)})"
+
+    def __repr__(self):
+        return self.__view(repr)
+
+    def materialize(
+        self,
+        *args,
+        **kwargs,
+    ) -> torch.Tensor:
+        return safetensors_load_tensor_independently(
+            self.checkpoint_file, tensor_key=self.key, device=self.location
+        )
+
 
 class RestrictedUnpickler(pickle.Unpickler):
     def original_persistent_load(self, saved_id):
@@ -155,12 +218,17 @@ class RestrictedUnpickler(pickle.Unpickler):
         else:
             # Forbid everything else.
             qualified_name = name if module == "__builtin__" else f"{module}.{name}"
-            raise pickle.UnpicklingError(f"`{qualified_name}` is forbidden; the model you are loading probably contains malicious code")
+            raise pickle.UnpicklingError(
+                f"`{qualified_name}` is forbidden; the model you are loading probably contains malicious code"
+            )
 
     def load(self, *args, **kwargs):
-        self.original_persistent_load = getattr(self, "persistent_load", pickle.Unpickler.persistent_load)
+        self.original_persistent_load = getattr(
+            self, "persistent_load", pickle.Unpickler.persistent_load
+        )
         self.persistent_load = self.forced_persistent_load
         return super().load(*args, **kwargs)
+
 
 class _LazyUnpickler(RestrictedUnpickler):
     lazy_loaded_storages: Dict[str, LazyTensor]
@@ -172,9 +240,11 @@ class _LazyUnpickler(RestrictedUnpickler):
     def forced_persistent_load(self, saved_id):
         assert isinstance(saved_id, tuple)
         typename = saved_id[0]
-        assert typename == "storage", f"Unknown typename for persistent_load, expected 'storage' but got '{typename}'"
+        assert (
+            typename == "storage"
+        ), f"Unknown typename for persistent_load, expected 'storage' but got '{typename}'"
         storage_type, key, location, _ = saved_id[1:]
-        return LazyTensor(storage_type, key, location)
+        return TorchLazyTensor(storage_type, key, location)
 
     def load(self, *args, **kwargs):
         retval = super().load(*args, **kwargs)
@@ -189,17 +259,45 @@ def _rebuild_tensor(lazy_storage: LazyTensor, storage_offset, shape, stride):
     if not isinstance(dtype, torch.dtype):
         dtype = lazy_storage.storage_type(0).dtype
     lazy_storage.dtype = dtype
-    lazy_storage.seek_offset = storage_offset if dtype is torch.bool else storage_offset * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
+    lazy_storage.seek_offset = (
+        storage_offset
+        if dtype is torch.bool
+        else storage_offset
+        * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
+    )
     return lazy_storage
 
 
 # Modified version of https://github.com/pytorch/pytorch/blob/v1.11.0-rc4/torch/nn/modules/module.py#L1346-L1438
-def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+def _load_from_state_dict(
+    self,
+    state_dict,
+    prefix,
+    local_metadata,
+    strict,
+    missing_keys,
+    unexpected_keys,
+    error_msgs,
+):
     for hook in self._load_state_dict_pre_hooks.values():
-        hook(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+        hook(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
 
-    persistent_buffers = {k: v for k, v in self._buffers.items() if k not in self._non_persistent_buffers_set}
-    local_name_params = itertools.chain(self._parameters.items(), persistent_buffers.items())
+    persistent_buffers = {
+        k: v
+        for k, v in self._buffers.items()
+        if k not in self._non_persistent_buffers_set
+    }
+    local_name_params = itertools.chain(
+        self._parameters.items(), persistent_buffers.items()
+    )
     local_state = {k: v for k, v in local_name_params if v is not None}
 
     for name, param in local_state.items():
@@ -207,10 +305,11 @@ def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, miss
         if key in state_dict:
             input_param = state_dict[key]
             if not torch.overrides.is_tensor_like(input_param):
-                error_msgs.append('While copying the parameter named "{}", '
-                                    'expected torch.Tensor or Tensor-like object from checkpoint but '
-                                    'received {}'
-                                    .format(key, type(input_param)))
+                error_msgs.append(
+                    'While copying the parameter named "{}", '
+                    "expected torch.Tensor or Tensor-like object from checkpoint but "
+                    "received {}".format(key, type(input_param))
+                )
                 continue
 
             # This is used to avoid copying uninitialized parameters into
@@ -218,34 +317,50 @@ def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, miss
             # in such case, it will error when accessing the .shape attribute.
             is_param_lazy = torch.nn.parameter.is_lazy(param)
             # Backward compatibility: loading 1-dim tensor from 0.3.* to version 0.4+
-            if not is_param_lazy and len(param.shape) == 0 and len(input_param.shape) == 1:
+            if (
+                not is_param_lazy
+                and len(param.shape) == 0
+                and len(input_param.shape) == 1
+            ):
                 input_param = input_param[0]
 
             if not is_param_lazy and input_param.shape != param.shape:
                 # local shape should match the one in checkpoint
-                error_msgs.append('size mismatch for {}: copying a param with shape {} from checkpoint, '
-                                    'the shape in current model is {}.'
-                                    .format(key, input_param.shape, param.shape))
+                error_msgs.append(
+                    "size mismatch for {}: copying a param with shape {} from checkpoint, "
+                    "the shape in current model is {}.".format(
+                        key, input_param.shape, param.shape
+                    )
+                )
                 continue
             try:
                 with torch.no_grad():
-                    #param.copy_(input_param)
-                    new_param = torch.nn.Parameter(input_param, requires_grad=param.requires_grad)  # This line is new
+                    # param.copy_(input_param)
+                    new_param = torch.nn.Parameter(
+                        input_param, requires_grad=param.requires_grad
+                    )  # This line is new
                     if name in self._parameters:  # This line is new
                         self._parameters[name] = new_param  # This line is new
                     if name in persistent_buffers:  # This line is new
                         self._buffers[name] = new_param  # This line is new
             except Exception as ex:
-                error_msgs.append('While copying the parameter named "{}", '
-                                    'whose dimensions in the model are {} and '
-                                    'whose dimensions in the checkpoint are {}, '
-                                    'an exception occurred : {}.'
-                                    .format(key, param.size(), input_param.size(), ex.args))
+                error_msgs.append(
+                    'While copying the parameter named "{}", '
+                    "whose dimensions in the model are {} and "
+                    "whose dimensions in the checkpoint are {}, "
+                    "an exception occurred : {}.".format(
+                        key, param.size(), input_param.size(), ex.args
+                    )
+                )
         elif strict:
             missing_keys.append(key)
 
     extra_state_key = prefix + _EXTRA_STATE_KEY_SUFFIX
-    if hasattr(Module, "set_extra_state") and getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:  # if getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:
+    if (
+        hasattr(Module, "set_extra_state")
+        and getattr(self.__class__, "set_extra_state", Module.set_extra_state)
+        is not Module.set_extra_state
+    ):  # if getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:
         if extra_state_key in state_dict:
             self.set_extra_state(state_dict[extra_state_key])
         elif strict:
@@ -256,10 +371,67 @@ def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, miss
     if strict:
         for key in state_dict.keys():
             if key.startswith(prefix) and key != extra_state_key:
-                input_name = key[len(prefix):]
-                input_name = input_name.split('.', 1)[0]  # get the name of param/buffer/child
+                input_name = key[len(prefix) :]
+                input_name = input_name.split(".", 1)[
+                    0
+                ]  # get the name of param/buffer/child
                 if input_name not in self._modules and input_name not in local_state:
                     unexpected_keys.append(key)
+
+
+def safetensors_load_tensor_independently(
+    checkpoint_file: str, tensor_key: str, device: Any
+) -> torch.Tensor:
+    """A hacky way to load a tensor by itself and not mmap every single tensor
+    or whatever is causing that big memory spike"""
+
+    with safetensors.safe_open(checkpoint_file, framework="pt", device=device) as f:
+        return f.get_tensor(tensor_key)
+
+
+def patch_safetensors(callback):
+    # Safetensors load patch
+    import transformers
+
+    def safetensors_load(checkpoint_file: str) -> dict:
+        # Monkeypatch applied to safetensors.torch.load_file
+
+        if utils.koboldai_vars.hascuda:
+            # Use GPU as intermediary whenever possible, lowers RAM usage
+            # by a significant amount while making loading slightly slower
+            # (70 tensors/s -> 65 tensor/s). The memory savings probably
+            # shouldn't be the happening, maybe there's a memory leak
+            # somewhere in our pipeline with CPU tensors.
+            intermediary_device = "cuda"
+        else:
+            intermediary_device = "cpu"
+
+        tensors = {}
+
+        with safetensors.safe_open(
+            checkpoint_file, framework="pt", device=intermediary_device,
+        ) as f:
+            for key in f.keys():
+                tensors[key] = None
+
+        for key in tensors.keys():
+
+            tensors[key] = SafetensorsLazyTensor(
+                checkpoint_file=checkpoint_file, key=key, location=intermediary_device,
+            )
+
+        if callback is not None:
+            callback(
+                tensors,
+                f=checkpoint_file,
+                map_location=None,
+                pickle_module=pickle,
+                is_safetensors=True,
+            )
+
+        return tensors
+
+    transformers.modeling_utils.safe_load_file = safetensors_load
 
 
 @contextlib.contextmanager
@@ -281,8 +453,14 @@ def use_custom_unpickler(unpickler: Type[pickle.Unpickler] = RestrictedUnpickler
         pickle.Unpickler = old_unpickler
         pickle.load = old_pickle_load
 
+
 @contextlib.contextmanager
-def use_lazy_torch_load(enable=True, callback: Optional[Callable] = None, dematerialized_modules=False, use_accelerate_init_empty_weights=False):
+def use_lazy_load(
+    enable=True,
+    callback: Optional[Callable] = None,
+    dematerialized_modules=False,
+    use_accelerate_init_empty_weights=False,
+):
     if not enable:
         with use_custom_unpickler(RestrictedUnpickler):
             yield False
@@ -292,19 +470,36 @@ def use_lazy_torch_load(enable=True, callback: Optional[Callable] = None, demate
         old_rebuild_tensor = torch._utils._rebuild_tensor
         torch._utils._rebuild_tensor = _rebuild_tensor
 
+        # Torch load patch
         old_torch_load = torch.load
 
         def torch_load(f, map_location=None, pickle_module=pickle, **pickle_load_args):
-            retval = old_torch_load(f=f, map_location=map_location, pickle_module=pickle_module, **pickle_load_args)
+            retval = old_torch_load(
+                f=f,
+                map_location=map_location,
+                pickle_module=pickle_module,
+                **pickle_load_args,
+            )
             if callback is not None:
-                callback(retval, f=f, map_location=map_location, pickle_module=pickle_module, **pickle_load_args)
+                callback(
+                    retval,
+                    f=f,
+                    map_location=map_location,
+                    pickle_module=pickle_module,
+                    is_safetensors=False,
+                    **pickle_load_args,
+                )
             return retval
 
         torch.load = torch_load
 
+        if HAS_SAFETENSORS:
+            patch_safetensors(callback)
+
         if dematerialized_modules:
-            if use_accelerate_init_empty_weights and utils.HAS_ACCELERATE:
+            if use_accelerate_init_empty_weights:
                 import accelerate
+
                 init_empty_weights = accelerate.init_empty_weights()
                 init_empty_weights.__enter__()
             else:
@@ -334,7 +529,7 @@ def use_lazy_torch_load(enable=True, callback: Optional[Callable] = None, demate
         torch._utils._rebuild_tensor = old_rebuild_tensor
         torch.load = old_torch_load
         if dematerialized_modules:
-            if use_accelerate_init_empty_weights and utils.HAS_ACCELERATE:
+            if use_accelerate_init_empty_weights:
                 init_empty_weights.__exit__(None, None, None)
             else:
                 torch.nn.Linear.__init__ = old_linear_init
