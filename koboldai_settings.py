@@ -525,7 +525,7 @@ class koboldai_vars(object):
         if return_text:
             return "".join([x['text'] for x in context])
         return tokens, used_tokens, used_tokens+self.genamt, set(used_world_info)
-
+    
     def is_model_torch(self) -> bool:
         if self.use_colab_tpu:
             return False
@@ -875,6 +875,7 @@ class story_settings(settings):
         self.chatmode    = False
         self.chatname    = "You"
         self.botname    = "Bot"
+        self.stop_sequence = []     #use for configuring stop sequences
         self.adventure   = False
         self.actionmode  = 0
         self.storymode   = 0
@@ -1284,8 +1285,7 @@ class system_settings(settings):
             self.on_colab = True
         except:
             self.on_colab = False
-            pass
-        print("Colab Check: {}".format(self.on_colab))
+        print(f"Colab Check: {self.on_colab}, TPU: {self.use_colab_tpu}")
         self.horde_share = False
         self._horde_pid = None
         self.generating_image = False #The current status of image generation

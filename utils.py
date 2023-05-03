@@ -8,7 +8,6 @@ from urllib.error import HTTPError
 import requests
 import requests.adapters
 import time
-from transformers import __version__ as transformers_version
 from transformers import PreTrainedModel
 import packaging.version
 from tqdm.auto import tqdm
@@ -19,12 +18,6 @@ import huggingface_hub
 import packaging.version
 from pathlib import Path
 from typing import List, Optional
-
-HAS_ACCELERATE = packaging.version.parse(transformers_version) >= packaging.version.parse("4.20.0.dev0")
-try:
-    import accelerate
-except ImportError:
-    HAS_ACCELERATE = False
 
 koboldai_vars = None
 args = None
@@ -42,6 +35,9 @@ named_buffers: Optional[List[tuple]] = None
 default_sampler_order = [6, 0, 1, 2, 3, 4, 5]
 
 emit = None
+
+# Hack for socket stuff that needs app context
+flask_app = None
 
 #==================================================================#
 # Decorator to prevent a function's actions from being run until
@@ -200,23 +196,6 @@ def num_layers(config):
 from flask_socketio import emit
             
 def _download_with_aria2(aria2_config: str, total_length: int, directory: str = ".", user_agent=None, force_download=False, use_auth_token=None):
-    class Send_to_socketio(object):
-        def write(self, bar):
-            bar = bar.replace("\r", "").replace("\n", "")
-            
-            if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
-                try:
-                    print('\r' + bar, end='')
-                    try:
-                        socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-                    except:
-                        pass
-                    eventlet.sleep(seconds=0)
-                except:
-                    pass
-        def flush(self):
-            pass
-    
     import transformers
     aria2_port = 6799 if koboldai_vars is None else koboldai_vars.aria2_port
     lengths = {}
@@ -251,7 +230,7 @@ def _download_with_aria2(aria2_config: str, total_length: int, directory: str = 
                     if k not in visited:
                         lengths[k] = (v[1], v[1])
                 if bar is None:
-                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=Send_to_socketio())
+                    bar = tqdm(total=total_length, desc=f"[aria2] Downloading model", unit="B", unit_scale=True, unit_divisor=1000, file=UIProgressBarFile())
                     koboldai_vars.status_message = "Download Model"
                     koboldai_vars.total_download_chunks = sum(v[1] for v in lengths.values())
                 koboldai_vars.downloaded_chunks = sum(v[0] for v in lengths.values())
@@ -287,11 +266,9 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
                 raise EnvironmentError("You specified use_auth_token=True, but a huggingface token was not found.")
     _cache_dir = str(cache_dir) if cache_dir is not None else transformers.TRANSFORMERS_CACHE
     _revision = koboldai_vars.revision if koboldai_vars.revision is not None else huggingface_hub.constants.DEFAULT_REVISION
-    sharded = False
     headers = {"user-agent": transformers.file_utils.http_user_agent(user_agent)}
     if use_auth_token:
         headers["authorization"] = f"Bearer {use_auth_token}"
-
     storage_folder = os.path.join(_cache_dir, huggingface_hub.file_download.repo_folder_name(repo_id=pretrained_model_name_or_path, repo_type="model"))
     os.makedirs(storage_folder, exist_ok=True)
 
@@ -301,25 +278,41 @@ def _transformers22_aria2_hook(pretrained_model_name_or_path: str, force_downloa
         except ValueError:
             return False
         return True
-    while True:  # Try to get the huggingface.co URL of the model's pytorch_model.bin or pytorch_model.bin.index.json file
-        try:
-            filename = transformers.modeling_utils.WEIGHTS_INDEX_NAME if sharded else transformers.modeling_utils.WEIGHTS_NAME
-        except AttributeError:
-            return
-        url = huggingface_hub.hf_hub_url(pretrained_model_name_or_path, filename, revision=_revision)
-        if is_cached(filename) or requests.head(url, allow_redirects=True, proxies=proxies, headers=headers):
+
+    filename = None
+
+    # NOTE: For now sharded Safetensors models are not supported. Haven't seen
+    # one of these out in the wild yet, probably due to how Safetensors has a
+    # lot of benifits of sharding built in
+    for possible_filename in [
+        transformers.modeling_utils.SAFE_WEIGHTS_INDEX_NAME,
+        transformers.modeling_utils.SAFE_WEIGHTS_NAME,
+        transformers.modeling_utils.WEIGHTS_INDEX_NAME,
+        transformers.modeling_utils.WEIGHTS_NAME
+    ]:
+        # Try to get the huggingface.co URL of the model's weights file(s)
+        url = huggingface_hub.hf_hub_url(pretrained_model_name_or_path, possible_filename, revision=_revision)
+
+        if is_cached(possible_filename) or requests.head(url, allow_redirects=True, proxies=proxies, headers=headers):
+            filename = possible_filename
             break
-        if sharded:
-            return
-        else:
-            sharded = True
-    if not sharded:  # If the model has a pytorch_model.bin file, that's the only file to download
-        filenames = [transformers.modeling_utils.WEIGHTS_NAME]
-    else:  # Otherwise download the pytorch_model.bin.index.json and then let aria2 download all the pytorch_model-#####-of-#####.bin files mentioned inside it
+
+    if not filename:
+        return
+
+    if filename not in [
+        transformers.modeling_utils.SAFE_WEIGHTS_INDEX_NAME,
+        transformers.modeling_utils.WEIGHTS_INDEX_NAME
+    ]:
+        # If the model isn't sharded, theres only one file to download
+        filenames = [filename]
+    else:
+        # Otherwise download the pytorch_model.bin.index.json and then let aria2 download all the pytorch_model-#####-of-#####.bin files mentioned inside it
         map_filename = huggingface_hub.hf_hub_download(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, use_auth_token=use_auth_token, user_agent=user_agent, revision=revision)
         with open(map_filename) as f:
             map_data = json.load(f)
         filenames = set(map_data["weight_map"].values())
+
     urls = [huggingface_hub.hf_hub_url(pretrained_model_name_or_path, n, revision=_revision) for n in filenames]
     if not force_download:
         urls = [u for u, n in zip(urls, filenames) if not is_cached(n)]
@@ -576,13 +569,19 @@ def get_num_shards(filename):
 #==================================================================#
 #  Given the name/path of a sharded model and the path to a
 #  pytorch_model.bin.index.json, returns a list of weight names in the
-#  sharded model.  Requires lazy loader to be enabled to work properl
+#  sharded model.  Requires lazy loader to be enabled to work properly
 #==================================================================#
-def get_sharded_checkpoint_num_tensors(pretrained_model_name_or_path, filename, cache_dir=None, force_download=False, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, **kwargs):
+def get_sharded_checkpoint_num_tensors(pretrained_model_name_or_path, filename, is_safetensors=False, cache_dir=None, force_download=False, proxies=None, resume_download=False, local_files_only=False, use_auth_token=None, user_agent=None, revision=None, **kwargs):
     import transformers.modeling_utils
-    import torch
     _revision = koboldai_vars.revision if koboldai_vars.revision is not None else huggingface_hub.constants.DEFAULT_REVISION
     shard_paths, _ = transformers.modeling_utils.get_checkpoint_shard_files(pretrained_model_name_or_path, filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies, resume_download=resume_download, local_files_only=local_files_only, use_auth_token=use_auth_token, user_agent=user_agent, revision=_revision)
+
+    if is_safetensors:
+        from safetensors import safe_open
+        return list(itertools.chain(*(safe_open(p, framework="pt", device="cpu").keys() for p in shard_paths)))
+
+    # Torch
+    import torch
     return list(itertools.chain(*(torch.load(p, map_location="cpu").keys() for p in shard_paths)))
 
 #==================================================================#
@@ -634,3 +633,116 @@ def get_missing_module_names(model: PreTrainedModel, names: List[str]) -> List[s
                 recurse(c[1], head=name + ".")
     recurse(model)
     return missing_names
+
+class UIProgressBarFile(object):
+    """Write TQDM progress to the UI."""
+    def __init__(self, emit_func=emit) -> None:
+        self.emit_func = emit_func
+
+    def write(self, bar):
+        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
+        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
+            #logger.info(bar)
+            print('\r' + bar, end='')
+            time.sleep(0.01)
+            try:
+                with flask_app.app_context():
+                    self.emit_func('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1", namespace="/")
+            except Exception as e:
+                pass
+        
+    def flush(self):
+        pass
+
+def get_auxilary_device():
+    """Get device auxilary tensors like inputs should be stored on."""
+
+    # NOTE: TPU isn't a torch device, so TPU stuff gets sent to CPU.
+    if koboldai_vars.hascuda and koboldai_vars.usegpu:
+        return koboldai_vars.gpu_device
+    elif koboldai_vars.hascuda and koboldai_vars.breakmodel:
+        import breakmodel
+        return breakmodel.primary_device
+    return "cpu"
+
+#==================================================================#
+# Strips submitted text from the text returned by the AI
+#==================================================================#
+def getnewcontent(txt, tokenizer):
+    # If the submitted context was blank, then everything is new
+    if(koboldai_vars.lastctx == ""):
+        return txt
+    
+    # Tokenize the last context and the generated content
+    ctxtokens = tokenizer.encode(encodenewlines(koboldai_vars.lastctx), max_length=int(2e9), truncation=True)
+    txttokens = tokenizer.encode(encodenewlines(txt), max_length=int(2e9), truncation=True)
+    dif       = (len(txttokens) - len(ctxtokens)) * -1
+    
+    # Remove the context from the returned text
+    newtokens = txttokens[dif:]
+    
+    return decodenewlines(tokenizer.decode(newtokens))
+
+#==================================================================#
+# Applies chosen formatting options to text returned from AI
+#==================================================================#
+def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False):
+    #remove null ascii character (used to kill chat mode text in multi-generation)
+    txt = txt.replace(chr(0), "")
+    if len(txt) == 0:
+        return txt
+    
+    # Handle <|endoftext|> for models that want this
+    # In the future it would be nice if we could extend this to all EOS models.
+    # However, since EOS detection may have unforseen consequences for now we hardcode <|endoftext|> until more can be tested
+    # - Henk
+    eotregex = re.compile(r'<\|endoftext\|>[.|\n|\W|\w]*')
+    txt = eotregex.sub('', txt)
+
+    # Cleanup stray </s>
+    txt = txt.replace("</s>", "")
+
+    # Use standard quotes and apostrophes
+    txt = fixquotes(txt)
+
+    # Adventure mode clipping of all characters after '>'
+    if(koboldai_vars.adventure):
+        txt = koboldai_vars.acregex_ai.sub('', txt)
+    
+    # Trim incomplete sentences
+    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode and not no_sentence_trimming):
+        txt = trimincompletesentence(txt)
+
+    # Replace blank lines
+    if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
+        txt = replaceblanklines(txt)
+
+    # trim off starting new lines in replies if we're in chat mode
+    if koboldai_vars.chatmode and txt[0] == "\n":
+        txt = txt[1:]
+
+    # Remove special characters
+    if(koboldai_vars.frmtrmspch):
+        txt = removespecialchars(txt, koboldai_vars)
+
+	# Single Line Mode
+    if(koboldai_vars.singleline and not no_single_line):
+        txt = singlelineprocessing(txt, koboldai_vars)
+
+ 	# Chat Mode Trimming
+    if(koboldai_vars.chatmode):
+        txt = chatmodeprocessing(txt, koboldai_vars)   
+
+    for sub in koboldai_vars.substitutions:
+        if not sub["enabled"]:
+            continue
+        i = 0
+        while sub["trueTarget"] in txt or sub["target"] in txt:
+            i += 1
+            if i > 1000:
+                print("[substitutions] Infinite recursion :^(")
+                break
+            txt = txt.replace(sub["trueTarget"], sub["substitution"])
+            txt = txt.replace(sub["target"], sub["substitution"])
+    
+    return txt
