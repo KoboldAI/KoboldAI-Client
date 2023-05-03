@@ -71,7 +71,7 @@
 				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
 				<div class="box-label">Use GPU</div>
 			</div>
-			<div class="box flex-push-right hidden" id=use_8_bit_div>
+			<div class="box flex-push-right hidden" id=use_8_bit_div onclick="set_8_bit_mode()">
 				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_8_bit" checked>
 				<div class="box-label">Use 8 bit mode</div>
 			</div>
@@ -404,6 +404,21 @@
 
 		<div id="sw-download">Download Screenshot</div>
 	</div>
+	
+	<!---------------- version screen ---------------------->
+	<div id="version-popup" class="popup-window popup">
+		<div class="title">
+			<div class="popuptitletext">Version</div>
+		</div>
+		<div id="popup_list_area" class="popup_list_area" style="overflow-x: scroll;">
+			<div>Git Repository: <span class="var_sync_system_git_repository"></span></div>
+			<div>Git Branch: <span class="var_sync_system_git_branch"></span></div>
+		</div>
+		<div class="popup_load_cancel">
+			<button type="button" class="btn btn-primary popup_load_cancel_button" onclick="closePopups();">Ok</button>
+		</div>
+	</div>
+	
 </div>
 
 <div id="notification-container"></div>

@@ -9,7 +9,10 @@ class GenericTokenizer:
 
     def __init__(self, tokenizer: Union[Tokenizer, PreTrainedTokenizer]) -> None:
         self.tokenizer = tokenizer
-        self.valid_tokens = set(self.tokenizer.vocab.values())
+        try:
+            self.valid_tokens = set(self.tokenizer.vocab.values())
+        except AttributeError:
+            self.valid_tokens = set(self.tokenizer.get_vocab().values())
 
     def __getattr__(self, name: str) -> Any:
         # Fall back to tokenizer for non-generic stuff

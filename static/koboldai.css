@@ -3680,4 +3680,7 @@ select {
 	text-decoration: underline dotted;
 }
 
+.dirty {
+	text-decoration: underline dotted red;
+}
 

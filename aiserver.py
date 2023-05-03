@@ -1007,7 +1007,7 @@ def get_hidden_size_from_model(model):
 #==================================================================#
 def loadmodelsettings():
     try:
-        js   = json.loads(str(model_config).partition(' ')[2])
+        js   = json.loads(str(model.model_config).partition(' ')[2])
     except Exception as e:
         try:
             try:
@@ -1315,6 +1315,18 @@ def general_startup(override_args=None):
     global args
     global enable_whitelist
     global allowed_ips
+    import configparser
+    #Figure out what git we're on if that's available
+    config = configparser.ConfigParser()
+    if os.path.exists('.git/config'):
+        config.read('.git/config')
+        koboldai_vars.git_repository = config['remote "origin"']['url']
+        for item in config.sections():
+            if "branch" in item:
+                koboldai_vars.git_branch = item.replace("branch ", "").replace('"', '')
+    
+        logger.info("Running on Repo: {} Branch: {}".format(koboldai_vars.git_repository, koboldai_vars.git_branch))
+    
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
     parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
@@ -1441,7 +1453,7 @@ def general_startup(override_args=None):
         koboldai_vars.quiet = True
 
     if args.nobreakmodel:
-        koboldai_vars.nobreakmodel = True;
+        koboldai_vars.nobreakmodel = True
 
     if args.remote:
         koboldai_vars.host = True;
@@ -1923,9 +1935,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if koboldai_vars.model == "ReadOnly":
         koboldai_vars.noai = True
 
-    loadmodelsettings()
-    loadsettings()
-
     # TODO: InferKit
     if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
         pass
@@ -2000,6 +2009,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     # TODO: Convert everywhere to use model.tokenizer
     if model:
         tokenizer = model.tokenizer
+
+    loadmodelsettings()
+    loadsettings()
 
     lua_startup()
     # Load scripts
@@ -5139,17 +5151,6 @@ def loadRequest(loadpath, filename=None):
     if not loadpath:
         return
     
-    #Original UI only sends the story name and assumes it's always a .json file... here we check to see if it's a directory to load that way
-    if not isinstance(loadpath, dict) and not os.path.exists(loadpath):
-        if os.path.exists(loadpath.replace(".json", "")):
-            loadpath = loadpath.replace(".json", "")
-
-    if not isinstance(loadpath, dict) and os.path.isdir(loadpath):
-        if not valid_v3_story(loadpath):
-            raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
-        koboldai_vars.update_story_path_structure(loadpath)
-        loadpath = os.path.join(loadpath, "story.json")
-
     start_time = time.time()
     # Leave Edit/Memory mode before continuing
     exitModes()
@@ -5157,6 +5158,17 @@ def loadRequest(loadpath, filename=None):
     # Read file contents into JSON object
     start_time = time.time()
     if(isinstance(loadpath, str)):
+		#Original UI only sends the story name and assumes it's always a .json file... here we check to see if it's a directory to load that way
+        if not isinstance(loadpath, dict) and not os.path.exists(loadpath):
+            if os.path.exists(loadpath.replace(".json", "")):
+                loadpath = loadpath.replace(".json", "")
+
+        if not isinstance(loadpath, dict) and os.path.isdir(loadpath):
+            if not valid_v3_story(loadpath):
+                raise RuntimeError(f"Tried to load {loadpath}, a non-save directory.")
+            koboldai_vars.update_story_path_structure(loadpath)
+            loadpath = os.path.join(loadpath, "story.json")
+            
         with open(loadpath, "r", encoding="utf-8") as file:
             js = json.load(file)
             from_file=loadpath
@@ -5745,7 +5757,14 @@ def show_folder_soft_prompt(data):
 def show_folder_usersripts(data):
     file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=True, item_check=None)
 
-    
+#==================================================================#
+# KoboldAI Lite Server
+#==================================================================#
+@app.route('/lite')
+@require_allowed_ip
+@logger.catch
+def lite_html():
+    return send_from_directory('static', "klite.html")
 
 #==================================================================#
 # UI V2 CODE
@@ -6409,8 +6428,7 @@ def UI_2_back(data):
 def UI_2_redo(data):
     if koboldai_vars.aibusy:
         return
-    if len(koboldai_vars.actions.get_current_options()) == 1:
-        koboldai_vars.actions.use_option(0)
+    koboldai_vars.actions.go_forward()
     
 
 #==================================================================#

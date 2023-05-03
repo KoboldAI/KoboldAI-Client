@@ -27,7 +27,7 @@
 	<script src="static/favicon.js"></script>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body>
+<body onload="chunk_delete_observer.observe(document.getElementById('Selected Text'), { subtree: true, childList: true, characterData: true });">
 	<span class="hidden var_sync_system_on_colab" id="on_colab">false</span>
 	<!------------ Left Flyout Menu--------------------->
 	<div id="SideMenu" class="SideMenu pinned">
@@ -53,7 +53,7 @@
 				<div id="welcome_text" class="var_sync_model_welcome" draggable="False"></div>
 			</div>
 
-			<div class="gametext" id="Selected Text" contenteditable=false onblur="select_game_text(null);" onclick="select_game_text(null);" onkeyup="select_game_text(event);">
+			<div class="gametext" id="Selected Text" contenteditable=false tabindex=0 onpaste="check_game_after_paste()" onfocusout="savegametextchanges();" onclick="return set_edit(event)" onkeyup="return set_edit(event);">
 				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext hidden" chunk="-1"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
 		</div>
 

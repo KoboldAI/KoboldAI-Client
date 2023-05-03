@@ -132,15 +132,6 @@ class HFTorchInferenceModel(HFInferenceModel):
         if not utils.koboldai_vars.model_type:
             utils.koboldai_vars.model_type = m_self.get_model_type()
 
-        # These are model specific overrides if a model has bad defaults
-        if utils.koboldai_vars.model_type == "llama":
-            m_self.tokenizer.decode_with_prefix_space = True
-            m_self.tokenizer.add_bos_token = False
-        elif utils.koboldai_vars.model_type == "opt":
-            m_self.tokenizer._koboldai_header = m_self.tokenizer.encode("")
-            m_self.tokenizer.add_bos_token = False
-            m_self.tokenizer.add_prefix_space = False
-
         # Patch stopping_criteria
         class PTHStopper(StoppingCriteria):
             def __call__(
@@ -220,6 +211,8 @@ class HFTorchInferenceModel(HFInferenceModel):
         new_sample.old_sample = transformers.GenerationMixin.sample
         use_core_manipulations.sample = new_sample
 
+        return super()._post_load()
+
     def _raw_generate(
         self,
         prompt_tokens: Union[List[int], torch.Tensor],
@@ -286,10 +279,17 @@ class HFTorchInferenceModel(HFInferenceModel):
         try:
             return AutoModelForCausalLM.from_pretrained(location, **tf_kwargs)
         except Exception as e:
-            if "out of memory" in traceback.format_exc().lower():
+            traceback_string = traceback.format_exc().lower()
+
+            if "out of memory" in traceback_string:
                 raise RuntimeError(
                     "One of your GPUs ran out of memory when KoboldAI tried to load your model."
                 )
+
+            # Model corrupted or serious loading problem. Stop here.
+            if "invalid load key" in traceback_string:
+                logger.error("Invalid load key! Aborting.")
+                raise
 
             logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
             try:
@@ -492,6 +492,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         utils.get_sharded_checkpoint_num_tensors(
                             utils.from_pretrained_model_name,
                             utils.from_pretrained_index_filename,
+                            is_safetensors=is_safetensors,
                             **utils.from_pretrained_kwargs,
                         )
                     )
