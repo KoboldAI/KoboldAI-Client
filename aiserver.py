@@ -1007,7 +1007,7 @@ def get_hidden_size_from_model(model):
 #==================================================================#
 def loadmodelsettings():
     try:
-        js   = json.loads(str(model_config).partition(' ')[2])
+        js   = json.loads(str(model.model_config).partition(' ')[2])
     except Exception as e:
         try:
             try:
