@@ -37,3 +37,4 @@ pytest-html==3.2.0
 pytest-metadata==2.0.4
 requests-mock==1.10.0
 safetensors==0.3.1
+peft==0.3.0

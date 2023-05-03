@@ -45,3 +45,4 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
+    - peft==0.3.0

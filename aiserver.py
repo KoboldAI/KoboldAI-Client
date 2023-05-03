@@ -1345,6 +1345,7 @@ def general_startup(override_args=None):
     parser.add_argument("--summarizer_model", action='store', default="philschmid/bart-large-cnn-samsum", help="Huggingface model to use for summarization. Defaults to sshleifer/distilbart-cnn-12-6")
     parser.add_argument("--max_summary_length", action='store', default=75, help="Maximum size for summary to send to image generation")
     parser.add_argument("--multi_story", action='store_true', default=False, help="Allow multi-story mode (experimental)")
+    parser.add_argument("--peft", type=str, help="Specify the path or HuggingFace ID of a Peft to load it. Not supported on TPU. (Experimental)")
     
     parser.add_argument('-f', action='store', help="option for compatability with colab memory profiles")
     parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
