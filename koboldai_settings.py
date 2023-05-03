@@ -397,8 +397,8 @@ class koboldai_vars(object):
         
         ######################################### Setup Author's Note Data ########################################################
         authors_note_text = self.authornotetemplate.replace("<|>", self.authornote)
-        if len(authors_note_text) > 0 and authors_note_text[-1] not in [" ", "\n"]:
-            authors_note_text += " "
+        if len(authors_note_text) > 0 and authors_note_text[0] not in [" ", "\n"]:
+            authors_note_text = " " + authors_note_text
         authors_note_data = [[x, self.tokenizer.decode(x)] for x in self.tokenizer.encode(authors_note_text)]
         if used_tokens + len(authors_note_data) <= token_budget:
             used_tokens += len(authors_note_data)
@@ -1384,7 +1384,11 @@ class KoboldStoryRegister(object):
         self.action_count = -1
         # The id of the last submission action, or 0 if the last append was not a submission
         self.submission_id = 0
-        self.sentence_re = re.compile(r"[^.!?]*[.!?]+\"?\s*", re.S)
+        # A regular expression used to break the story into sentences so that the author's
+        # note can be inserted with minimal disruption. Avoid ending a sentance with
+        # whitespace because most tokenizers deal better with whitespace at the beginning of text.
+        # Search for sentence end delimeters (i.e. .!?) and also capture closing parenthesis and quotes.
+        self.sentence_re = re.compile(r".*?[.!?]+(?=[.!?\]\)}>'\"›»\s])[.!?\]\)}>'\"›»]*", re.S)
         self.story_settings = story_settings
         self.tts_model = None
         self.tortoise = None
