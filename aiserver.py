@@ -1077,6 +1077,19 @@ def loadmodelsettings():
         if(not koboldai_vars.gamestarted):
             koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
 
+
+def load_model_gptq_settings():
+    try:
+        js   = json.loads(str(model.model_config).partition(' ')[2])
+    except Exception as e:
+        try:
+            try:
+                js   = json.load(open(koboldai_vars.custmodpth + "/config.json", "r"))
+            except Exception as e:
+                js   = json.load(open(koboldai_vars.custmodpth.replace('/', '_') + "/config.json", "r"))
+        except Exception as e:
+            js   = {}
+
     gptq_legacy_files = glob.glob(os.path.join(koboldai_vars.custmodpth, "4bit*.pt")) + glob.glob(os.path.join(koboldai_vars.custmodpth, "4bit*.safetensors"))
     if "gptq_bits" in js:
         koboldai_vars.gptq_model = True
@@ -1094,6 +1107,7 @@ def loadmodelsettings():
         koboldai_vars.gptq_groupsize = int(g[0]) if g else -1
     else:
         koboldai_vars.gptq_model = False
+
 
 #==================================================================#
 #  Take settings from koboldai_vars and write them to client settings file
@@ -1620,7 +1634,6 @@ def get_model_info(model, directory=""):
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
                          'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
-                         'bit_4_available': koboldai_vars.bit_4_available,
                          'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
@@ -1973,17 +1986,21 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             except:
                 pass
 
-        if not koboldai_vars.gptq_model:
-            # Run generic HF model load_config first to check what model it is
-            from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
-            model = GenericHFTorchInferenceModel(
-                koboldai_vars.model,
-                lazy_load=koboldai_vars.lazy_load,
-                low_mem=args.lowmem
-            )
-            model.load_config()
+        # Run generic HF model load_config first to check what model it is
+        from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
+        model = GenericHFTorchInferenceModel(
+            koboldai_vars.model,
+            lazy_load=koboldai_vars.lazy_load,
+            low_mem=args.lowmem
+        )
+        model.load_config()
+
+        load_model_gptq_settings()
 
         if koboldai_vars.gptq_model:
+            if not koboldai_vars.bit_4_available:
+                raise RuntimeError("4-bit not available")
+
             from modeling.inference_models.hf_torch_4bit import HFTorch4BitInferenceModel
             model = HFTorch4BitInferenceModel(
                 koboldai_vars.model,

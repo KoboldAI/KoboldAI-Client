@@ -10,10 +10,9 @@ dependencies:
   - flask-socketio=5.3.2
   - flask-session=0.4.0
   - python-socketio=5.7.2
-  - pytorch=1.13.1
-  - pytorch-cuda=11.7
+  - pytorch=2.0.0
+  - pytorch-cuda=11.8
   - python=3.8.*
-  - cudatoolkit=11.7
   - eventlet=0.33.3
   - dnspython=2.2.1
   - markdown
@@ -34,7 +33,7 @@ dependencies:
     - flask-cors
     - lupa==1.10
     - transformers==4.28.0
-    - git+https://github.com/huggingface/datasets@test-pandas-2.0.0rc
+    - datasets
     - huggingface_hub==0.12.1
     - safetensors
     - accelerate==0.18.0
