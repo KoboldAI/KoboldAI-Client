@@ -3129,7 +3129,6 @@ function gametextwatcher(records) {
 			}
 		}
 	}
-	//console.log(dirty_chunks);
 }
 
 function fix_dirty_game_text() {
@@ -3154,16 +3153,26 @@ function fix_dirty_game_text() {
 		//Fixing text outside of chunks
 		for (node of game_text.childNodes) {
 			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.textContent.trim() != "")) {
-				console.log("Found Node that needs to be combined");
-				console.log(node);
-				//We have a text only node. It should be moved into the previous chunk
+				//We have a text only node. It should be moved into the previous chunk if it is marked as dirty, next node if not and it's dirty, or the previous if neither is dirty
+				var node_text = ""
 				if (node instanceof HTMLElement) {
-					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.innerText;
+					node_text = node.innerText;
 				} else {
-					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.data;
+					node_text = node.data;
 				}
-				if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
-					dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
+				if (!(node.nextElementSibling) || !(dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) || dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node_text;
+					if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+						dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
+					}
+				} else {
+					node.nextElementSibling.innerText = node.nextElementSibling.innerText + node_text;
+				}
+				
+				//Looks like sometimes it splits the parent. Let's look for that and fix it too
+				if (node.nextElementSibling && (node.nextElementSibling.getAttribute("chunk") == node.previousElementSibling.getAttribute("chunk"))) {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.nextElementSibling.innerText;
+					node.nextElementSibling.remove();
 				}
 				node.remove();
 			}

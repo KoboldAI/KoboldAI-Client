@@ -3509,7 +3509,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 botname = (koboldai_vars.botname + ":")
             else:
                 botname = ""
-            data = re.sub(r'\n+', ' ', data)
+            data = re.sub(r'\n+\Z', '', data)
             if(len(data)):
                 data = f"\n{koboldai_vars.chatname}: {data}\n{botname}"
         
@@ -6308,7 +6308,7 @@ def UI_2_download_story():
 @logger.catch
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
-        print("Updating Selected Text: {}".format(data))
+        logger.info("Updating Selected Text: {}".format(data))
     action_id = int(data["id"])
 
     if not koboldai_vars.actions.actions[action_id].get("Original Text"):
