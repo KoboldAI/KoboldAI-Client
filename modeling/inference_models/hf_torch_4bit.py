@@ -14,7 +14,7 @@ from transformers import AutoModelForCausalLM, GPTNeoForCausalLM, AutoTokenizer,
 import utils
 import modeling.lazy_loader as lazy_loader
 import koboldai_settings
-from logger import logger, set_logger_verbosity, quiesce_logger
+from logger import logger, set_logger_verbosity
 
 try:
     import breakmodel
@@ -24,6 +24,7 @@ except ModuleNotFoundError as e:
         raise e
 
 from modeling.inference_models.hf_torch import HFTorchInferenceModel
+from modeling.tokenizer import GenericTokenizer
 
 # 4-bit dependencies
 from pathlib import Path
@@ -362,4 +363,4 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
         else:
             tokenizer = AutoTokenizer.from_pretrained(utils.koboldai_vars.custmodpth)
 
-        return tokenizer
+        return GenericTokenizer(tokenizer)
