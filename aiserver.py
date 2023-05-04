@@ -601,6 +601,7 @@ utils.socketio = socketio
 
 # Weird import position to steal koboldai_vars from utils
 from modeling.patches import patch_transformers
+from modeling.inference_models.hf_torch_4bit import load_model_gptq_settings
 
 
 old_socketio_on = socketio.on
@@ -1076,37 +1077,6 @@ def loadmodelsettings():
         koboldai_vars.setauthornotetemplate = js["antemplate"]
         if(not koboldai_vars.gamestarted):
             koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
-
-
-def load_model_gptq_settings():
-    try:
-        js   = json.loads(str(model.model_config).partition(' ')[2])
-    except Exception as e:
-        try:
-            try:
-                js   = json.load(open(koboldai_vars.custmodpth + "/config.json", "r"))
-            except Exception as e:
-                js   = json.load(open(koboldai_vars.custmodpth.replace('/', '_') + "/config.json", "r"))
-        except Exception as e:
-            js   = {}
-
-    gptq_legacy_files = glob.glob(os.path.join(koboldai_vars.custmodpth, "4bit*.pt")) + glob.glob(os.path.join(koboldai_vars.custmodpth, "4bit*.safetensors"))
-    if "gptq_bits" in js:
-        koboldai_vars.gptq_model = True
-        koboldai_vars.gptq_bits = js["gptq_bits"]
-        koboldai_vars.gptq_groupsize = js.get("gptq_groupsize", -1)
-        safetensors_file = os.path.join(koboldai_vars.custmodpth, "model.safetensors")
-        pt_file = os.path.join(koboldai_vars.custmodpth, "model.ckpt")
-        koboldai_vars.gptq_file = safetensors_file if os.path.isfile(safetensors_file) else pt_file
-    elif gptq_legacy_files:
-        koboldai_vars.gptq_model = True
-        koboldai_vars.gptq_bits = 4
-        koboldai_vars.gptq_file = gptq_legacy_files[0]
-        fname = Path(koboldai_vars.gptq_file).parts[-1]
-        g = re.findall("^(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
-        koboldai_vars.gptq_groupsize = int(g[0]) if g else -1
-    else:
-        koboldai_vars.gptq_model = False
 
 
 #==================================================================#

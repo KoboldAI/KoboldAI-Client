@@ -96,6 +96,38 @@ def prepare_4bit_load(modelpath):
     return result, groupsize
 
 
+def load_model_gptq_settings():
+    try:
+        js   = json.loads(str(model.model_config).partition(' ')[2])
+    except Exception as e:
+        try:
+            try:
+                js = json.load(open(utils.koboldai_vars.custmodpth + "/config.json", "r"))
+            except Exception as e:
+                js = json.load(open(utils.koboldai_vars.custmodpth.replace('/', '_') + "/config.json", "r"))
+        except Exception as e:
+            utils.koboldai_vars.gptq_model = False
+            return
+
+    gptq_legacy_files = glob.glob(os.path.join(utils.koboldai_vars.custmodpth, "4bit*.pt")) + glob.glob(os.path.join(utils.koboldai_vars.custmodpth, "4bit*.safetensors"))
+    if "gptq_bits" in js:
+        utils.koboldai_vars.gptq_model = True
+        utils.koboldai_vars.gptq_bits = js["gptq_bits"]
+        utils.koboldai_vars.gptq_groupsize = js.get("gptq_groupsize", -1)
+        safetensors_file = os.path.join(utils.koboldai_vars.custmodpth, "model.safetensors")
+        pt_file = os.path.join(utils.koboldai_vars.custmodpth, "model.ckpt")
+        utils.koboldai_vars.gptq_file = safetensors_file if os.path.isfile(safetensors_file) else pt_file
+    elif gptq_legacy_files:
+        utils.koboldai_vars.gptq_model = True
+        utils.koboldai_vars.gptq_bits = 4
+        utils.koboldai_vars.gptq_file = gptq_legacy_files[0]
+        fname = Path(utils.koboldai_vars.gptq_file).parts[-1]
+        g = re.findall("^(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
+        utils.koboldai_vars.gptq_groupsize = int(g[0]) if g else -1
+    else:
+        utils.koboldai_vars.gptq_model = False
+
+
 class HFTorch4BitInferenceModel(HFTorchInferenceModel):
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True

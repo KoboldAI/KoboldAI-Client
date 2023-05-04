@@ -1680,7 +1680,7 @@ function selected_model_info(data) {
 		document.getElementById("use_8_bit_div").classList.add("hidden");
 		document.getElementById("use_8_bit").checked = false;
 	}
-
+	
 	//default URL loading
 	if (data.default_url != null) {
 		document.getElementById("modelurl").value = data.default_url;
@@ -1849,6 +1849,8 @@ function selected_model_info(data) {
 		accept.classList.remove("disabled");
 	}
 	accept.disabled = false;
+	
+	
 }
 
 function update_gpu_layers() {
@@ -3230,8 +3232,6 @@ function save_preset() {
 	socket.emit("save_new_preset", {"preset": document.getElementById("new_preset_name").value, "description": document.getElementById("new_preset_description").value});
 	closePopups();
 }
-
-
 
 //--------------------------------------------General UI Functions------------------------------------
 function put_cursor_at_element(element) {
