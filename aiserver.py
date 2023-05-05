@@ -1345,7 +1345,8 @@ def general_startup(override_args=None):
     parser.add_argument("--summarizer_model", action='store', default="philschmid/bart-large-cnn-samsum", help="Huggingface model to use for summarization. Defaults to sshleifer/distilbart-cnn-12-6")
     parser.add_argument("--max_summary_length", action='store', default=75, help="Maximum size for summary to send to image generation")
     parser.add_argument("--multi_story", action='store_true', default=False, help="Allow multi-story mode (experimental)")
-    
+    parser.add_argument("--trust_remote_code", action='store_true', default=False, help="Allow Huggingface Models to Execute Code (Insecure!)")  
+     
     parser.add_argument('-f', action='store', help="option for compatability with colab memory profiles")
     parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
     parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
@@ -1469,8 +1470,13 @@ def general_startup(override_args=None):
             allowed_ips = sorted(allowed_ips, key=lambda ip: int(''.join([i.zfill(3) for i in ip.split('.')])))
             print(f"Allowed IPs: {allowed_ips}")
 
-
-
+    if args.trust_remote_code:
+        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
+        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
+        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
+        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
+        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
+        koboldai_vars.trust_remote_code = True
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
 

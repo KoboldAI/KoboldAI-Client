@@ -265,6 +265,7 @@ class HFTorchInferenceModel(HFInferenceModel):
     def _get_model(self, location: str, tf_kwargs: Dict):
         tf_kwargs["revision"] = utils.koboldai_vars.revision
         tf_kwargs["cache_dir"] = "cache"
+        tf_kwargs["trust_remote_code"] = utils.koboldai_vars.trust_remote_code
 
         # If we have model hints for legacy model, use them rather than fall back.
         try:
