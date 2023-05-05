@@ -24,8 +24,8 @@ dependencies:
   - Pillow
   - psutil
   - pip:
-    - --extra-index-url https://download.pytorch.org/whl/rocm5.2
-    - torch==1.13.1+rocm5.2
+    - --extra-index-url https://download.pytorch.org/whl/rocm5.4.2
+    - torch==2.0.*
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
@@ -41,3 +41,4 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
+    - peft
