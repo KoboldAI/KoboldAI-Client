@@ -4,7 +4,7 @@ Flask==2.2.3
 Flask-SocketIO==5.3.2
 python-socketio==5.7.2
 requests
-torch >= 1.9, < 1.13
+torch == 2.0.*
 flask-cloudflared==0.0.10
 flask-ngrok
 flask-cors
@@ -37,3 +37,4 @@ pytest-html==3.2.0
 pytest-metadata==2.0.4
 requests-mock==1.10.0
 safetensors
+peft
