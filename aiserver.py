@@ -1472,10 +1472,10 @@ def general_startup(override_args=None):
 
     if args.trust_remote_code:
         logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
-        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
-        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
-        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
-        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
+        logger.warning("You are not protected from Model Viruses in this mode!")
+        logger.warning("Exit the program now to abort execution!")
+        logger.warning("Only use this mode with models that you trust and verified!")
+        time.sleep(25)
         koboldai_vars.trust_remote_code = True
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
