@@ -19,9 +19,9 @@ from transformers import (
     StoppingCriteria,
     GPTNeoForCausalLM,
     GPT2LMHeadModel,
-    AutoModelForCausalLM,
     LogitsProcessorList,
 )
+from repos.hf_bleeding_edge import AutoModelForCausalLM
 
 import utils
 import modeling.lazy_loader as lazy_loader

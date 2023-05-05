@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from transformers import AutoConfig
+from repos.hf_bleeding_edge import AutoConfig
 
 import utils
 import koboldai_settings

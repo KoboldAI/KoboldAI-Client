@@ -9,7 +9,8 @@ import shutil
 import sys
 from typing import Union
 
-from transformers import AutoModelForCausalLM, GPTNeoForCausalLM, AutoTokenizer, LlamaTokenizer
+from transformers import GPTNeoForCausalLM, AutoTokenizer, LlamaTokenizer
+from repos.hf_bleeding_edge import AutoModelForCausalLM
 
 import utils
 import modeling.lazy_loader as lazy_loader

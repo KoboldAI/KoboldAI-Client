@@ -1621,7 +1621,7 @@ def get_layer_count(model, directory=""):
         else:
             if(directory):
                 model = directory
-            from transformers import AutoConfig
+            from repos.hf_bleeding_edge import AutoConfig
             if(os.path.isdir(model.replace('/', '_'))):
                 model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
             elif(is_model_downloaded(model)):
