@@ -1346,7 +1346,8 @@ def general_startup(override_args=None):
     parser.add_argument("--max_summary_length", action='store', default=75, help="Maximum size for summary to send to image generation")
     parser.add_argument("--multi_story", action='store_true', default=False, help="Allow multi-story mode (experimental)")
     parser.add_argument("--peft", type=str, help="Specify the path or HuggingFace ID of a Peft to load it. Not supported on TPU. (Experimental)")
-    
+    parser.add_argument("--trust_remote_code", action='store_true', default=False, help="Allow Huggingface Models to Execute Code (Insecure!)")  
+     
     parser.add_argument('-f', action='store', help="option for compatability with colab memory profiles")
     parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
     parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
@@ -1470,8 +1471,13 @@ def general_startup(override_args=None):
             allowed_ips = sorted(allowed_ips, key=lambda ip: int(''.join([i.zfill(3) for i in ip.split('.')])))
             print(f"Allowed IPs: {allowed_ips}")
 
-
-
+    if args.trust_remote_code:
+        logger.warning("EXECUTION OF UNSAFE REMOTE CODE IS ENABLED!!!")
+        logger.warning("You are not protected from Model Viruses in this mode!")
+        logger.warning("Exit the program now to abort execution!")
+        logger.warning("Only use this mode with models that you trust and verified!")
+        time.sleep(25)
+        koboldai_vars.trust_remote_code = True
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
 
@@ -8287,7 +8293,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     use_userscripts: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the userscripts from the KoboldAI GUI when generating text."})
     soft_prompt: Optional[str] = fields.String(metadata={"description": "Soft prompt to use when generating. If set to the empty string or any other string containing no non-whitespace characters, uses no soft prompt."}, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")])
     max_length: int = fields.Integer(validate=validate.Range(min=1, max=512), metadata={"description": "Number of tokens to generate."})
-    max_context_length: int = fields.Integer(validate=validate.Range(min=512, max=2048), metadata={"description": "Maximum number of tokens to send to the model."})
+    max_context_length: int = fields.Integer(validate=validate.Range(min=1), metadata={"description": "Maximum number of tokens to send to the model."})
     n: int = fields.Integer(validate=validate.Range(min=1, max=5), metadata={"description": "Number of outputs to generate."})
     disable_output_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all output formatting options default to `false` instead of the value in the KoboldAI GUI."})
     frmttriminc: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes some characters from the end of the output such that the output doesn't end in the middle of a sentence. If the output is less than one sentence long, does nothing.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
