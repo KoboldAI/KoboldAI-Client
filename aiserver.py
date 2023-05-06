@@ -7,9 +7,11 @@
 
 # External packages
 from dataclasses import dataclass
+from enum import Enum
 import random
 import shutil
 import eventlet
+
 eventlet.monkey_patch(all=True, thread=False, os=False)
 import os, inspect
 os.system("")
@@ -36,24 +38,20 @@ import ijson
 import datetime
 import collections
 import zipfile
-import packaging
 import packaging.version
-import contextlib
 import traceback
 import markdown
 import bleach
-import itertools
-import bisect
 import functools
 import traceback
 import inspect
 import warnings
 import multiprocessing
-import copy
 import numpy as np
-from collections.abc import Iterable
 from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
+import glob
+from pathlib import Path
 
 import requests
 import html
@@ -70,8 +68,7 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification, LlamaTokenizer
-from transformers import __version__ as transformers_version
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForTokenClassification
 import transformers
 import ipaddress
 from functools import wraps
@@ -79,8 +76,6 @@ try:
     from transformers.models.opt.modeling_opt import OPTDecoder
 except:
     pass
-
-from transformers import GenerationMixin
 
 # Text2img
 import base64
@@ -91,18 +86,6 @@ global tpu_mtj_backend
 global allowed_ips
 allowed_ips = set()  # empty set
 enable_whitelist = False
-
-
-# 4-bit dependencies
-from pathlib import Path
-import glob
-sys.path.insert(0, os.path.abspath(Path("repos/gptq")))
-from gptj import load_quant as gptj_load_quant
-from gptneox import load_quant as gptneox_load_quant
-from llama import load_quant as llama_load_quant
-from opt import load_quant as opt_load_quant
-from offload import load_quant_offload
-monkey_patched_4bit = False
 
 
 if lupa.LUA_VERSION[:2] != (5, 4):
@@ -131,33 +114,10 @@ def new_pretrainedtokenizerbase_from_pretrained(cls, *args, **kwargs):
     return tokenizer
 PreTrainedTokenizerBase.from_pretrained = new_pretrainedtokenizerbase_from_pretrained
 
-# We only want to use logit manipulations and such on our core text model
-class use_core_manipulations:
-    # These must be set by wherever they get setup
-    get_logits_processor: callable
-    sample: callable
-    get_stopping_criteria: callable
 
-    # We set these automatically
-    old_get_logits_processor: callable
-    old_sample: callable
-    old_get_stopping_criteria: callable
-
-    def __enter__(self):
-        use_core_manipulations.old_get_logits_processor = transformers.GenerationMixin._get_logits_processor
-        transformers.GenerationMixin._get_logits_processor = use_core_manipulations.get_logits_processor
-
-        use_core_manipulations.old_sample = transformers.GenerationMixin.sample
-        transformers.GenerationMixin.sample = use_core_manipulations.sample
-
-        use_core_manipulations.old_get_stopping_criteria = transformers.GenerationMixin._get_stopping_criteria
-        transformers.GenerationMixin._get_stopping_criteria = use_core_manipulations.get_stopping_criteria
-        return self
-    
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        transformers.GenerationMixin._get_logits_processor = use_core_manipulations.old_get_logits_processor
-        transformers.GenerationMixin.sample = use_core_manipulations.old_sample
-        transformers.GenerationMixin._get_stopping_criteria = use_core_manipulations.old_get_stopping_criteria
+def is_model_downloaded(model_name: str) -> bool:
+    model_stub = model_name.replace("/", "_")
+    return os.path.isdir(os.path.join("models", model_stub))
 
 #==================================================================#
 # Variables & Storage
@@ -174,191 +134,245 @@ class colors:
     END       = '\033[0m'
     UNDERLINE = '\033[4m'
 
+class MenuModelType(Enum):
+    HUGGINGFACE = 0
+    ONLINE_API = 1
+    OTHER = 2
+    RWKV = 3
+
+class MenuItem:
+    def __init__(
+        self,
+        label: str,
+        name: str,
+        experimental: bool = False
+    ) -> None:
+        self.label = label
+        self.name = name
+        self.experimental = experimental
+
+    def should_show(self) -> bool:
+        return koboldai_vars.experimental_features or not self.experimental
+
+class MenuFolder(MenuItem):
+    def to_ui1(self) -> list:
+        return [
+            self.label,
+            self.name,
+            "",
+            True,
+        ]
+    
+    def to_json(self) -> dict:
+        return {
+            "label": self.label,
+            "name": self.name,
+            "size": "",
+            "isMenu": True,
+            "isDownloaded": False,
+        }
+
+class MenuModel(MenuItem):
+    def __init__(
+        self,
+        label: str,
+        name: str,
+        vram_requirements: str = "",
+        model_type: MenuModelType = MenuModelType.HUGGINGFACE,
+        experimental: bool = False,
+    ) -> None:
+        super().__init__(label, name, experimental)
+        self.model_type = model_type
+        self.vram_requirements = vram_requirements
+        self.is_downloaded = is_model_downloaded(self.name)
+    
+    def to_ui1(self) -> list:
+        return [
+            self.label,
+            self.name,
+            self.vram_requirements,
+            False,
+            self.is_downloaded
+        ]
+
+    def to_json(self) -> dict:
+        return {
+            "label": self.label,
+            "name": self.name,
+            "size": self.vram_requirements,
+            "isMenu": False,
+            "isDownloaded": self.is_downloaded,
+        }
+
+
 # AI models Menu
 # This is a dict of lists where they key is the menu name, and the list is the menu items.
 # Each item takes the 4 elements, 1: Text to display, 2: Model Name (koboldai_vars.model) or menu name (Key name for another menu),
 # 3: the memory requirement for the model, 4: if the item is a menu or not (True/False)
 model_menu = {
-    'mainmenu': [
-        ["Load a model from its directory", "NeoCustom", "", False],
-        ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", "", False],
-        ["Load custom model from Hugging Face", "customhuggingface", "", True],
-        ["Adventure Models", "adventurelist", "", True],
-        ["Novel Models", "novellist", "", True],
-        ["Chat Models", "chatlist", "", True],
-        ["NSFW Models", "nsfwlist", "", True],
-        ["Untuned OPT", "optlist", "", True],
-        ["Untuned GPT-Neo/J", "gptneolist", "", True],
-        ["Untuned Pythia", "pythialist", "", True],
-        ["Untuned Fairseq Dense", "fsdlist", "", True],
-        ["Untuned Bloom", "bloomlist", "", True],
-        ["Untuned XGLM", "xglmlist", "", True],
-        ["Untuned RWKV-4 (Experimental)", "rwkvlist", "", True],
-        ["Untuned GPT2", "gpt2list", "", True],
-        ["Online Services", "apilist", "", True],
-        ["Read Only (No AI)", "ReadOnly", "", False]
-        ],
+    "mainmenu": [
+        MenuModel("Load a model from its directory", "NeoCustom"),
+        MenuModel("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
+        MenuFolder("Load custom model from Hugging Face", "customhuggingface"),
+        MenuFolder("Adventure Models", "adventurelist"),
+        MenuFolder("Novel Models", "novellist"),
+        MenuFolder("Chat Models", "chatlist"),
+        MenuFolder("NSFW Models", "nsfwlist"),
+        MenuFolder("Untuned OPT", "optlist"),
+        MenuFolder("Untuned GPT-Neo/J", "gptneolist"),
+        MenuFolder("Untuned Pythia", "pythialist"),
+        MenuFolder("Untuned Fairseq Dense", "fsdlist"),
+        MenuFolder("Untuned Bloom", "bloomlist"),
+        MenuFolder("Untuned XGLM", "xglmlist"),
+        MenuFolder("Untuned RWKV-4 (Experimental)", "rwkvlist", experimental=True),
+        MenuFolder("Untuned GPT2", "gpt2list"),
+        MenuFolder("Online Services", "apilist"),
+        MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER),
+    ],
     'adventurelist': [
-        ["Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "64GB", False],
-        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
-        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
-        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
-        ["Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
-        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
-        ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
-        ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
-        ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
-        ["Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB", False],
-        ["Adventure 125M (Mia)", "Merry/AID-Neo-125M", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "64GB"),
+        MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"),
+        MenuModel("Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"),
+        MenuModel("Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"),
+        MenuModel("Skein 6B", "KoboldAI/GPT-J-6B-Skein", "16GB"),
+        MenuModel("OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB"),
+        MenuModel("Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"),
+        MenuModel("Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB"),
+        MenuModel("Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"),
+        MenuModel("Adventure 1.3B", "KoboldAI/GPT-Neo-1.3B-Adventure", "6GB"),
+        MenuModel("Adventure 125M (Mia)", "Merry/AID-Neo-125M", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'novellist': [
-        ["Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB", False],
-        ["Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB", False],
-        ["Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB", False],
-        ["Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB", False],
-        ["OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB", False],
-        ["Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB", False],
-        ["Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
-        ["Qilin Lit 6B (SFW)", "rexwang8/qilin-lit-6b", "16GB", False],       
-        ["Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
-        ["Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
-        ["Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB", False],
-        ["Horni-LN 2.7B", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB", False],
-        ["Picard 2.7B (Older Janeway)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"),
+        MenuModel("Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"),
+        MenuModel("Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"),
+        MenuModel("Nerys FSD 13B (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys", "32GB"),
+        MenuModel("OPT Nerys 6B V2 (Hybrid)", "KoboldAI/OPT-6B-nerys-v2", "16GB"),
+        MenuModel("Janeway FSD 6.7B", "KoboldAI/fairseq-dense-6.7B-Janeway", "16GB"),
+        MenuModel("Janeway Neo 6B", "KoboldAI/GPT-J-6B-Janeway", "16GB"),
+        MenuModel("Qilin Lit 6B (SFW)", "rexwang8/qilin-lit-6b", "16GB"),       
+        MenuModel("Janeway Neo 2.7B", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"),
+        MenuModel("Janeway FSD 2.7B", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"),
+        MenuModel("Nerys FSD 2.7B (Hybrid)", "KoboldAI/fairseq-dense-2.7B-Nerys", "8GB"),
+        MenuModel("Horni-LN 2.7B", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"),
+        MenuModel("Picard 2.7B (Older Janeway)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'nsfwlist': [
-        ["Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB", False],
-        ["Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB", False],
-        ["Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB", False],
-        ["Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB", False],
-        ["Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB", False],
-        ["Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB", False],
-        ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB", False],
-        ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB", False],
-        ["Erebus 2.7B (NSFW)", "KoboldAI/OPT-2.7B-Erebus", "8GB", False],
-        ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB", False],
-        ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB"),
+        MenuModel("Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB"),
+        MenuModel("Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB"),
+        MenuModel("Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB"),
+        MenuModel("Shinen FSD 6.7B (NSFW)", "KoboldAI/fairseq-dense-6.7B-Shinen", "16GB"),
+        MenuModel("Lit V2 6B (NSFW)", "hakurei/litv2-6B-rev3", "16GB"),
+        MenuModel("Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"),
+        MenuModel("Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"),
+        MenuModel("Erebus 2.7B (NSFW)", "KoboldAI/OPT-2.7B-Erebus", "8GB"),
+        MenuModel("Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"),
+        MenuModel("Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'chatlist': [
-        ["Pygmalion 6B", "PygmalionAI/pygmalion-6b", "16GB", False],
-        ["Pygmalion 2.7B", "PygmalionAI/pygmalion-2.7b", "8GB", False],
-        ["Pygmalion 1.3B", "PygmalionAI/pygmalion-1.3b", "6GB", False],
-        ["Pygmalion 350M", "PygmalionAI/pygmalion-350m", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Pygmalion 6B", "PygmalionAI/pygmalion-6b", "16GB"),
+        MenuModel("Pygmalion 2.7B", "PygmalionAI/pygmalion-2.7b", "8GB"),
+        MenuModel("Pygmalion 1.3B", "PygmalionAI/pygmalion-1.3b", "6GB"),
+        MenuModel("Pygmalion 350M", "PygmalionAI/pygmalion-350m", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'gptneolist': [
-        ["GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB", False],
-        ["Pythia 13B (NeoX, Same dataset)", "EleutherAI/pythia-13b", "32GB", False],
-        ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
-        ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
-        ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
-        ["Pythia 800M (NeoX, Same dataset)", "EleutherAI/pythia-800m", "4GB", False],
-        ["Pythia 350M (NeoX, Same dataset)", "EleutherAI/pythia-350m", "2GB", False],
-        ["GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("GPT-NeoX 20B", "EleutherAI/gpt-neox-20b", "64GB"),
+        MenuModel("Pythia 13B (NeoX, Same dataset)", "EleutherAI/pythia-13b", "32GB"),
+        MenuModel("GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"),
+        MenuModel("GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"),
+        MenuModel("GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"),
+        MenuModel("Pythia 800M (NeoX, Same dataset)", "EleutherAI/pythia-800m", "4GB"),
+        MenuModel("Pythia 350M (NeoX, Same dataset)", "EleutherAI/pythia-350m", "2GB"),
+        MenuModel("GPT-Neo 125M", "EleutherAI/gpt-neo-125M", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'pythialist': [
-        ["Pythia 13B Deduped", "EleutherAI/pythia-13b-deduped", "32GB", False],
-        ["Pythia 13B", "EleutherAI/pythia-13b", "32GB", False],
-        ["Pythia 6.7B Deduped", "EleutherAI/pythia-6.7b-deduped", "16GB", False],
-        ["Pythia 6.7B", "EleutherAI/pythia-6.7b", "16GB", False],
-        ["Pythia 1.3B Deduped", "EleutherAI/pythia-1.3b-deduped", "6GB", False],
-        ["Pythia 1.3B", "EleutherAI/pythia-1.3b", "6GB", False],
-        ["Pythia 800M", "EleutherAI/pythia-800m", "4GB", False],
-        ["Pythia 350M Deduped", "EleutherAI/pythia-350m-deduped", "2GB", False],
-        ["Pythia 350M", "EleutherAI/pythia-350m", "2GB", False],        
-        ["Pythia 125M Deduped", "EleutherAI/pythia-125m-deduped", "2GB", False],
-        ["Pythia 125M", "EleutherAI/pythia-125m", "2GB", False],
-        ["Pythia 19M Deduped", "EleutherAI/pythia-19m-deduped", "1GB", False],
-        ["Pythia 19M", "EleutherAI/pythia-19m", "1GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Pythia 13B Deduped", "EleutherAI/pythia-13b-deduped", "32GB"),
+        MenuModel("Pythia 13B", "EleutherAI/pythia-13b", "32GB"),
+        MenuModel("Pythia 6.7B Deduped", "EleutherAI/pythia-6.7b-deduped", "16GB"),
+        MenuModel("Pythia 6.7B", "EleutherAI/pythia-6.7b", "16GB"),
+        MenuModel("Pythia 1.3B Deduped", "EleutherAI/pythia-1.3b-deduped", "6GB"),
+        MenuModel("Pythia 1.3B", "EleutherAI/pythia-1.3b", "6GB"),
+        MenuModel("Pythia 800M", "EleutherAI/pythia-800m", "4GB"),
+        MenuModel("Pythia 350M Deduped", "EleutherAI/pythia-350m-deduped", "2GB"),
+        MenuModel("Pythia 350M", "EleutherAI/pythia-350m", "2GB"),        
+        MenuModel("Pythia 125M Deduped", "EleutherAI/pythia-125m-deduped", "2GB"),
+        MenuModel("Pythia 125M", "EleutherAI/pythia-125m", "2GB"),
+        MenuModel("Pythia 19M Deduped", "EleutherAI/pythia-19m-deduped", "1GB"),
+        MenuModel("Pythia 19M", "EleutherAI/pythia-19m", "1GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'gpt2list': [
-        ["GPT-2 XL", "gpt2-xl", "6GB", False],
-        ["GPT-2 Large", "gpt2-large", "4GB", False],
-        ["GPT-2 Med", "gpt2-medium", "2GB", False],
-        ["GPT-2", "gpt2", "2GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("GPT-2 XL", "gpt2-xl", "6GB"),
+        MenuModel("GPT-2 Large", "gpt2-large", "4GB"),
+        MenuModel("GPT-2 Med", "gpt2-medium", "2GB"),
+        MenuModel("GPT-2", "gpt2", "2GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'bloomlist': [
-        ["Bloom 176B", "bigscience/bloom", "", False],
-        ["Bloom 7.1B", "bigscience/bloom-7b1", "", False],   
-        ["Bloom 3B", "bigscience/bloom-3b", "", False], 
-        ["Bloom 1.7B", "bigscience/bloom-1b7", "", False], 
-        ["Bloom 560M", "bigscience/bloom-560m", "", False], 
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Bloom 176B", "bigscience/bloom"),
+        MenuModel("Bloom 7.1B", "bigscience/bloom-7b1"),   
+        MenuModel("Bloom 3B", "bigscience/bloom-3b"), 
+        MenuModel("Bloom 1.7B", "bigscience/bloom-1b7"), 
+        MenuModel("Bloom 560M", "bigscience/bloom-560m"), 
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'optlist': [
-        ["OPT 66B", "facebook/opt-66b", "128GB", False],
-        ["OPT 30B", "facebook/opt-30b", "64GB", False],
-        ["OPT 13B", "facebook/opt-13b", "32GB", False],
-        ["OPT 6.7B", "facebook/opt-6.7b", "16GB", False],
-        ["OPT 2.7B", "facebook/opt-2.7b", "8GB", False],
-        ["OPT 1.3B", "facebook/opt-1.3b", "4GB", False],
-        ["OPT 350M", "facebook/opt-350m", "2GB", False],
-        ["OPT 125M", "facebook/opt-125m", "1GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("OPT 66B", "facebook/opt-66b", "128GB"),
+        MenuModel("OPT 30B", "facebook/opt-30b", "64GB"),
+        MenuModel("OPT 13B", "facebook/opt-13b", "32GB"),
+        MenuModel("OPT 6.7B", "facebook/opt-6.7b", "16GB"),
+        MenuModel("OPT 2.7B", "facebook/opt-2.7b", "8GB"),
+        MenuModel("OPT 1.3B", "facebook/opt-1.3b", "4GB"),
+        MenuModel("OPT 350M", "facebook/opt-350m", "2GB"),
+        MenuModel("OPT 125M", "facebook/opt-125m", "1GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'fsdlist': [
-        ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB", False],
-        ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB", False],
-        ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB", False],
-        ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "4GB", False],
-        ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "2GB", False],
-        ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "1GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB"),
+        MenuModel("Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB"),
+        MenuModel("Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB"),
+        MenuModel("Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "4GB"),
+        MenuModel("Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "2GB"),
+        MenuModel("Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "1GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'xglmlist': [
-        ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "12GB", False],
-        ["XGLM 7.5B", "facebook/xglm-7.5B", "18GB", False],
-        ["XGLM 2.9B", "facebook/xglm-2.9B", "10GB", False],
-        ["XGLM 1.7B", "facebook/xglm-1.7B", "6GB", False],
-        ["XGLM 564M", "facebook/xglm-564M", "4GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "12GB"),
+        MenuModel("XGLM 7.5B", "facebook/xglm-7.5B", "18GB"),
+        MenuModel("XGLM 2.9B", "facebook/xglm-2.9B", "10GB"),
+        MenuModel("XGLM 1.7B", "facebook/xglm-1.7B", "6GB"),
+        MenuModel("XGLM 564M", "facebook/xglm-564M", "4GB"),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'rwkvlist': [
-        ["RWKV-4 7B (GPU)", "RWKV-7B-GPU", "??GB", False],
-        ["RWKV-4 7B (CPU)", "RWKV-7B-CPU", "??GB", False],
-        ["RWKV-4 3B (GPU)", "RWKV-3B-GPU", "?GB", False],
-        ["RWKV-4 3B (CPU)", "RWKV-3B-CPU", "?GB", False],
-        ["RWKV-4 1.5B (GPU)", "RWKV-1B5-GPU", "9GB", False],
-        ["RWKV-4 1.5B (CPU)", "RWKV-1B5-CPU", "6GB", False],
-        ["RWKV-4 340M (GPU)", "RWKV-340M-GPU", "?GB", False],
-        ["RWKV-4 340M (CPU)", "RWKV-340M-CPU", "?GB", False],
-        ["RWKV-4 169M (GPU)", "RWKV-169M-GPU", "?GB", False],
-        ["RWKV-4 169M (CPU)", "RWKV-169M-CPU", "?GB", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("RWKV-4 14B ctx4096", "rwkv-4-pile-14b:ctx4096", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 14B ctx1024", "rwkv-4-pile-14b", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 7B ctx4096", "rwkv-4-pile-7b:ctx4096", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 7B ctx1024", "rwkv-4-pile-7b", "??GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 3B ctx4096", "rwkv-4-pile-3b:ctx4096", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 3B ctx1024", "rwkv-4-pile-3b", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 1.5B ctx4096", "rwkv-4-pile-1b5:ctx4096", "9GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 1.5B ctx1024", "rwkv-4-pile-1b5", "9GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 340M", "rwkv-4-pile-430m", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV-4 169M ctx1024", "rwkv-4-pile-169m", "?GB", model_type=MenuModelType.RWKV),
+        MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'apilist': [
-        ["GooseAI API (requires API key)", "GooseAI", "None", False],
-        ["OpenAI API (requires API key)", "OAI", "None", False],
-        ["InferKit API (requires API key)", "InferKit", "None", False],
-        ["KoboldAI API", "API", "None", False],
-        ["Basic Model API", "Colab", "", False],
-        ["KoboldAI Horde", "CLUSTER", "None", False],
-        ["Return to Main Menu", "mainmenu", "", True],
+        MenuModel("GooseAI API (requires API key)", "GooseAI", model_type=MenuModelType.ONLINE_API),
+        MenuModel("OpenAI API (requires API key)", "OAI", model_type=MenuModelType.ONLINE_API),
+        MenuModel("InferKit API (requires API key)", "InferKit", model_type=MenuModelType.ONLINE_API),
+        MenuModel("KoboldAI API", "API", model_type=MenuModelType.ONLINE_API),
+        MenuModel("Basic Model API", "Colab", model_type=MenuModelType.ONLINE_API),
+        MenuModel("KoboldAI Horde", "CLUSTER", model_type=MenuModelType.ONLINE_API),
+        MenuFolder("Return to Main Menu", "mainmenu"),
     ]
-    }
-
-
-
-class Send_to_socketio(object):
-    def write(self, bar):
-        bar = bar.replace("\r", "").replace("\n", "").replace(chr(0), "")
-        if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
-            #logger.info(bar)
-            print('\r' + bar, end='')
-            time.sleep(0.01)
-            try:
-                socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-            except:
-                pass
-        
-    def flush(self):
-        pass
+}
 
 @dataclass
 class ImportBuffer:
@@ -476,40 +490,25 @@ class ImportBuffer:
                 self.world_infos[i][key] = self._replace_placeholders(self.world_infos[i][key])
 
     def from_club(self, club_id):
-        # Maybe it is a better to parse the NAI Scenario (if available), it has more data
-        r = requests.get(f"https://aetherroom.club/api/{club_id}")
-
-        if not r.ok:
-            print(f"[import] Got {r.status_code} on request to club :^(")
-            message = f"Club responded with {r.status_code}"
-            if r.status_code == "404":
+        from importers import aetherroom
+        import_data: aetherroom.ImportData
+        try:
+            import_data = aetherroom.import_scenario(club_id)
+        except aetherroom.RequestFailed as err:
+            status = err.status_code
+            print(f"[import] Got {status} on request to club :^(")
+            message = f"Club responded with {status}"
+            if status == 404:
                 message = f"Prompt not found for ID {club_id}"
             show_error_notification("Error loading prompt", message)
             return
 
-        j = r.json()
-
-        self.prompt = j["promptContent"]
-        self.memory = j["memory"]
-        self.authors_note = j["authorsNote"]
-        self.notes = j["description"]
-        self.title = j["title"] or "Imported Story"
-
-        self.world_infos = []
-
-        for wi in j["worldInfos"]:
-            self.world_infos.append({
-                "key_list": wi["keysList"],
-                "keysecondary": [],
-                "content": wi["entry"],
-                "comment": "",
-                "folder": wi.get("folder", None),
-                "num": 0,
-                "init": True,
-                "selective": wi.get("selective", False),
-                "constant": wi.get("constant", False),
-                "uid": None,
-            })
+        self.prompt = import_data.prompt
+        self.memory = import_data.memory
+        self.authors_note = import_data.authors_note
+        self.notes = import_data.notes
+        self.title = import_data.title
+        self.world_infos = import_data.world_infos
 
         placeholders = self.extract_placeholders(self.prompt)
         if not placeholders:
@@ -586,6 +585,10 @@ app = Flask(__name__, root_path=os.getcwd())
 app.secret_key = secrets.token_hex()
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+# Hack for socket stuff that needs app context
+utils.flask_app = app
+
 Compress(app)
 socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000)
 #socketio = SocketIO(app, async_method="eventlet", manage_session=False, cors_allowed_origins='*', max_http_buffer_size=10_000_000, logger=logger, engineio_logger=True)
@@ -593,9 +596,13 @@ logger.add(UI_2_log_history, serialize=True, colorize=True, enqueue=True, level=
 
 #logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
 koboldai_vars = koboldai_settings.koboldai_vars(socketio)
-
 utils.koboldai_vars = koboldai_vars
 utils.socketio = socketio
+
+# Weird import position to steal koboldai_vars from utils
+from modeling.patches import patch_transformers
+from modeling.inference_models.hf_torch_4bit import load_model_gptq_settings
+
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -805,7 +812,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.1",
+    version="1.2.2",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -832,24 +839,22 @@ def get_config_filename(model_name = None):
         logger.warning(f"Empty configfile name sent back. Defaulting to ReadOnly")
         return(f"settings/ReadOnly.settings")
 
-def is_model_downloaded(model_name: str) -> bool:
-    model_stub = model_name.replace("/", "_")
-    return os.path.isdir(os.path.join("models", model_stub))
-
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
 def sendModelSelection(menu="mainmenu", folder="./models"):
     #If we send one of the manual load options, send back the list of model directories, otherwise send the menu
     if menu in ('NeoCustom', 'GPT2Custom'):
-        (paths, breadcrumbs) = get_folder_path_info(folder)
-        paths = [x for x in paths if "rwkv" not in x[1].lower()]
+        paths, breadcrumbs = get_folder_path_info(folder)
+        # paths = [x for x in paths if "rwkv" not in x[1].lower()]
         if koboldai_vars.host:
             breadcrumbs = []
+
         menu_list = [[folder, menu, "", False] for folder in paths]
         menu_list_ui_2 = [[folder[0], folder[1], "", False] for folder in paths]
         menu_list.append(["Return to Main Menu", "mainmenu", "", True])
         menu_list_ui_2.append(["Return to Main Menu", "mainmenu", "", True])
+
         if os.path.abspath("{}/models".format(os.getcwd())) == os.path.abspath(folder):
             showdelete=True
         else:
@@ -864,7 +869,7 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
             "isDownloaded": True,
         } for m in menu_list_ui_2]
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
-    elif menu in ('customhuggingface'):
+    elif menu == "customhuggingface":
         p_menu = [{
             "label": "Return to Main Menu",
             "name": "mainmenu",
@@ -877,18 +882,31 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         emit('from_server', {'cmd': 'show_model_menu', 'data': [["Return to Main Menu", "mainmenu", "", True]], 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=True, room="UI_1")
         emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': breadcrumbs, "showdelete": showdelete}, broadcast=False)
     else:
-        # Hide experimental models unless experimental mode is enabled
-        filtered_menu = [x for x in model_menu[menu] if koboldai_vars.experimental_features or "(experimental)" not in x[0].lower()]
-        emit('from_server', {'cmd': 'show_model_menu', 'data': filtered_menu, 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=True, room="UI_1")
+        filtered_menu = [item for item in model_menu[menu] if item.should_show()]
 
-        p_menu = [{
-            "label": m[0],
-            "name": m[1],
-            "size": m[2],
-            "isMenu": m[3],
-            "isDownloaded": is_model_downloaded(m[1]) if not m[3] else False,
-        } for m in filtered_menu]
-        emit('show_model_menu', {'data': p_menu, 'menu': menu, 'breadcrumbs': [], "showdelete": False}, broadcast=False)
+        emit(
+            "from_server",
+            {
+                "cmd": "show_model_menu",
+                "data": [item.to_ui1() for item in filtered_menu],
+                "menu": menu,
+                "breadcrumbs": [],
+                "showdelete": False
+            },
+            broadcast=True,
+            room="UI_1"
+        )
+
+        emit(
+            "show_model_menu",
+            {
+                "data": [item.to_json() for item in filtered_menu],
+                "menu": menu,
+                "breadcrumbs": [],
+                "showdelete": False
+            },
+            broadcast=False
+        )
 
 def get_folder_path_info(base):
     if base == 'This PC':
@@ -971,7 +989,7 @@ def check_if_dir_is_model(path):
 #==================================================================#
 def getmodelname():
     if(koboldai_vars.online_model != ''):
-       return(f"{koboldai_vars.model}/{koboldai_vars.online_model}")
+        return(f"{koboldai_vars.model}/{koboldai_vars.online_model}")
     if(koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         modelname = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
         return modelname
@@ -986,227 +1004,11 @@ def get_hidden_size_from_model(model):
     return model.get_input_embeddings().embedding_dim
 
 #==================================================================#
-# Breakmodel configuration functions
-#==================================================================#
-def device_list(n_layers, primary=None, selected=None):
-    device_count = torch.cuda.device_count()
-    if(device_count < 2):
-        primary = None
-    gpu_blocks = breakmodel.gpu_blocks + (device_count - len(breakmodel.gpu_blocks))*[0]
-    print(f"{colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{colors.END}")
-    for i in range(device_count):
-        name = torch.cuda.get_device_name(i)
-        if(len(name) > 47):
-            name = "..." + name[-44:]
-        row_color = colors.END
-        sep_color = colors.YELLOW
-        print(f"{row_color}{colors.YELLOW + '->' + row_color if i == selected else '  '} {'(primary)' if i == primary else ' '*9} {i:3}  {sep_color}|{row_color}     {gpu_blocks[i]:3}  {sep_color}|{row_color}  {name}{colors.END}")
-    row_color = colors.END
-    sep_color = colors.YELLOW
-    if(utils.HAS_ACCELERATE):
-        print(f"{row_color}{colors.YELLOW + '->' + row_color if -1 == selected else '  '} {' '*9} N/A  {sep_color}|{row_color}     {breakmodel.disk_blocks:3}  {sep_color}|{row_color}  (Disk cache){colors.END}")
-    print(f"{row_color}   {' '*9} N/A  {sep_color}|{row_color}     {n_layers:3}  {sep_color}|{row_color}  (CPU){colors.END}")
-
-def device_config(config):
-    global breakmodel, generator
-    import breakmodel
-    n_layers = utils.num_layers(config)
-    if args.cpu:
-        breakmodel.gpu_blocks = [0]*n_layers
-        return
-    elif(args.breakmodel_gpulayers is not None or (utils.HAS_ACCELERATE and args.breakmodel_disklayers is not None)):
-        try:
-            if(not args.breakmodel_gpulayers):
-                breakmodel.gpu_blocks = []
-            else:
-                breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
-            assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
-            s = n_layers
-            for i in range(len(breakmodel.gpu_blocks)):
-                if(breakmodel.gpu_blocks[i] <= -1):
-                    breakmodel.gpu_blocks[i] = s
-                    break
-                else:
-                    s -= breakmodel.gpu_blocks[i]
-            assert sum(breakmodel.gpu_blocks) <= n_layers
-            n_layers -= sum(breakmodel.gpu_blocks)
-            if(args.breakmodel_disklayers is not None):
-                assert args.breakmodel_disklayers <= n_layers
-                breakmodel.disk_blocks = args.breakmodel_disklayers
-                n_layers -= args.breakmodel_disklayers
-        except:
-            logger.warning("--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0.")
-            breakmodel.gpu_blocks = [n_layers]
-            n_layers = 0
-    elif(args.breakmodel_layers is not None):
-        breakmodel.gpu_blocks = [n_layers - max(0, min(n_layers, args.breakmodel_layers))]
-        n_layers -= sum(breakmodel.gpu_blocks)
-    elif(args.model is not None):
-        logger.info("Breakmodel not specified, assuming GPU 0")
-        breakmodel.gpu_blocks = [n_layers]
-        n_layers = 0
-    else:
-        device_count = torch.cuda.device_count()
-        if(device_count > 1):
-            print(colors.CYAN + "\nPlease select one of your GPUs to be your primary GPU.")
-            print("VRAM usage in your primary GPU will be higher than for your other ones.")
-            print("It is recommended you make your fastest GPU your primary GPU.")
-            device_list(n_layers)
-            while(True):
-                primaryselect = input("device ID> ")
-                if(primaryselect.isnumeric() and 0 <= int(primaryselect) < device_count):
-                    breakmodel.primary_device = int(primaryselect)
-                    break
-                else:
-                    print(f"{colors.RED}Please enter an integer between 0 and {device_count-1}.{colors.END}")
-        else:
-            breakmodel.primary_device = 0
-
-        print(colors.PURPLE + "\nIf you don't have enough VRAM to run the model on a single GPU")
-        print("you can split the model between your CPU and your GPU(s), or between")
-        print("multiple GPUs if you have more than one.")
-        print("By putting more 'layers' on a GPU or CPU, more computations will be")
-        print("done on that device and more VRAM or RAM will be required on that device")
-        print("(roughly proportional to number of layers).")
-        print("It should be noted that GPUs are orders of magnitude faster than the CPU.")
-        print(f"This model has{colors.YELLOW} {n_layers} {colors.PURPLE}layers.{colors.END}\n")
-
-        for i in range(device_count):
-            device_list(n_layers, primary=breakmodel.primary_device, selected=i)
-            print(f"{colors.CYAN}\nHow many of the remaining{colors.YELLOW} {n_layers} {colors.CYAN}layers would you like to put into device {i}?\nYou can also enter -1 to allocate all remaining layers to this device.{colors.END}\n")
-            while(True):
-                layerselect = input("# of layers> ")
-                if((layerselect.isnumeric() or layerselect.strip() == '-1') and -1 <= int(layerselect) <= n_layers):
-                    layerselect = int(layerselect)
-                    layerselect = n_layers if layerselect == -1 else layerselect
-                    breakmodel.gpu_blocks.append(layerselect)
-                    n_layers -= layerselect
-                    break
-                else:
-                    print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
-            if(n_layers == 0):
-                break
-
-        if(utils.HAS_ACCELERATE and n_layers > 0):
-            device_list(n_layers, primary=breakmodel.primary_device, selected=-1)
-            print(f"{colors.CYAN}\nHow many of the remaining{colors.YELLOW} {n_layers} {colors.CYAN}layers would you like to put into the disk cache?\nYou can also enter -1 to allocate all remaining layers to this device.{colors.END}\n")
-            while(True):
-                layerselect = input("# of layers> ")
-                if((layerselect.isnumeric() or layerselect.strip() == '-1') and -1 <= int(layerselect) <= n_layers):
-                    layerselect = int(layerselect)
-                    layerselect = n_layers if layerselect == -1 else layerselect
-                    breakmodel.disk_blocks = layerselect
-                    n_layers -= layerselect
-                    break
-                else:
-                    print(f"{colors.RED}Please enter an integer between -1 and {n_layers}.{colors.END}")
-
-    logger.init_ok("Final device configuration:", status="Info")
-    device_list(n_layers, primary=breakmodel.primary_device)
-
-    # If all layers are on the same device, use the old GPU generation mode
-    while(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0):
-        breakmodel.gpu_blocks.pop()
-    if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, utils.num_layers(config))):
-        koboldai_vars.breakmodel = False
-        koboldai_vars.usegpu = True
-        koboldai_vars.gpu_device = len(breakmodel.gpu_blocks)-1
-        return
-
-    if(not breakmodel.gpu_blocks):
-        logger.warning("Nothing assigned to a GPU, reverting to CPU only mode")
-        import breakmodel
-        breakmodel.primary_device = "cpu"
-        koboldai_vars.breakmodel = False
-        koboldai_vars.usegpu = False
-        return
-
-def move_model_to_devices(model, use_4_bit=False):
-    global generator
-
-    if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
-        if(koboldai_vars.usegpu):
-            if not use_4_bit:
-                model = model.half().to(koboldai_vars.gpu_device)
-            else:
-                model = model.to(koboldai_vars.gpu_device)
-        else:
-            if not use_4_bit:
-                model = model.to('cpu').float()
-            else:
-                model = model.to('cpu')
-        generator = model.generate
-        return
-
-    import breakmodel
-
-    if(utils.HAS_ACCELERATE):
-        import accelerate.utils
-        for key, value in model.state_dict().items():
-            target_dtype = torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
-            if(value.dtype is not target_dtype):
-                accelerate.utils.set_module_tensor_to_device(model, key, torch.device(value.device), value, target_dtype)
-        disk_blocks = breakmodel.disk_blocks
-        gpu_blocks = breakmodel.gpu_blocks
-        ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
-        cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-        device_map = {}
-        for name in utils.layers_module_names:
-            layer = int(name.rsplit(".", 1)[1])
-            device = ("disk" if layer < disk_blocks else "cpu") if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
-            device_map[name] = device
-        for name in utils.get_missing_module_names(model, list(device_map.keys())):
-            device_map[name] = breakmodel.primary_device
-        breakmodel.dispatch_model_ex(model, device_map, main_device=breakmodel.primary_device, offload_buffers=True, offload_dir="accelerate-disk-cache")
-        gc.collect()
-        generator = model.generate
-        return
-
-    if not use_4_bit:
-        model.half()
-    gc.collect()
-
-    if(hasattr(model, "transformer")):
-        model.transformer.wte.to(breakmodel.primary_device)
-        model.transformer.ln_f.to(breakmodel.primary_device)
-        if(hasattr(model, 'lm_head')):
-            model.lm_head.to(breakmodel.primary_device)
-        if(hasattr(model.transformer, 'wpe')):
-            model.transformer.wpe.to(breakmodel.primary_device)
-    elif(not hasattr(model.model, "decoder")):
-        model.model.embed_tokens.to(breakmodel.primary_device)
-        model.model.layer_norm.to(breakmodel.primary_device)
-        model.lm_head.to(breakmodel.primary_device)
-        model.model.embed_positions.to(breakmodel.primary_device)
-    else:
-        model.model.decoder.embed_tokens.to(breakmodel.primary_device)
-        if(model.model.decoder.project_in is not None):
-            model.model.decoder.project_in.to(breakmodel.primary_device)
-        if(model.model.decoder.project_out is not None):
-            model.model.decoder.project_out.to(breakmodel.primary_device)
-        model.model.decoder.embed_positions.to(breakmodel.primary_device)
-    gc.collect()
-    GPTNeoModel.forward = breakmodel.new_forward_neo
-    if("GPTJModel" in globals()):
-        GPTJModel.forward = breakmodel.new_forward_neo # type: ignore
-    if("XGLMModel" in globals()):
-        XGLMModel.forward = breakmodel.new_forward_xglm # type: ignore
-    if("OPTDecoder" in globals()):
-        OPTDecoder.forward = breakmodel.new_forward_opt # type: ignore
-    generator = model.generate
-    if(hasattr(model, "transformer")):
-        breakmodel.move_hidden_layers(model.transformer)
-    elif(not hasattr(model.model, "decoder")):
-        breakmodel.move_hidden_layers(model.model, model.model.layers)
-    else:
-        breakmodel.move_hidden_layers(model.model.decoder, model.model.decoder.layers)
-
-#==================================================================#
 #  Allow the models to override some settings
 #==================================================================#
 def loadmodelsettings():
     try:
-        js   = json.loads(str(model_config).partition(' ')[2])
+        js   = json.loads(str(model.model_config).partition(' ')[2])
     except Exception as e:
         try:
             try:
@@ -1275,6 +1077,7 @@ def loadmodelsettings():
         koboldai_vars.setauthornotetemplate = js["antemplate"]
         if(not koboldai_vars.gamestarted):
             koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
+
 
 #==================================================================#
 #  Take settings from koboldai_vars and write them to client settings file
@@ -1372,6 +1175,8 @@ def processsettings(js):
         koboldai_vars.nogenmod = js["nogenmod"]
     if("fulldeterminism" in js):
         koboldai_vars.full_determinism = js["fulldeterminism"]
+    if("stop_sequence" in js):
+        koboldai_vars.stop_sequence = js["stop_sequence"]
     if("autosave" in js):
         koboldai_vars.autosave = js["autosave"]
     if("newlinemode" in js):
@@ -1703,26 +1508,6 @@ def general_startup(override_args=None):
 # Load Model
 #==================================================================# 
 
-def tpumtjgetsofttokens():
-    soft_tokens = None
-    if(koboldai_vars.sp is None):
-        tensor = np.zeros((1, tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])), dtype=np.float32)
-        rows = tensor.shape[0]
-        padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
-        tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
-        tensor = tensor.reshape(
-            tpu_mtj_backend.params["cores_per_replica"],
-            -1,
-            tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]),
-        )
-        koboldai_vars.sp = tpu_mtj_backend.shard_xmap(tensor)
-    soft_tokens = np.arange(
-        tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"],
-        tpu_mtj_backend.params["n_vocab"] + tpu_mtj_backend.params["n_vocab_padding"] + koboldai_vars.sp_length,
-        dtype=np.uint32
-    )
-    return soft_tokens
-
 @socketio.on("get_model_info")
 def get_model_info(model, directory=""):
     logger.info("Selected: {}, {}".format(model, directory))
@@ -1758,7 +1543,7 @@ def get_model_info(model, directory=""):
         url = koboldai_vars.horde_url
         if key_value:
             send_horde_models = True
-    elif model in [x[1] for x in model_menu['apilist']]:
+    elif model in [x.name for x in model_menu['apilist']]:
         show_online_model_select=True
         if path.exists("settings/{}.v2_settings".format(model)):
             with open("settings/{}.v2_settings".format(model), "r") as file:
@@ -1777,14 +1562,12 @@ def get_model_info(model, directory=""):
                     print(":(")
                     pass
         key = True
-    elif model.startswith("RWKV"):
+    elif "rwkv" in model.lower():
         pass
     elif model == 'ReadOnly':
         pass
     #elif model == 'customhuggingface':
     #    show_custom_model_box = True
-    elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
-        pass
     elif args.cpu:
         pass
     else:
@@ -1811,21 +1594,20 @@ def get_model_info(model, directory=""):
             break_values += [0] * (gpu_count - len(break_values))
     emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 'multi_online_models': multi_online_models, 'default_url': default_url, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
-                         'disk_break_value': disk_blocks, 'accelerate': utils.HAS_ACCELERATE,
+                         'disk_break_value': disk_blocks, 'accelerate': True,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url,
                          'show_custom_model_box': show_custom_model_box}, broadcast=True, room="UI_1")
     emit('selected_model_info', {'key_value': key_value, 'key':key, 
                          'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
-                         'disk_break_value': disk_blocks, 'disk_break': utils.HAS_ACCELERATE,
+                         'disk_break_value': disk_blocks, 'disk_break': True,
                          'break_values': break_values, 'gpu_count': gpu_count,
                          'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
                          'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
-                         'bit_4_available': koboldai_vars.bit_4_available,
                          'show_custom_model_box': show_custom_model_box})
     if send_horde_models:
         get_cluster_models({'key': key_value, 'url': default_url})
-    elif key_value != "" and model in [x[1] for x in model_menu['apilist']] and model != 'CLUSTER':
+    elif key_value != "" and model in [x.name for x in model_menu['apilist']] and model != 'CLUSTER':
         get_oai_models(key_value)
     
     
@@ -1839,7 +1621,7 @@ def get_layer_count(model, directory=""):
         else:
             if(directory):
                 model = directory
-            from transformers import AutoConfig
+            from hf_bleeding_edge import AutoConfig
             if(os.path.isdir(model.replace('/', '_'))):
                 model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
             elif(is_model_downloaded(model)):
@@ -1851,7 +1633,7 @@ def get_layer_count(model, directory=""):
             else:
                 model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
         try:
-            if ((utils.HAS_ACCELERATE and model_config.model_type != 'gpt2') or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
+            if (model_config.model_type != 'gpt2' or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
                 return utils.num_layers(model_config)
             else:
                 return None
@@ -1926,7 +1708,6 @@ def get_oai_models(data):
 @socketio.on("get_cluster_models")
 def get_cluster_models(msg):
     koboldai_vars.horde_api_key = msg['key'] or koboldai_vars.horde_api_key
-    model='CLUSTER'
     url = msg['url'] or koboldai_vars.horde_url
     koboldai_vars.horde_url = url
     # Get list of models from public cluster
@@ -1963,700 +1744,6 @@ def get_cluster_models(msg):
     emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
 
 
-# Function to patch transformers to use our soft prompt
-def patch_causallm(model):
-    from torch.nn import Embedding
-    if(getattr(Embedding, "_koboldai_patch_causallm_model", None)):
-        Embedding._koboldai_patch_causallm_model = model
-        return model
-    old_embedding_call = Embedding.__call__
-    def new_embedding_call(self, input_ids, *args, **kwargs):
-        if(Embedding._koboldai_patch_causallm_model.get_input_embeddings() is not self):
-            return old_embedding_call(self, input_ids, *args, **kwargs)
-        assert input_ids is not None
-        if(koboldai_vars.sp is not None):
-            shifted_input_ids = input_ids - model.config.vocab_size
-        input_ids.clamp_(max=model.config.vocab_size-1)
-        inputs_embeds = old_embedding_call(self, input_ids, *args, **kwargs)
-        if(koboldai_vars.sp is not None):
-            koboldai_vars.sp = koboldai_vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
-            inputs_embeds = torch.where(
-                (shifted_input_ids >= 0)[..., None],
-                koboldai_vars.sp[shifted_input_ids.clamp(min=0)],
-                inputs_embeds,
-            )
-        return inputs_embeds
-    Embedding.__call__ = new_embedding_call
-    Embedding._koboldai_patch_causallm_model = model
-    return model
-
-def patch_transformers_download():
-    global transformers
-    import copy, requests, tqdm, time
-    class Send_to_socketio(object):
-        def write(self, bar):
-            bar = bar.replace("\r", "").replace("\n", "")
-            
-            if bar != "" and [ord(num) for num in bar] != [27, 91, 65]: #No idea why we're getting the 27, 1, 65 character set, just killing to so we can move on
-                try:
-                    print('\r' + bar, end='')
-                    socketio.emit('from_server', {'cmd': 'model_load_status', 'data': bar.replace(" ", "&nbsp;")}, broadcast=True, room="UI_1")
-                    eventlet.sleep(seconds=0)
-                except:
-                    pass
-        def flush(self):
-            pass
-    
-    def http_get(
-        url: str,
-        temp_file,
-        proxies=None,
-        resume_size=0,
-        headers=None,
-        file_name=None,
-    ):
-        """
-        Download remote file. Do not gobble up errors.
-        """
-        headers = copy.deepcopy(headers)
-        if resume_size > 0:
-            headers["Range"] = f"bytes={resume_size}-"
-        r = requests.get(url, stream=True, proxies=proxies, headers=headers)
-        transformers.utils.hub._raise_for_status(r)
-        content_length = r.headers.get("Content-Length")
-        total = resume_size + int(content_length) if content_length is not None else None
-        # `tqdm` behavior is determined by `utils.logging.is_progress_bar_enabled()`
-        # and can be set using `utils.logging.enable/disable_progress_bar()`
-        if url[-11:] != 'config.json':
-            progress = tqdm.tqdm(
-                unit="B",
-                unit_scale=True,
-                unit_divisor=1024,
-                total=total,
-                initial=resume_size,
-                desc=f"Downloading {file_name}" if file_name is not None else "Downloading",
-                file=Send_to_socketio(),
-            )
-            koboldai_vars.status_message = "Download Model"
-            koboldai_vars.total_download_chunks = total
-        for chunk in r.iter_content(chunk_size=1024):
-            if chunk:  # filter out keep-alive new chunks
-                if url[-11:] != 'config.json':
-                    progress.update(len(chunk))
-                    koboldai_vars.downloaded_chunks += len(chunk)
-                temp_file.write(chunk)
-        if url[-11:] != 'config.json':
-            progress.close()
-        
-        koboldai_vars.status_message = ""
-            
-    # def http_get(
-        # url: str,
-        # temp_file: BinaryIO,
-        # *,
-        # proxies=None,
-        # resume_size=0,
-        # headers: Optional[Dict[str, str]] = None,
-        # timeout=10.0,
-        # max_retries=0,
-    # ):
-        # """
-        # Donwload a remote file. Do not gobble up errors, and will return errors tailored to the Hugging Face Hub.
-        # """
-        # headers = copy.deepcopy(headers)
-        # if resume_size > 0:
-            # headers["Range"] = "bytes=%d-" % (resume_size,)
-        # r = _request_wrapper(
-            # method="GET",
-            # url=url,
-            # stream=True,
-            # proxies=proxies,
-            # headers=headers,
-            # timeout=timeout,
-            # max_retries=max_retries,
-        # )
-        # hf_raise_for_status(r)
-        # content_length = r.headers.get("Content-Length")
-        # total = resume_size + int(content_length) if content_length is not None else None
-        # progress = tqdm(
-            # unit="B",
-            # unit_scale=True,
-            # total=total,
-            # initial=resume_size,
-            # desc="Downloading",
-            # file=Send_to_socketio(),
-            # disable=bool(logger.getEffectiveLevel() == logging.NOTSET),
-        # )
-        # for chunk in r.iter_content(chunk_size=1024):
-            # if chunk:  # filter out keep-alive new chunks
-                # progress.update(len(chunk))
-                # temp_file.write(chunk)
-        # progress.close()
-
-    transformers.utils.hub.http_get = http_get
-    
-
-def patch_transformers():
-    global transformers
-    
-    patch_transformers_download()
-    
-    old_from_pretrained = PreTrainedModel.from_pretrained.__func__
-    @classmethod
-    def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
-        koboldai_vars.fp32_model = False
-        utils.num_shards = None
-        utils.current_shard = 0
-        utils.from_pretrained_model_name = pretrained_model_name_or_path
-        utils.from_pretrained_index_filename = None
-        utils.from_pretrained_kwargs = kwargs
-        utils.bar = None
-        if not args.no_aria2:
-            utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
-        return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-    if(not hasattr(PreTrainedModel, "_kai_patched")):
-        PreTrainedModel.from_pretrained = new_from_pretrained
-        PreTrainedModel._kai_patched = True
-    if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
-        old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
-        def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
-            utils.num_shards = utils.get_num_shards(index_filename)
-            utils.from_pretrained_index_filename = index_filename
-            return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
-        modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
-        
-    # Some versions of transformers 4.17.0.dev0 are affected by
-    # https://github.com/huggingface/transformers/issues/15736
-    # This is a workaround for those versions of transformers.
-    if(transformers_version == "4.17.0.dev0"):
-        try:
-            from transformers.models.xglm.modeling_xglm import XGLMSinusoidalPositionalEmbedding
-        except ImportError:
-            pass
-        else:
-            @torch.no_grad()
-            def new_forward(self, input_ids: torch.Tensor = None, inputs_embeds: torch.Tensor = None, past_key_values_length: int = 0):
-                bsz, seq_len = inputs_embeds.size()[:-1]
-                input_shape = inputs_embeds.size()[:-1]
-                sequence_length = input_shape[1]
-                position_ids = torch.arange(
-                    past_key_values_length + self.padding_idx + 1, past_key_values_length + sequence_length + self.padding_idx + 1, dtype=torch.long, device=inputs_embeds.device
-                ).unsqueeze(0).expand(input_shape).contiguous()
-                max_pos = self.padding_idx + 1 + seq_len + past_key_values_length
-                if max_pos > self.weights.size(0):
-                    self.make_weights(max_pos + self.offset, self.embedding_dim, self.padding_idx)
-                return self.weights.index_select(0, position_ids.view(-1)).view(bsz, seq_len, -1).detach()
-            XGLMSinusoidalPositionalEmbedding.forward = new_forward
-
-
-    # Fix a bug in OPTForCausalLM where self.lm_head is the wrong size
-    if(packaging.version.parse("4.19.0.dev0") <= packaging.version.parse(transformers_version) < packaging.version.parse("4.20.0")):
-        try:
-            from transformers import OPTForCausalLM, OPTModel
-        except ImportError:
-            pass
-        else:
-            # This is the same as the original __init__ but with
-            # config.hidden_size
-            # replaced with
-            # config.word_embed_proj_dim
-            def new_init(self, config):
-                super(OPTForCausalLM, self).__init__(config)
-                self.model = OPTModel(config)
-                self.lm_head = torch.nn.Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
-                self.post_init()
-            OPTForCausalLM.__init__ = new_init
-
-
-    # Patch transformers to use our custom logit warpers
-    from transformers import LogitsProcessorList, LogitsWarper, LogitsProcessor, TopKLogitsWarper, TopPLogitsWarper, TemperatureLogitsWarper, RepetitionPenaltyLogitsProcessor
-    from warpers import AdvancedRepetitionPenaltyLogitsProcessor, TailFreeLogitsWarper, TypicalLogitsWarper, TopALogitsWarper
-
-    def dynamic_processor_wrap(cls, field_name, var_name, cond=None):
-        old_call = cls.__call__
-        def new_call(self, *args, **kwargs):
-            if(not isinstance(field_name, str) and isinstance(field_name, Iterable)):
-                conds = []
-                for f, v in zip(field_name, var_name):
-                    conds.append(getattr(koboldai_vars, v))
-                    setattr(self, f, conds[-1])
-            else:
-                conds = getattr(koboldai_vars, var_name)
-                setattr(self, field_name, conds)
-            assert len(args) == 2
-            if(cond is None or cond(conds)):
-                return old_call(self, *args, **kwargs)
-            return args[1]
-        cls.__call__ = new_call
-    dynamic_processor_wrap(AdvancedRepetitionPenaltyLogitsProcessor, ("penalty", "penalty_slope", "penalty_range", "use_alt_rep_pen"), ("rep_pen", "rep_pen_slope", "rep_pen_range", "use_alt_rep_pen"), cond=lambda x: x[0] != 1.0)
-    dynamic_processor_wrap(TopKLogitsWarper, "top_k", "top_k", cond=lambda x: x > 0)
-    dynamic_processor_wrap(TopALogitsWarper, "top_a", "top_a", cond=lambda x: x > 0.0)
-    dynamic_processor_wrap(TopPLogitsWarper, "top_p", "top_p", cond=lambda x: x < 1.0)
-    dynamic_processor_wrap(TailFreeLogitsWarper, "tfs", "tfs", cond=lambda x: x < 1.0)
-    dynamic_processor_wrap(TypicalLogitsWarper, "typical", "typical", cond=lambda x: x < 1.0)
-    dynamic_processor_wrap(TemperatureLogitsWarper, "temperature", "temp", cond=lambda x: x != 1.0)
-
-    class PhraseBiasLogitsProcessor(LogitsProcessor):
-        def __init__(self):
-            pass
-
-        def _find_intersection(self, big: List, small: List) -> int:
-            """Find the maximum overlap between the beginning of small and the end of big.
-            Return the index of the token in small following the overlap, or 0.
-
-            big: The tokens in the context (as a tensor)
-            small: The tokens in the phrase to bias (as a list)
-
-            Both big and small are in "oldest to newest" order.
-            """
-            # There are asymptotically more efficient methods for determining the overlap,
-            # but typically there will be few (0-1) instances of small[0] in the last len(small)
-            # elements of big, plus small will typically be fairly short. So this naive
-            # approach is acceptable despite O(N^2) worst case performance.
-
-            num_small = len(small)
-            # The small list can only ever match against at most num_small tokens of big,
-            # so create a slice.  Typically, this slice will be as long as small, but it
-            # may be shorter if the story has just started.
-            # We need to convert the big slice to list, since natively big is a tensor
-            # and tensor and list don't ever compare equal.  It's better to convert here
-            # and then use native equality tests than to iterate repeatedly later.
-            big_slice = list(big[-num_small:])
-
-            # It's possible that the start token appears multiple times in small
-            # For example, consider the phrase:
-            # [ fair is foul, and foul is fair, hover through the fog and filthy air]
-            # If we merely look for the first instance of [ fair], then we would
-            # generate the following output:
-            # " fair is foul, and foul is fair is foul, and foul is fair..."
-            start = small[0]
-            for i, t in enumerate(big_slice):
-                # Strictly unnecessary, but it's marginally faster to test the first
-                # token before creating slices to test for a full match.
-                if t == start:
-                    remaining = len(big_slice) - i
-                    if big_slice[i:] == small[:remaining]:
-                        # We found a match.  If the small phrase has any remaining tokens
-                        # then return the index of the next token.
-                        if remaining < num_small:
-                            return remaining
-                        # In this case, the entire small phrase matched, so start over.
-                        return 0
-
-            # There were no matches, so just begin at the beginning.
-            return 0
-
-        def _allow_leftwards_tampering(self, phrase: str) -> bool:
-            """Determines if a phrase should be tampered with from the left in
-            the "soft" token encoding mode."""
-
-            if phrase[0] in [".", "?", "!", ";", ":", "\n"]:
-                return False
-            return True
-
-        def _get_token_sequence(self, phrase: str) -> List[List]:
-            """Convert the phrase string into a list of encoded biases, each
-            one being a list of tokens. How this is done is determined by the
-            phrase's format:
-
-            - If the phrase is surrounded by square brackets ([]), the tokens
-                will be the phrase split by commas (,). If a "token" isn't
-                actually a number, it will be skipped. NOTE: Tokens output by
-                this may not be in the model's vocabulary, and such tokens
-                should be ignored later in the pipeline.
-            - If the phrase is surrounded by curly brackets ({}), the phrase
-                will be directly encoded with no synonym biases and no fancy
-                tricks.
-            - Otherwise, the phrase will be encoded, with close deviations
-                being included as synonym biases.
-            """
-
-            # TODO: Cache these tokens, invalidate when model or bias is
-            # changed.
-
-            # Handle direct token id input
-            if phrase.startswith("[") and phrase.endswith("]"):
-                no_brackets = phrase[1:-1]
-                ret = []
-                for token_id in no_brackets.split(","):
-                    try:
-                        ret.append(int(token_id))
-                    except ValueError:
-                        # Ignore non-numbers. Rascals!
-                        pass
-                return [ret]
-
-            # Handle direct phrases
-            if phrase.startswith("{") and phrase.endswith("}"):
-                no_brackets = phrase[1:-1]
-                return [tokenizer.encode(no_brackets)]
-
-            # Handle untamperable phrases
-            if not self._allow_leftwards_tampering(phrase):
-                return [tokenizer.encode(phrase)]
-
-            # Handle slight alterations to original phrase
-            phrase = phrase.strip(" ")
-            ret = []
-
-            for alt_phrase in [phrase, f" {phrase}"]:
-                ret.append(tokenizer.encode(alt_phrase))
-
-            return ret
-
-        def _get_biased_tokens(self, input_ids: List) -> Dict:
-            # TODO: Different "bias slopes"?
-
-            ret = {}
-            for phrase, _bias in koboldai_vars.biases.items():
-                bias_score, completion_threshold = _bias
-                token_seqs = self._get_token_sequence(phrase)
-                variant_deltas = {}
-                for token_seq in token_seqs:
-                    bias_index = self._find_intersection(input_ids, token_seq)
-
-                    # Ensure completion after completion_threshold tokens
-                    # Only provide a positive bias when the base bias score is positive.
-                    if bias_score > 0 and bias_index + 1 > completion_threshold:
-                        bias_score = 999
-
-                    token_to_bias = token_seq[bias_index]
-                    variant_deltas[token_to_bias] = bias_score
-
-                # If multiple phrases bias the same token, add the modifiers
-                # together. This should NOT be applied to automatic variants
-                for token_to_bias, bias_score in variant_deltas.items():
-                    if token_to_bias in ret:
-                        ret[token_to_bias] += bias_score
-                    else:
-                        ret[token_to_bias] = bias_score
-            return ret
-
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-            assert scores.ndim == 2
-            assert input_ids.ndim == 2
-
-            scores_shape = scores.shape
-
-            for batch in range(scores_shape[0]):
-                for token, bias in self._get_biased_tokens(input_ids[batch]).items():
-                    scores[batch][token] += bias
-
-            return scores
-
-
-    class LuaLogitsProcessor(LogitsProcessor):
-
-        def __init__(self):
-            pass
-
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-            assert scores.ndim == 2
-            assert input_ids.ndim == 2
-            self.regeneration_required = False
-            self.halt = False
-
-            if(koboldai_vars.standalone):
-                return scores
-
-            scores_shape = scores.shape
-            scores_list = scores.tolist()
-            koboldai_vars.lua_koboldbridge.logits = koboldai_vars.lua_state.table()
-            for r, row in enumerate(scores_list):
-                koboldai_vars.lua_koboldbridge.logits[r+1] = koboldai_vars.lua_state.table(*row)
-            koboldai_vars.lua_koboldbridge.vocab_size = scores_shape[-1]
-
-            execute_genmod()
-
-            scores = torch.tensor(
-                tuple(tuple(row.values()) for row in koboldai_vars.lua_koboldbridge.logits.values()),
-                device=scores.device,
-                dtype=scores.dtype,
-            )
-            assert scores.shape == scores_shape
-
-            return scores
-
-    from torch.nn import functional as F
-
-    def visualize_probabilities(scores: torch.FloatTensor) -> None:
-        assert scores.ndim == 2
-
-        if koboldai_vars.numseqs > 1 or not koboldai_vars.show_probs:
-            return
-
-        if not koboldai_vars.show_probs:
-            return scores
-
-        option_offset = 0
-        if koboldai_vars.actions.action_count+1 in koboldai_vars.actions.actions:
-            for x in range(len(koboldai_vars.actions.actions[koboldai_vars.actions.action_count+1]['Options'])):
-                option = koboldai_vars.actions.actions[koboldai_vars.actions.action_count+1]['Options'][x]
-                if option['Pinned'] or option["Previous Selection"] or option["Edited"]:
-                    option_offset = x+1
-        batch_offset = int((koboldai_vars.generated_tkns-1) / koboldai_vars.genamt) if koboldai_vars.alt_multi_gen else 0
-        for batch_index, batch in enumerate(scores):
-            probs = F.softmax(batch, dim = -1).cpu().numpy()
-
-            token_prob_info = []
-            for token_id, score in sorted(enumerate(probs), key=lambda x: x[1], reverse=True)[:8]:
-                token_prob_info.append({
-                    "tokenId": token_id,
-                    "decoded": utils.decodenewlines(tokenizer.decode(token_id)),
-                    "score": float(score),
-                })
-
-
-            if koboldai_vars.numseqs == 1:
-                koboldai_vars.actions.set_probabilities(token_prob_info)
-            else:
-                koboldai_vars.actions.set_option_probabilities(token_prob_info, batch_index+option_offset+batch_offset)
-
-        return scores
-    
-    def new_get_logits_processor(*args, **kwargs) -> LogitsProcessorList:
-        processors = new_get_logits_processor.old_get_logits_processor(*args, **kwargs)
-        processors.insert(0, LuaLogitsProcessor())
-        processors.append(PhraseBiasLogitsProcessor())
-        return processors
-    use_core_manipulations.get_logits_processor =  new_get_logits_processor
-    new_get_logits_processor.old_get_logits_processor = transformers.GenerationMixin._get_logits_processor
-
-    class KoboldLogitsWarperList(LogitsProcessorList):
-        def __init__(self, beams: int = 1, **kwargs):
-            self.__warper_list: List[LogitsWarper] = []
-            self.__warper_list.append(TopKLogitsWarper(top_k=1, min_tokens_to_keep=1 + (beams > 1)))
-            self.__warper_list.append(TopALogitsWarper(top_a=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            self.__warper_list.append(TopPLogitsWarper(top_p=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            self.__warper_list.append(TailFreeLogitsWarper(tfs=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            self.__warper_list.append(TypicalLogitsWarper(typical=0.5, min_tokens_to_keep=1 + (beams > 1)))
-            self.__warper_list.append(TemperatureLogitsWarper(temperature=0.5))
-            self.__warper_list.append(AdvancedRepetitionPenaltyLogitsProcessor())
-
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, *args, **kwargs):
-            sampler_order = koboldai_vars.sampler_order[:]
-            if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
-                sampler_order = [6] + sampler_order
-            for k in sampler_order:
-                scores = self.__warper_list[k](input_ids, scores, *args, **kwargs)
-            visualize_probabilities(scores)
-            return scores
-
-    def new_get_logits_warper(beams: int = 1,) -> LogitsProcessorList:
-        return KoboldLogitsWarperList(beams=beams)
-    
-    def new_sample(self, *args, **kwargs):
-        assert kwargs.pop("logits_warper", None) is not None
-        kwargs["logits_warper"] = new_get_logits_warper(
-            beams=1,
-        )
-        if(koboldai_vars.newlinemode == "s") or (koboldai_vars.newlinemode == "ns"):
-            kwargs["eos_token_id"] = -1
-            kwargs.setdefault("pad_token_id", 2)
-        return new_sample.old_sample(self, *args, **kwargs)
-
-    new_sample.old_sample = transformers.GenerationMixin.sample
-    use_core_manipulations.sample = new_sample
-
-    # Allow bad words filter to ban <|endoftext|> token
-    import transformers.generation.logits_process
-    def new_init(self, bad_words_ids: List[List[int]], eos_token_id: int):
-        return new_init.old_init(self, bad_words_ids, -1)
-    new_init.old_init = transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__
-    transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
-
-    class TokenStreamer(StoppingCriteria):
-        # A StoppingCriteria is used here because it seems to run after
-        # everything has been evaluated score-wise. 
-        def __init__(self, tokenizer):
-            self.tokenizer = tokenizer
-
-        def __call__(
-            self,
-            input_ids: torch.LongTensor,
-            scores: torch.FloatTensor,
-            **kwargs,
-        ) -> bool:
-            if not koboldai_vars.inference_config.do_streaming:
-                return False
-
-            if not koboldai_vars.output_streaming:
-                return False
-                
-            data = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(x[-1])), no_sentence_trimming=True, no_single_line=True) for x in input_ids]
-            koboldai_vars.actions.stream_tokens(data)
-            return False
-    
-    class ChatModeStopper(StoppingCriteria):
-        # A StoppingCriteria is used here because it seems to run after
-        # everything has been evaluated score-wise. 
-        def __init__(self, tokenizer):
-            self.tokenizer = tokenizer
-
-        def __call__(
-            self,
-            input_ids: torch.LongTensor,
-            scores: torch.FloatTensor,
-            **kwargs,
-        ) -> bool:
-            
-            if not koboldai_vars.chatmode:
-                return False
-                
-            data = [tokenizer.decode(x) for x in input_ids]
-            null_character = tokenizer.encode(chr(0))[0]
-            if 'completed' not in self.__dict__:
-                self.completed = [False]*len(input_ids)
-            for i in range(len(input_ids)):
-                if data[i][-1*(len(koboldai_vars.chatname)+1):] == koboldai_vars.chatname + ":":
-                    self.completed[i] = True
-            if all(self.completed):
-                koboldai_vars.generated_tkns = koboldai_vars.genamt
-                del self.completed
-                return True
-            return False
-            
-    class SinglelineStopper(StoppingCriteria):
-        # If singleline mode is enabled, it's pointless to generate output beyond the first newline.
-        def __init__(self, tokenizer):
-            self.tokenizer = tokenizer
-
-        def __call__(
-                self,
-                input_ids: torch.LongTensor,
-                scores: torch.FloatTensor,
-                **kwargs,
-        ) -> bool:
-            if not koboldai_vars.singleline:
-                return False
-
-            data = [tokenizer.decode(x) for x in input_ids]
-            if 'completed' not in self.__dict__:
-                self.completed = [False]*len(input_ids)
-
-            for i in range(len(input_ids)):
-                if data[i][-1] == "\n":
-                    self.completed[i] = True
-
-            return self.completed[i]
-
-    class CoreStopper(StoppingCriteria):
-        # Controls core generation stuff; aborting, counting generated tokens, etc
-        def __init__(self):
-            self.regeneration_required = False
-            self.halt = False
-
-        def __call__(
-            self,
-            input_ids: torch.LongTensor,
-            scores: torch.FloatTensor,
-            **kwargs,
-        ) -> bool:
-            if not koboldai_vars.inference_config.do_core:
-                return False
-
-            koboldai_vars.generated_tkns += 1
-
-            if (
-                not koboldai_vars.standalone
-                and koboldai_vars.lua_koboldbridge.generated_cols
-                and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols
-            ):
-                raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
-
-            if (
-                koboldai_vars.abort
-                or (
-                    koboldai_vars.inference_config.stop_at_genamt
-                    and
-                    koboldai_vars.generated_tkns >= koboldai_vars.genamt
-                )
-            ):
-                koboldai_vars.abort = False
-                self.regeneration_required = False
-                self.halt = False
-                return True
-
-            if koboldai_vars.standalone:
-                return False
-
-            assert input_ids.ndim == 2
-
-            self.regeneration_required = koboldai_vars.lua_koboldbridge.regeneration_required
-            self.halt = not koboldai_vars.lua_koboldbridge.generating
-            koboldai_vars.lua_koboldbridge.regeneration_required = False
-
-            for i in range(koboldai_vars.numseqs) if not koboldai_vars.alt_multi_gen else range(1):
-                koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(input_ids[i, -1].item())
-
-            return self.regeneration_required or self.halt
-
-
-    # Sets up dynamic world info scanner
-    class DynamicWorldInfoScanCriteria(StoppingCriteria):
-        def __init__(
-            self,
-            tokenizer,
-            excluded_world_info: List[Set],
-        ):
-            self.tokenizer = tokenizer
-            self.excluded_world_info = excluded_world_info
-
-        def __call__(
-            self,
-            input_ids: torch.LongTensor,
-            scores: torch.FloatTensor,
-            **kwargs,
-        ) -> bool:
-
-            if not koboldai_vars.inference_config.do_dynamic_wi:
-                return False
-
-            if not koboldai_vars.dynamicscan:
-                return False
-
-            if len(self.excluded_world_info) != input_ids.shape[0]:
-                print(tokenizer.decode(self.excluded_world_info))
-                print(tokenizer.decode(input_ids.shape[0]))
-            assert len(self.excluded_world_info) == input_ids.shape[0]
-
-            tail = input_ids[..., -koboldai_vars.generated_tkns:]
-            for i, t in enumerate(tail):
-                decoded = utils.decodenewlines(tokenizer.decode(t))
-                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded, send_context=False)
-                found = list(set(found) - set(self.excluded_world_info[i]))
-                if len(found) != 0:
-                    print("Found: {}".format(found))
-                    show_error_notification(title="Triggered Dynamic World Info", text=found)
-                    model.core_stopper.regeneration_required = True
-                    return True
-            return False
-
-
-    old_get_stopping_criteria = transformers.GenerationMixin._get_stopping_criteria
-
-    def new_get_stopping_criteria(self, *args, **kwargs):
-        global tokenizer
-        stopping_criteria = old_get_stopping_criteria(self, *args, **kwargs)
-
-        self.core_stopper = CoreStopper()
-        self.kai_scanner = DynamicWorldInfoScanCriteria(
-            tokenizer=tokenizer,
-            excluded_world_info=self.kai_scanner_excluded_world_info,
-        )
-        token_streamer = TokenStreamer(tokenizer=tokenizer)
-
-        stopping_criteria.insert(0, ChatModeStopper(tokenizer=tokenizer))
-        stopping_criteria.insert(0, SinglelineStopper(tokenizer=tokenizer))
-        stopping_criteria.insert(0, self.kai_scanner)
-        token_streamer = TokenStreamer(tokenizer=tokenizer)
-        stopping_criteria.insert(0, token_streamer)
-        #This should be last
-        stopping_criteria.insert(0, self.core_stopper)
-        
-        return stopping_criteria
-    use_core_manipulations.get_stopping_criteria = new_get_stopping_criteria
-
 def reset_model_settings():
     koboldai_vars.reset_for_model_load()
     
@@ -2690,76 +1777,26 @@ def unload_model():
         
     #Reload our badwords
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
-
-
-def prepare_4bit_load(modelpath):
-    paths_4bit = ["4bit*.safetensors", "4bit*.pt"]
-    paths_4bit_old = ["4bit-old.pt", "4bit-old.safetensors"]
-    result = False
-    groupsize = -1
-    for p in paths_4bit:
-        p = os.path.join(modelpath, p)
-        val = [v for v in glob.glob(p) if "4bit-old" not in v]
-        if val:
-            result = val[0]
-            fname = Path(result).parts[-1]
-            g = re.findall("^(?:4bit)(?:-)(\d+)(?:g-?)", fname)
-            if g:
-                groupsize = int(g[0])
-            break
-
-    global monkey_patched_4bit
-
-    # Monkey-patch in old-format pt-file support
-    if not result:
-        print("4-bit file not found, falling back to old format.")
-        for p in paths_4bit_old:
-            p = os.path.join(modelpath, p)
-            if os.path.isfile(p):
-                result = p
-                break
-
-        if not result:
-            print("4-bit old-format file not found, loading failed.")
-            raise RuntimeError(f"4-bit load failed. PT-File not found.")
-
-        import llama, opt, gptneox, gptj, old_quant
-        llama.make_quant = old_quant.old_make_quant
-        opt.make_quant = old_quant.old_make_quant
-        gptneox.make_quant = old_quant.old_make_quant
-        gptj.make_quant = old_quant.old_make_quant
-        monkey_patched_4bit = True
-    elif monkey_patched_4bit:
-        # Undo monkey patch
-        print("Undoing 4-bit old format monkey patch")
-        import llama, opt, gptneox, gptj, quant
-        llama.make_quant = quant.make_quant
-        opt.make_quant = quant.make_quant
-        gptneox.make_quant = quant.make_quant
-        gptj.make_quant = quant.make_quant
-        monkey_patched_4bit = False
-
-    return result, groupsize
     
     
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False, use_4_bit=False):
+def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
     global model
-    global generator
-    global torch
-    global model_config
-    global GPT2Tokenizer
     global tokenizer
+    global model_config
+
     koboldai_vars.aibusy = True
     koboldai_vars.horde_share = False
-    if(initial_load):
+
+    if initial_load:
         use_breakmodel_args = True
+
     reset_model_settings()
-    if not utils.HAS_ACCELERATE:
-        disk_layers = None
     koboldai_vars.reset_model()
+
     koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
     if koboldai_vars.cluster_requested_models == [""]:
         koboldai_vars.cluster_requested_models = []
+
     koboldai_vars.noai = False
     if not use_breakmodel_args:
         set_aibusy(True)
@@ -2767,6 +1804,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
             #Have to add a sleep so the server will send the emit for some reason
             time.sleep(0.1)
+
     if gpu_layers is not None:
         args.breakmodel_gpulayers = gpu_layers
     elif use_breakmodel_args:
@@ -2788,17 +1826,18 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     else:
         koboldai_vars.online_model = online_model
         # Swap OAI Server if GooseAI was selected
-        if(koboldai_vars.model == "GooseAI"):
+        if koboldai_vars.model == "GooseAI":
             koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
             koboldai_vars.model = "OAI"
             koboldai_vars.configname = f"GooseAI_{online_model.replace('/', '_')}"
-        elif(koboldai_vars.model == "CLUSTER") and type(online_model) is list:
+        elif koboldai_vars.model == "CLUSTER" and isinstance(online_model, list):
                 if len(online_model) != 1:
                     koboldai_vars.configname = koboldai_vars.model
                 else:
                     koboldai_vars.configname = f"{koboldai_vars.model}_{online_model[0].replace('/', '_')}"
         else:
             koboldai_vars.configname = f"{koboldai_vars.model}_{online_model.replace('/', '_')}"
+
         if path.exists(get_config_filename()):
             changed=False
             with open(get_config_filename(), "r") as file:
@@ -2811,12 +1850,13 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 else:
                     changed=True
                     js['online_model'] = online_model
+
             if changed:
                 with open("settings/{}.v2_settings".format(koboldai_vars.model), "w") as file:
                     file.write(json.dumps(js, indent=3))
 
         # Swap OAI Server if GooseAI was selected
-        if(koboldai_vars.model == "GooseAI"):
+        if koboldai_vars.model == "GooseAI":
             koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
             koboldai_vars.model = "OAI"
             args.configname = "GooseAI" + "/" + online_model
@@ -2824,58 +1864,18 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             args.configname = koboldai_vars.model + "/" + online_model
         koboldai_vars.oaiurl = koboldai_vars.oaiengines + "/{0}/completions".format(online_model)
     
-    
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"] and not koboldai_vars.model.startswith("RWKV")):
-        koboldai_vars.allowsp = True
-        # Test for GPU support
-        
-        # Make model path the same as the model name to make this consistent with the other loading method if it isn't a known model type
-        # This code is not just a workaround for below, it is also used to make the behavior consistent with other loading methods - Henk717
-        if(not koboldai_vars.model in ["NeoCustom", "GPT2Custom"]):
-            koboldai_vars.custmodpth = koboldai_vars.model
-        elif(koboldai_vars.model == "NeoCustom"):
-            koboldai_vars.model = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
-
-        # Get the model_type from the config or assume a model type if it isn't present
-        from transformers import AutoConfig
-        if(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
-            try:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
-                koboldai_vars.model_type = model_config.model_type
-            except ValueError as e:
-                koboldai_vars.model_type = "not_found"
-        elif(os.path.isdir("models/{}".format(koboldai_vars.custmodpth.replace('/', '_')))):
-            try:
-                model_config = AutoConfig.from_pretrained("models/{}".format(koboldai_vars.custmodpth.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
-                koboldai_vars.model_type = model_config.model_type
-            except ValueError as e:
-                koboldai_vars.model_type = "not_found"
-        else:
-            try:
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                koboldai_vars.model_type = model_config.model_type
-            except ValueError as e:
-                koboldai_vars.model_type = "not_found"
-        if(koboldai_vars.model_type == "not_found" and koboldai_vars.model == "NeoCustom"):
-            koboldai_vars.model_type = "gpt_neo"
-        elif(koboldai_vars.model_type == "not_found" and koboldai_vars.model == "GPT2Custom"):
-            koboldai_vars.model_type = "gpt2"
-        elif(koboldai_vars.model_type == "not_found"):
-            logger.warning("No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
-            koboldai_vars.model_type = "gpt_neo"
-
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
-        loadmodelsettings()
-        loadsettings()
+        # loadmodelsettings()
+        # loadsettings()
         logger.init("GPU support", status="Searching")
         koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
-        koboldai_vars.bmsupported = ((utils.HAS_ACCELERATE and koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
+        koboldai_vars.bmsupported = ((koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
             logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
         if(args.breakmodel_layers is not None):
             logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
-        if(args.model and koboldai_vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not utils.HAS_ACCELERATE or not args.breakmodel_disklayers)):
+        if(args.model and koboldai_vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not args.breakmodel_disklayers)):
             logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
             koboldai_vars.bmsupported = False
         if(not koboldai_vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
@@ -2902,634 +1902,104 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
 
     # Ask for API key if InferKit was selected
-    if(koboldai_vars.model == "InferKit"):
+    if koboldai_vars.model == "InferKit":
         koboldai_vars.apikey = koboldai_vars.oaiapikey
                     
     # Swap OAI Server if GooseAI was selected
-    if(koboldai_vars.model == "GooseAI"):
+    if koboldai_vars.model == "GooseAI":
         koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
         koboldai_vars.model = "OAI"
         koboldai_vars.configname = "GooseAI"
 
     # Ask for API key if OpenAI was selected
-    if(koboldai_vars.model == "OAI"):
-        if not koboldai_vars.configname:
-            koboldai_vars.configname = "OAI"
+    if koboldai_vars.model == "OAI" and not koboldai_vars.configname:
+        koboldai_vars.configname = "OAI"
         
-    if(koboldai_vars.model == "ReadOnly"):
+    if koboldai_vars.model == "ReadOnly":
         koboldai_vars.noai = True
 
-    # Start transformers and create pipeline
-    if koboldai_vars.model.startswith("RWKV"):
-        _, model_class, device = koboldai_vars.model.split("-")
-        model, tokenizer = rwkv_init(
-            model_class=model_class,
-            use_gpu=(device == "GPU")
-        )
-
-        global breakmodel
-        import breakmodel
+    # TODO: InferKit
+    if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
+        pass
     elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
-        # If we're running Colab or OAI, we still need a tokenizer.
-        if koboldai_vars.model == "API":
-            tokenizer_id = requests.get(
-                koboldai_vars.colaburl[:-8] + "/api/v1/model",
-            ).json()["result"]
-        else:
-            tokenizer_id = {
-                "Colab": "EleutherAI/gpt-neo-2.7B",
-                "CLUSTER": koboldai_vars.cluster_requested_models[0] if len(koboldai_vars.cluster_requested_models) > 0 else "gpt2",
-                "OAI": "gpt2",
-            }[koboldai_vars.model]
-        
-        # TODO: This should probably be a bit more robust of a check.
-        koboldai_vars.newlinemode = "n"
-        if "xglm" in tokenizer_id:
-            # Default to </s> newline mode if using XGLM
-            koboldai_vars.newlinemode = "s"
-        if "opt" in tokenizer_id or "bloom" in tokenizer_id:
-            # Handle </s> but don't convert newlines if using Fairseq models that have newlines trained in them
-            koboldai_vars.newlinemode = "ns"
-        
-        print(tokenizer_id, koboldai_vars.newlinemode)
-
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_id, revision=koboldai_vars.revision, cache_dir="cache")
-
-        loadsettings()
         koboldai_vars.colaburl = url or koboldai_vars.colaburl
         koboldai_vars.usegpu = False
         koboldai_vars.breakmodel = False
-    elif (not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
-        if(not koboldai_vars.noai):
-            logger.init("Transformers", status='Starting')
-            for m in ("GPTJModel", "XGLMModel"):
-                try:
-                    globals()[m] = getattr(__import__("transformers"), m)
-                except:
-                    pass
 
-            # Lazy loader
-            import torch_lazy_loader
-            def get_lazy_load_callback(n_layers, convert_to_float16=True):
-                if not koboldai_vars.lazy_load:
-                    return
+        if koboldai_vars.model == "Colab":
+            from modeling.inference_models.basic_api import BasicAPIInferenceModel
+            model = BasicAPIInferenceModel()
+        elif koboldai_vars.model == "API":
+            from modeling.inference_models.api import APIInferenceModel
+            model = APIInferenceModel(koboldai_vars.colaburl.replace("/request", ""))
+        elif koboldai_vars.model == "CLUSTER":
+            from modeling.inference_models.horde import HordeInferenceModel
+            model = HordeInferenceModel()
+        elif koboldai_vars.model == "OAI":
+            from modeling.inference_models.openai import OpenAIAPIInferenceModel
+            model = OpenAIAPIInferenceModel()
 
-                from tqdm.auto import tqdm
+        model.load(initial_load=initial_load)
+    # TODO: This check sucks, make a model object or somethign
+    elif "rwkv" in koboldai_vars.model:
+        if koboldai_vars.use_colab_tpu:
+            raise RuntimeError("RWKV is not supported on the TPU.")
+        from modeling.inference_models.rwkv import RWKVInferenceModel
+        model = RWKVInferenceModel(koboldai_vars.model)
+        model.load()
+    elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
+        # HF Torch
+        logger.init("Transformers", status='Starting')
+        for m in ("GPTJModel", "XGLMModel"):
+            try:
+                globals()[m] = getattr(__import__("transformers"), m)
+            except:
+                pass
 
-                global breakmodel
-                import breakmodel
+        # Run generic HF model load_config first to check what model it is
+        from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
+        model = GenericHFTorchInferenceModel(
+            koboldai_vars.model,
+            lazy_load=koboldai_vars.lazy_load,
+            low_mem=args.lowmem
+        )
+        model.load_config()
 
-                if utils.HAS_ACCELERATE:
-                    import accelerate.utils
+        load_model_gptq_settings()
 
-                if args.breakmodel_disklayers is not None:
-                    breakmodel.disk_blocks = args.breakmodel_disklayers
+        if koboldai_vars.gptq_model:
+            if not koboldai_vars.bit_4_available:
+                raise RuntimeError("4-bit not available")
 
-                disk_blocks = breakmodel.disk_blocks
-                gpu_blocks = breakmodel.gpu_blocks
-                ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
-                cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-
-                def lazy_load_callback(model_dict: Dict[str, Union[torch_lazy_loader.LazyTensor, torch.Tensor]], f, **_):
-                    if lazy_load_callback.nested:
-                        return
-                    lazy_load_callback.nested = True
-
-                    device_map: Dict[str, Union[str, int]] = {}
-
-                    @functools.lru_cache(maxsize=None)
-                    def get_original_key(key):
-                        try:
-                            return max((original_key for original_key in utils.module_names if original_key.endswith(key)), key=len)
-                        except ValueError:
-                            return key
-
-                    for key, value in model_dict.items():
-                        original_key = get_original_key(key)
-                        if isinstance(value, torch_lazy_loader.LazyTensor) and not any(original_key.startswith(n) for n in utils.layers_module_names):
-                            device_map[key] = koboldai_vars.gpu_device if koboldai_vars.hascuda and koboldai_vars.usegpu else "cpu" if not koboldai_vars.hascuda or not koboldai_vars.breakmodel else breakmodel.primary_device
-                        else:
-                            layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
-                            device = koboldai_vars.gpu_device if koboldai_vars.hascuda and koboldai_vars.usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not koboldai_vars.hascuda or not koboldai_vars.breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
-                            device_map[key] = device
-
-                    if utils.num_shards is None or utils.current_shard == 0:
-                        utils.offload_index = {}
-                        if utils.HAS_ACCELERATE:
-                            if os.path.isdir("accelerate-disk-cache"):
-                                # Delete all of the files in the disk cache folder without deleting the folder itself to allow people to create symbolic links for this folder
-                                # (the folder doesn't contain any subfolders so os.remove will do just fine)
-                                for filename in os.listdir("accelerate-disk-cache"):
-                                    try:
-                                        os.remove(os.path.join("accelerate-disk-cache", filename))
-                                    except OSError:
-                                        pass
-                            os.makedirs("accelerate-disk-cache", exist_ok=True)
-                        if utils.num_shards is not None:
-                            num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
-                        else:
-                            num_tensors = len(device_map)
-                        print(flush=True)
-                        koboldai_vars.status_message = "Loading model"
-                        koboldai_vars.total_layers = num_tensors
-                        koboldai_vars.loaded_layers = 0
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=Send_to_socketio(), position=1)
-
-                    with zipfile.ZipFile(f, "r") as z:
-                        try:
-                            last_storage_key = None
-                            zipfolder = os.path.basename(os.path.normpath(f)).split('.')[0]
-                            f = None
-                            current_offset = 0
-                            able_to_pin_layers = True
-                            if utils.num_shards is not None:
-                                utils.current_shard += 1
-                            for key in sorted(device_map.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
-                                storage_key = model_dict[key].key
-                                if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
-                                    last_storage_key = storage_key
-                                    if isinstance(f, zipfile.ZipExtFile):
-                                        f.close()
-                                    try:
-                                        f = z.open(f"archive/data/{storage_key}")
-                                    except:
-                                        ziproot = z.namelist()[0].split("/")[0]
-                                        f = z.open(f"{ziproot}/data/{storage_key}")
-                                    current_offset = 0
-                                if current_offset != model_dict[key].seek_offset:
-                                    f.read(model_dict[key].seek_offset - current_offset)
-                                    current_offset = model_dict[key].seek_offset
-                                device = device_map[key]
-                                size = functools.reduce(lambda x, y: x * y, model_dict[key].shape, 1)
-                                dtype = model_dict[key].dtype
-                                nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
-                                #print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
-                                model_dict[key] = model_dict[key].materialize(f, map_location="cpu")
-                                if model_dict[key].dtype is torch.float32:
-                                    koboldai_vars.fp32_model = True
-                                if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu) and model_dict[key].dtype is torch.float32:
-                                    model_dict[key] = model_dict[key].to(torch.float16)
-                                if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel and model_dict[key].dtype is torch.float16):
-                                    model_dict[key] = model_dict[key].to(torch.float32)
-                                if device == "shared":
-                                    model_dict[key] = model_dict[key].to("cpu").detach_()
-                                    if able_to_pin_layers and utils.HAS_ACCELERATE:
-                                        try:
-                                            model_dict[key] = model_dict[key].pin_memory()
-                                        except:
-                                            able_to_pin_layers = False
-                                elif device == "disk":
-                                    accelerate.utils.offload_weight(model_dict[key], get_original_key(key), "accelerate-disk-cache", index=utils.offload_index)
-                                    model_dict[key] = model_dict[key].to("meta")
-                                else:
-                                    model_dict[key] = model_dict[key].to(device)
-                                #print("OK", flush=True)
-                                current_offset += nbytes
-                                utils.bar.update(1)
-                                koboldai_vars.loaded_layers += 1
-                        finally:
-                            if utils.num_shards is None or utils.current_shard >= utils.num_shards:
-                                if utils.offload_index:
-                                    for name, tensor in utils.named_buffers:
-                                        dtype = tensor.dtype
-                                        if convert_to_float16 and breakmodel.primary_device != "cpu" and koboldai_vars.hascuda and (koboldai_vars.breakmodel or koboldai_vars.usegpu):
-                                            dtype = torch.float16
-                                        if breakmodel.primary_device == "cpu" or (not koboldai_vars.usegpu and not koboldai_vars.breakmodel):
-                                            dtype = torch.float32
-                                        if name in model_dict and model_dict[name].dtype is not dtype:
-                                            model_dict[name] = model_dict[name].to(dtype)
-                                        if tensor.dtype is not dtype:
-                                            tensor = tensor.to(dtype)
-                                        if name not in utils.offload_index:
-                                            accelerate.utils.offload_weight(tensor, name, "accelerate-disk-cache", index=utils.offload_index)
-                                    accelerate.utils.save_offload_index(utils.offload_index, "accelerate-disk-cache")
-                                utils.bar.close()
-                                utils.bar = None
-                                koboldai_vars.status_message = ""
-                            lazy_load_callback.nested = False
-                            if isinstance(f, zipfile.ZipExtFile):
-                                f.close()
-
-                lazy_load_callback.nested = False
-                return lazy_load_callback
-
-
-            def maybe_low_cpu_mem_usage() -> Dict[str, Any]:
-                if(packaging.version.parse(transformers_version) < packaging.version.parse("4.11.0")):
-                    logger.warning(f"Please upgrade to transformers 4.11.0 for lower RAM usage. You have transformers {transformers_version}.")
-                    return {}
-                return {"low_cpu_mem_usage": True}
-            
-            @contextlib.contextmanager
-            def maybe_use_float16(always_use=False):
-                if(always_use or (koboldai_vars.hascuda and args.lowmem and (koboldai_vars.usegpu or koboldai_vars.breakmodel))):
-                    original_dtype = torch.get_default_dtype()
-                    torch.set_default_dtype(torch.float16)
-                    yield True
-                    torch.set_default_dtype(original_dtype)
-                else:
-                    yield False
-
-            # If custom GPT2 model was chosen
-            if(koboldai_vars.model_type == "gpt2"):
-                koboldai_vars.lazy_load = False
-                if os.path.exists(koboldai_vars.custmodpth):
-                    model_config = json.load(open(koboldai_vars.custmodpth + "/config.json", "r"))
-                elif os.path.exists(os.path.join("models/", koboldai_vars.custmodpth)):
-                    config_path = os.path.join("models/", koboldai_vars.custmodpth)
-                    config_path = os.path.join(config_path, "config.json").replace("\\", "//")
-                    model_config = json.load(open(config_path, "r"))
-                with(maybe_use_float16()):
-                    try:
-                        if os.path.exists(koboldai_vars.custmodpth):
-                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                        elif os.path.exists(os.path.join("models/", koboldai_vars.custmodpth)):
-                            model = GPT2LMHeadModel.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=koboldai_vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(os.path.join("models/", koboldai_vars.custmodpth), revision=koboldai_vars.revision, cache_dir="cache")
-                        else:
-                            model = GPT2LMHeadModel.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                            tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                    except Exception as e:
-                        if("out of memory" in traceback.format_exc().lower()):
-                            raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                        raise e
-                tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
-                tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
-                koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                # Is CUDA available? If so, use GPU, otherwise fall back to CPU
-                if(koboldai_vars.hascuda and koboldai_vars.usegpu):
-                    if not use_4_bit:
-                        model = model.half().to(koboldai_vars.gpu_device)
-                    else:
-                        model = model.to(koboldai_vars.gpu_device)
-                    generator = model.generate
-                else:
-                    if not use_4_bit:
-                        model = model.to('cpu').float()
-                    else:
-                        model = model.to('cpu')
-                    generator = model.generate
-                patch_causallm(model)
-            # Use the Generic implementation
-            else:
-                lowmem = maybe_low_cpu_mem_usage()
-                # We must disable low_cpu_mem_usage (by setting lowmem to {}) if
-                # using a GPT-2 model because GPT-2 is not compatible with this
-                # feature yet
-                if(koboldai_vars.model_type == "gpt2"):
-                    lowmem = {}
-                    koboldai_vars.lazy_load = False  # Also, lazy loader doesn't support GPT-2 models
-
-                try:
-                    gpu_layers_list = [int(l) for l in gpu_layers.split(",")]
-                except ValueError:
-                    gpu_layers_list = [utils.num_layers(model_config)]
-
-                if use_4_bit:
-                    koboldai_vars.lazy_load = False
-                    print("4-bit CPU offloader active")
-                
-                # If we're using torch_lazy_loader, we need to get breakmodel config
-                # early so that it knows where to load the individual model tensors
-                if (utils.HAS_ACCELERATE or koboldai_vars.lazy_load and koboldai_vars.hascuda and koboldai_vars.breakmodel) and not koboldai_vars.nobreakmodel:
-                    device_config(model_config)
-
-                # Download model from Huggingface if it does not exist, otherwise load locally
-                
-                #If we specify a model and it's in the root directory, we need to move it to the models directory (legacy folder structure to new)
-                if os.path.isdir(koboldai_vars.model.replace('/', '_')):
-                    import shutil
-                    shutil.move(koboldai_vars.model.replace('/', '_'), "models/{}".format(koboldai_vars.model.replace('/', '_')))
-                if(koboldai_vars.lazy_load):  # If we're using lazy loader, we need to figure out what the model's hidden layers are called
-                    with torch_lazy_loader.use_lazy_torch_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
-                        try:
-                            metamodel = AutoModelForCausalLM.from_config(model_config)
-                        except Exception as e:
-                            metamodel = GPTNeoForCausalLM.from_config(model_config)
-                        utils.layers_module_names = utils.get_layers_module_names(metamodel)
-                        utils.module_names = list(metamodel.state_dict().keys())
-                        utils.named_buffers = list(metamodel.named_buffers(recurse=True))
-                with maybe_use_float16(), torch_lazy_loader.use_lazy_torch_load(enable=koboldai_vars.lazy_load, callback=get_lazy_load_callback(utils.num_layers(model_config)) if koboldai_vars.lazy_load else None, dematerialized_modules=True):
-                    if(koboldai_vars.lazy_load):  # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
-                        lowmem = {}
-                    if(os.path.isdir(koboldai_vars.custmodpth)):
-
-                        if use_4_bit:
-                            path_4bit, groupsize = prepare_4bit_load(koboldai_vars.custmodpth)
-                            print(f"Using 4-bit file: {path_4bit}, groupsize {groupsize}")
-
-                            print(f"Trying to load {koboldai_vars.model_type} model in 4-bit")
-                            if koboldai_vars.model_type == "gptj":
-                                model = load_quant_offload(gptj_load_quant, koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
-                            elif koboldai_vars.model_type == "gpt_neox":
-                                model = load_quant_offload(gptneox_load_quant, koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
-                            elif koboldai_vars.model_type == "llama":
-                                model = load_quant_offload(llama_load_quant, koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
-                                tokenizer = LlamaTokenizer.from_pretrained(koboldai_vars.custmodpth)
-                            elif koboldai_vars.model_type == "opt":
-                                model = load_quant_offload(opt_load_quant, koboldai_vars.custmodpth, path_4bit, 4, groupsize, gpu_layers_list)
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth)
-                            else:
-                                raise RuntimeError(f"4-bit load failed. Model type {koboldai_vars.model_type} not supported in 4-bit")
-
-                            model = model.half()
-                        else:
-                            try:
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                            except Exception as e:
-                                try:
-                                    tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                                except Exception as e:
-                                    try:
-                                        tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
-                                    except Exception as e:
-                                        tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                            model = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-
-                        if model is None:
-                            raise RuntimeError("Model returned 'None'. This is not expected to happen, but due to this, the model will not load.")
-                    elif(os.path.isdir("models/{}".format(koboldai_vars.model.replace('/', '_')))):
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
-                            try:
-                                tokenizer = AutoTokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
-                            except Exception as e:
-                                try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
-                                except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                        try:
-                            model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                        except Exception as e:
-                            if("out of memory" in traceback.format_exc().lower()):
-                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                    else:
-                        old_rebuild_tensor = torch._utils._rebuild_tensor
-                        def new_rebuild_tensor(storage: Union[torch_lazy_loader.LazyTensor, torch.Storage], storage_offset, shape, stride):
-                            if(not isinstance(storage, torch_lazy_loader.LazyTensor)):
-                                dtype = storage.dtype
-                            else:
-                                dtype = storage.storage_type.dtype
-                                if(not isinstance(dtype, torch.dtype)):
-                                    dtype = storage.storage_type(0).dtype
-                            if(dtype is torch.float32 and len(shape) >= 2):
-                                koboldai_vars.fp32_model = True
-                            return old_rebuild_tensor(storage, storage_offset, shape, stride)
-                        torch._utils._rebuild_tensor = new_rebuild_tensor
-
-                        try:
-                            tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", use_fast=False)
-                        except Exception as e:
-                            try:
-                                tokenizer = AutoTokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
-                            except Exception as e:
-                                try:
-                                    tokenizer = GPT2Tokenizer.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
-                                except Exception as e:
-                                    tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-                        try:
-                            model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-                        except Exception as e:
-                            if("out of memory" in traceback.format_exc().lower()):
-                                raise RuntimeError("One of your GPUs ran out of memory when KoboldAI tried to load your model.")
-                            model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", **lowmem)
-
-                        torch._utils._rebuild_tensor = old_rebuild_tensor
-
-                        if not (args.colab or args.cacheonly) or args.savemodel:
-                            import shutil
-                            tokenizer.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')))
-                            if(koboldai_vars.fp32_model and ("breakmodel" not in globals() or not breakmodel.disk_blocks)):  # Use save_pretrained to convert fp32 models to fp16, unless we are using disk cache because save_pretrained is not supported in that case
-                                if not use_4_bit:
-                                    model = model.half()
-                                model.save_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), max_shard_size="500MiB")
-                            else:  # For fp16 models, we can just copy the model files directly
-                                import transformers.configuration_utils
-                                import transformers.modeling_utils
-                                import transformers.file_utils
-                                import huggingface_hub
-                                legacy = packaging.version.parse(transformers_version) < packaging.version.parse("4.22.0.dev0")
-                                # Save the config.json
-                                shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.configuration_utils.CONFIG_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.configuration_utils.CONFIG_NAME))
-                                if(utils.num_shards is None):
-                                    # Save the pytorch_model.bin of an unsharded model
-                                    try:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, transformers.modeling_utils.WEIGHTS_NAME, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_NAME))
-                                    except:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model,  "model.safetensors", revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), "model.safetensors"))
-                                else:
-                                    with open(utils.from_pretrained_index_filename) as f:
-                                        map_data = json.load(f)
-                                    filenames = set(map_data["weight_map"].values())
-                                    # Save the pytorch_model.bin.index.json of a sharded model
-                                    shutil.move(os.path.realpath(utils.from_pretrained_index_filename), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), transformers.modeling_utils.WEIGHTS_INDEX_NAME))
-                                    # Then save the pytorch_model-#####-of-#####.bin files
-                                    for filename in filenames:
-                                        shutil.move(os.path.realpath(huggingface_hub.hf_hub_download(koboldai_vars.model, filename, revision=koboldai_vars.revision, cache_dir="cache", local_files_only=True, legacy_cache_layout=legacy)), os.path.join("models/{}".format(koboldai_vars.model.replace('/', '_')), filename))
-                            shutil.rmtree("cache/")
-
-                if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                    koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "[]")]
-                patch_causallm(model)
-
-                if(koboldai_vars.hascuda):
-                    if use_4_bit:
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        generator = model.generate
-                    elif(koboldai_vars.usegpu):
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        if not use_4_bit:
-                            model = model.half().to(koboldai_vars.gpu_device)
-                        else:
-                            model = model.to(koboldai_vars.gpu_device)
-                        generator = model.generate
-                    elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        if(not koboldai_vars.lazy_load):
-                            device_config(model.config)
-                        move_model_to_devices(model, use_4_bit)
-                    elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
-                        move_model_to_devices(model, use_4_bit)
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        generator = model.generate
-                    else:
-                        if not use_4_bit:
-                            model.to('cpu').float()
-                        else:
-                            model.to('cpu')
-                        koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        generator = model.generate
-                elif(utils.HAS_ACCELERATE and __import__("breakmodel").disk_blocks > 0):
-                    move_model_to_devices(model, use_4_bit)
-                    koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                    generator = model.generate
-                else:
-                    if not use_4_bit:
-                        model.to('cpu').float()
-                    else:
-                        model.to('cpu')
-                    koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                    generator = model.generate
-            
-            # Suppress Author's Note by flagging square brackets (Old implementation)
-            #vocab         = tokenizer.get_vocab()
-            #vocab_keys    = vocab.keys()
-            #koboldai_vars.badwords = gettokenids("[")
-            #for key in koboldai_vars.badwords:
-            #    koboldai_vars.badwordsids.append([vocab[key]])
-
-            # These are model specific overrides if a model has bad defaults
-            tokenizer._koboldai_header = []
-            if koboldai_vars.model_type == "llama":
-                tokenizer.decode_with_prefix_space = True
-                tokenizer.add_bos_token = False
-            if koboldai_vars.model_type == "opt":
-                tokenizer._koboldai_header = tokenizer.encode("")
-                tokenizer.add_bos_token = False
-                tokenizer.add_prefix_space = False
-            logger.info(f"Pipeline created: {koboldai_vars.model}")
-        
-        else:
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-    else:
-        from transformers import PreTrainedModel
-        from transformers import modeling_utils
-        old_from_pretrained = PreTrainedModel.from_pretrained.__func__
-        @classmethod
-        def new_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
-            koboldai_vars.fp32_model = False
-            utils.num_shards = None
-            utils.current_shard = 0
-            utils.from_pretrained_model_name = pretrained_model_name_or_path
-            utils.from_pretrained_index_filename = None
-            utils.from_pretrained_kwargs = kwargs
-            utils.bar = None
-            if not args.no_aria2:
-                utils.aria2_hook(pretrained_model_name_or_path, **kwargs)
-            return old_from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs)
-        if(not hasattr(PreTrainedModel, "_kai_patched")):
-            PreTrainedModel.from_pretrained = new_from_pretrained
-            PreTrainedModel._kai_patched = True
-        if(hasattr(modeling_utils, "get_checkpoint_shard_files")):
-            old_get_checkpoint_shard_files = modeling_utils.get_checkpoint_shard_files
-            def new_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs):
-                utils.num_shards = utils.get_num_shards(index_filename)
-                utils.from_pretrained_index_filename = index_filename
-                return old_get_checkpoint_shard_files(pretrained_model_name_or_path, index_filename, *args, **kwargs)
-            modeling_utils.get_checkpoint_shard_files = new_get_checkpoint_shard_files
-
-
-        def tpumtjgenerate_warper_callback(scores) -> "np.array":
-            scores_shape = scores.shape
-            scores_list = scores.tolist()
-            koboldai_vars.lua_koboldbridge.logits = koboldai_vars.lua_state.table()
-            for r, row in enumerate(scores_list):
-                koboldai_vars.lua_koboldbridge.logits[r+1] = koboldai_vars.lua_state.table(*row)
-            koboldai_vars.lua_koboldbridge.vocab_size = scores_shape[-1]
-
-            execute_genmod()
-
-            scores = np.array(
-                tuple(tuple(row.values()) for row in koboldai_vars.lua_koboldbridge.logits.values()),
-                dtype=scores.dtype,
+            from modeling.inference_models.hf_torch_4bit import HFTorch4BitInferenceModel
+            model = HFTorch4BitInferenceModel(
+                koboldai_vars.model,
+                lazy_load=koboldai_vars.lazy_load,
+                low_mem=args.lowmem
             )
-            assert scores.shape == scores_shape
-
-            return scores
-        
-        def tpumtjgenerate_stopping_callback(generated, n_generated, excluded_world_info) -> Tuple[List[set], bool, bool]:
-            koboldai_vars.generated_tkns += 1
-
-            assert len(excluded_world_info) == len(generated)
-            regeneration_required = koboldai_vars.lua_koboldbridge.regeneration_required
-            halt = koboldai_vars.abort or not koboldai_vars.lua_koboldbridge.generating or koboldai_vars.generated_tkns >= koboldai_vars.genamt
-            koboldai_vars.lua_koboldbridge.regeneration_required = False
-
-            global past
-
-            for i in range(koboldai_vars.numseqs):
-                koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(generated[i, tpu_mtj_backend.params["seq"] + n_generated - 1].item())
-
-            if(not koboldai_vars.dynamicscan or halt):
-                return excluded_world_info, regeneration_required, halt
-
-            for i, t in enumerate(generated):
-                decoded = utils.decodenewlines(tokenizer.decode(past[i])) + utils.decodenewlines(tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated]))
-                #_, found = checkworldinfo(decoded, force_use_txt=True, actions=koboldai_vars.actions)
-                _, _, _, found = koboldai_vars.calc_ai_text(submitted_text=decoded)
-                found -= excluded_world_info[i]
-                if(len(found) != 0):
-                    regeneration_required = True
-                    break
-            return excluded_world_info, regeneration_required, halt
-
-        def tpumtjgenerate_compiling_callback() -> None:
-            print(colors.GREEN + "TPU backend compilation triggered" + colors.END)
-            koboldai_vars.compiling = True
-
-        def tpumtjgenerate_stopped_compiling_callback() -> None:
-            print(colors.GREEN + "TPU backend compilation stopped" + colors.END)
-            koboldai_vars.compiling = False
-        
-        def tpumtjgenerate_settings_callback() -> dict:
-            sampler_order = koboldai_vars.sampler_order[:]
-            if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
-                sampler_order = [6] + sampler_order
-            return {
-                "sampler_order": koboldai_vars.sampler_order,
-                "top_p": float(koboldai_vars.top_p),
-                "temp": float(koboldai_vars.temp),
-                "top_k": int(koboldai_vars.top_k),
-                "tfs": float(koboldai_vars.tfs),
-                "typical": float(koboldai_vars.typical),
-                "top_a": float(koboldai_vars.top_a),
-                "repetition_penalty": float(koboldai_vars.rep_pen),
-                "rpslope": float(koboldai_vars.rep_pen_slope),
-                "rprange": int(koboldai_vars.rep_pen_range),
-            }
-
-        # Load the TPU backend if requested
-        if (koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
-            global tpu_mtj_backend
-            import tpu_mtj_backend
-            
-            tpu_mtj_backend.socketio = socketio
-            if(koboldai_vars.model == "TPUMeshTransformerGPTNeoX"):
-                koboldai_vars.badwordsids = koboldai_vars.badwordsids_neox
-            print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
-            if koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (not koboldai_vars.custmodpth or not os.path.isdir(koboldai_vars.custmodpth)):
-                raise FileNotFoundError(f"The specified model path {repr(koboldai_vars.custmodpth)} is not the path to a valid folder")
-            if(koboldai_vars.model == "TPUMeshTransformerGPTNeoX"):
-                tpu_mtj_backend.pad_token_id = 2
-            tpu_mtj_backend.koboldai_vars = koboldai_vars
-            tpu_mtj_backend.warper_callback = tpumtjgenerate_warper_callback
-            tpu_mtj_backend.stopping_callback = tpumtjgenerate_stopping_callback
-            tpu_mtj_backend.compiling_callback = tpumtjgenerate_compiling_callback
-            tpu_mtj_backend.stopped_compiling_callback = tpumtjgenerate_stopped_compiling_callback
-            tpu_mtj_backend.settings_callback = tpumtjgenerate_settings_callback
-            koboldai_vars.allowsp = True
-            loadmodelsettings()
-            loadsettings()
-            tpu_mtj_backend.load_model(koboldai_vars.custmodpth, 
-                                       hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") 
-                                       and koboldai_vars.use_colab_tpu, 
-                                       socketio_queue=koboldai_settings.queue, 
-                                       initial_load=initial_load, logger=logger,                                        **koboldai_vars.modelconfig)
-            #tpool.execute(tpu_mtj_backend.load_model, koboldai_vars.custmodpth, hf_checkpoint=koboldai_vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and koboldai_vars.use_colab_tpu, **koboldai_vars.modelconfig)
-            koboldai_vars.modeldim = int(tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"]))
-            tokenizer = tpu_mtj_backend.tokenizer
-            if(koboldai_vars.badwordsids is koboldai_settings.badwordsids_default and koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")):
-                koboldai_vars.badwordsids = [[v] for k, v in tokenizer.get_vocab().items() if any(c in str(k) for c in "<>[]") if koboldai_vars.newlinemode != "s" or str(k) != "</s>"]
-        else:
-            loadsettings()
+        model.load(
+            save_model=not (args.colab or args.cacheonly) or args.savemodel,
+            initial_load=initial_load,
+        )
+        logger.info(f"Pipeline created: {koboldai_vars.model}")
+    else:
+        # TPU
+        from modeling.inference_models.hf_mtj import HFMTJInferenceModel
+        model = HFMTJInferenceModel(
+            koboldai_vars.model
+        )
+        model.load(
+            save_model=not (args.colab or args.cacheonly) or args.savemodel,
+            initial_load=initial_load,
+        )
     
+    # TODO: Convert everywhere to use model.tokenizer
+    if model:
+        tokenizer = model.tokenizer
+
+    loadmodelsettings()
+    loadsettings()
+
     lua_startup()
     # Load scripts
     load_lua_scripts()
@@ -3598,17 +2068,17 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     to_use = OrderedDict()
     
     to_use["Recommended"] = {
-                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
-                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Custom"], 
-                            }
+        "Official": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Official"], 
+        "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Recommended" and presets[x]['Preset Category'] == "Custom"], 
+    }
     to_use["Same Class"] = {
-                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Official"], 
-                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Custom"], 
-                            }
+        "Official": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Official"], 
+        "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Same Class" and presets[x]['Preset Category'] == "Custom"], 
+    }
     to_use["Other"] = {
-                                "Official": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Official"], 
-                                "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Custom"], 
-                            }
+    "Official": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Official"], 
+    "Custom": [presets[x] for x in presets if presets[x]['Match'] == "Other" and presets[x]['Preset Category'] == "Custom"], 
+    }
     koboldai_vars.presets = to_use
 
     
@@ -3854,7 +2324,7 @@ def lua_encode(string):
         from transformers import GPT2Tokenizer
         global tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
-    return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
+    return tokenizer.encode(utils.encodenewlines(string))
 
 #==================================================================#
 #  Computes context given a submission, Lua array of entry UIDs and a Lua array
@@ -4603,11 +3073,11 @@ def get_message(msg):
         emit('from_server', {'cmd': 'wiexpandfolder', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifoldercollapsecontent'):
         setgamesaved(False)
-        koboldai_vars.wifolders_d[str(msg['data'])]['collapsed'] = True
+        koboldai_vars.wifolders_d[msg['data']]['collapsed'] = True
         emit('from_server', {'cmd': 'wifoldercollapsecontent', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderexpandcontent'):
         setgamesaved(False)
-        koboldai_vars.wifolders_d[str(msg['data'])]['collapsed'] = False
+        koboldai_vars.wifolders_d[msg['data']]['collapsed'] = False
         emit('from_server', {'cmd': 'wifolderexpandcontent', 'data': msg['data']}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiupdate'):
         setgamesaved(False)
@@ -4619,12 +3089,12 @@ def get_message(msg):
         emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: koboldai_vars.worldinfo[num][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderupdate'):
         setgamesaved(False)
-        str_uid = str(msg['uid'])
+        uid = str(msg['uid'])
         fields = ("name", "collapsed")
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is (str if field != "collapsed" else bool)):
-                koboldai_vars.wifolders_d[str_uid][field] = msg['data'][field]
-        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: koboldai_vars.wifolders_d[str_uid][field] for field in fields}}, broadcast=True, room="UI_1")
+                koboldai_vars.wifolders_d[uid][field] = msg['data'][field]
+        emit('from_server', {'cmd': 'wifolderupdate', 'uid': msg['uid'], 'data': {field: koboldai_vars.wifolders_d[uid][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wiselon'):
         setgamesaved(False)
         koboldai_vars.worldinfo[msg['data']]["selective"] = True
@@ -4692,8 +3162,6 @@ def get_message(msg):
         if not os.path.exists("settings/"):
             os.mkdir("settings")
         changed = True
-        if not utils.HAS_ACCELERATE:
-            msg['disk_layers'] = "0"
         if os.path.exists("settings/" + koboldai_vars.model_selected.replace('/', '_') + ".breakmodel"):
             with open("settings/" + koboldai_vars.model_selected.replace('/', '_') + ".breakmodel", "r") as file:
                 data = file.read().split('\n')[:2]
@@ -5057,7 +3525,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 botname = (koboldai_vars.botname + ":")
             else:
                 botname = ""
-            data = re.sub(r'\n+', ' ', data)
+            data = re.sub(r'\n+\Z', '', data)
             if(len(data)):
                 data = f"\n{koboldai_vars.chatname}: {data}\n{botname}"
         
@@ -5107,7 +3575,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1]})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+                koboldai_vars.actions.append_options([utils.applyoutputformatting(x["generated_text"]) for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"], flash=False)
@@ -5171,7 +3639,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 for i in range(koboldai_vars.numseqs):
                     genout.append({"generated_text": koboldai_vars.lua_koboldbridge.outputs[i+1] if not no_generate else ""})
                     assert type(genout[-1]["generated_text"]) is str
-                koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+                koboldai_vars.actions.append_options([utils.applyoutputformatting(x["generated_text"]) for x in genout])
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
@@ -5205,9 +3673,9 @@ def apiactionsubmit_generate(txt, minimum, maximum):
         torch.cuda.empty_cache()
 
     # Submit input text to generator
-    _genout, already_generated = tpool.execute(core_generate, txt, minimum, maximum, set())
+    _genout, already_generated = tpool.execute(model.core_generate, txt, set())
 
-    genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
+    genout = [utils.applyoutputformatting(utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))) for tokens in _genout]
 
     # Clear CUDA cache again if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
@@ -5230,7 +3698,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
     koboldai_vars._prompt = koboldai_vars.prompt
 
     # Submit input text to generator
-    soft_tokens = tpumtjgetsofttokens()
+    soft_tokens = model.get_soft_tokens()
     genout = tpool.execute(
         tpu_mtj_backend.infer_static,
         np.uint32(txt),
@@ -5249,21 +3717,13 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         soft_tokens=soft_tokens,
         sampler_order=koboldai_vars.sampler_order,
     )
-    genout = [applyoutputformatting(utils.decodenewlines(tokenizer.decode(txt))) for txt in genout]
+    genout = [utils.applyoutputformatting(utils.decodenewlines(tokenizer.decode(txt))) for txt in genout]
 
     return genout
 
 def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=False, use_authors_note=False):
-    if(koboldai_vars.model == "Colab"):
-        raise NotImplementedError("API generation is not supported in old Colab API mode.")
-    elif(koboldai_vars.model == "API"):
-        raise NotImplementedError("API generation is not supported in API mode.")
-    elif(koboldai_vars.model == "CLUSTER"):
-        raise NotImplementedError("API generation is not supported in API mode.")
-    elif(koboldai_vars.model == "OAI"):
-        raise NotImplementedError("API generation is not supported in OpenAI/GooseAI mode.")
-    elif(koboldai_vars.model == "ReadOnly"):
-        raise NotImplementedError("API generation is not supported in read-only mode; please load a model and then try again.")
+    if not model or not model.capabilties.api_host:
+        raise NotImplementedError(f"API generation isn't allowed on model '{koboldai_vars.model}'")
 
     data = applyinputformatting(data)
 
@@ -5550,7 +4010,7 @@ def calcsubmit(txt):
                         bias += [1] * (i - top_index)
                     bias[i] = b["multiplier"]
 
-            device = get_auxilary_device()
+            device = utils.get_auxilary_device()
             attention_bias.attention_bias = torch.Tensor(bias).to(device)
             logger.info(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
         logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
@@ -5617,862 +4077,8 @@ def calcsubmit(txt):
         # Send it!
         ikrequest(subtxt)
 
-def core_generate(text: list, _min: int, _max: int, found_entries: set, is_core: bool = False):
-    # This generation function is tangled with koboldai_vars intentionally. It
-    # is meant for the story and nothing else.
-
-    start_time = time.time()
-    gen_in = torch.tensor(text, dtype=torch.long)[None]
-    logger.debug("core_generate: torch.tensor time {}s".format(time.time()-start_time))
-
-    start_time = time.time()
-    if koboldai_vars.is_model_torch():
-        # Torch stuff
-        if koboldai_vars.full_determinism:
-            torch.manual_seed(koboldai_vars.seed)
-
-        if koboldai_vars.sp is not None:
-            soft_tokens = torch.arange(
-                model.config.vocab_size,
-                model.config.vocab_size + koboldai_vars.sp.shape[0],
-            )
-            gen_in = torch.cat((soft_tokens[None], gen_in), dim=-1)
-    elif koboldai_vars.use_colab_tpu:
-        if koboldai_vars.full_determinism:
-            tpu_mtj_backend.set_rng_seed(koboldai_vars.seed)
-
-    logger.debug("core_generate: Model Setup (SP, etc) time {}s".format(time.time()-start_time))
-
-    if gen_in.shape[-1] + koboldai_vars.genamt > koboldai_vars.max_length:
-        logger.error("gen_in.shape[-1]: {}".format(gen_in.shape[-1]))
-        logger.error("koboldai_vars.genamt: {}".format(koboldai_vars.genamt))
-        logger.error("koboldai_vars.max_length: {}".format(koboldai_vars.max_length))
-    assert gen_in.shape[-1] + koboldai_vars.genamt <= koboldai_vars.max_length
-
-    start_time = time.time()
-    if koboldai_vars.hascuda and koboldai_vars.usegpu:
-        gen_in = gen_in.to(koboldai_vars.gpu_device)
-    elif koboldai_vars.hascuda and koboldai_vars.breakmodel:
-        gen_in = gen_in.to(breakmodel.primary_device)
-    else:
-        gen_in = gen_in.to("cpu")
-    
-    logger.debug("core_generate: gen_in to device time {}s".format(time.time()-start_time))
-    start_time = time.time()
-    found_entries = found_entries or set()
-
-    if model:
-        model.kai_scanner_excluded_world_info = found_entries
-
-    koboldai_vars._prompt = koboldai_vars.prompt
-
-    with torch.no_grad():
-        already_generated = 0
-        numseqs = koboldai_vars.numseqs
-        total_gens = None
-
-        for i in range(koboldai_vars.numseqs if koboldai_vars.alt_multi_gen else 1):
-            while True:
-                # The reason this is a loop is due to how Dynamic WI works. We
-                # cannot simply add the WI to the context mid-generation, so we
-                # stop early, and then insert WI, then continue generating. That
-                # stopping and continuing is this loop.
-
-                start_time = time.time()
-                result = raw_generate(
-                    gen_in[0], 
-                    max_new=koboldai_vars.genamt,
-                    do_streaming=koboldai_vars.output_streaming,
-                    do_dynamic_wi=koboldai_vars.dynamicscan,
-                    batch_count=numseqs if not koboldai_vars.alt_multi_gen  else 1,
-                    # Real max length is handled by CoreStopper.
-                    bypass_hf_maxlength=koboldai_vars.dynamicscan,
-                    is_core=True,
-                )
-                logger.debug("core_generate: run raw_generate pass {} {}s".format(already_generated, time.time()-start_time))
-
-                genout = result.encoded
-
-                already_generated += len(genout[0])
-
-                try:
-                    assert already_generated <= koboldai_vars.genamt * koboldai_vars.numseqs if koboldai_vars.alt_multi_gen else 1
-                except AssertionError:
-                    print("AlreadyGenerated", already_generated)
-                    print("genamt", koboldai_vars.genamt)
-                    raise
-
-                if result.is_whole_generation:
-                    break
-
-                # Generation stopped; why?
-                # If we have been told to halt, we have reached our target token
-                # amount (controlled by halt), or Dynamic WI has not told us to
-                # stop temporarily to insert WI, we can assume that we are done
-                # generating. We shall break.
-                if model.core_stopper.halt or not model.core_stopper.regeneration_required:
-                    break
-
-                # Now we are doing stuff for Dynamic WI.
-                assert genout.ndim >= 2
-                assert genout.shape[0] == koboldai_vars.numseqs
-
-                if(koboldai_vars.lua_koboldbridge.generated_cols and koboldai_vars.generated_tkns != koboldai_vars.lua_koboldbridge.generated_cols):
-                    raise RuntimeError(f"Inconsistency detected between KoboldAI Python and Lua backends ({koboldai_vars.generated_tkns} != {koboldai_vars.lua_koboldbridge.generated_cols})")
-
-                if(already_generated != koboldai_vars.generated_tkns):
-                    print("already_generated: {}".format(already_generated))
-                    print("generated_tkns: {}".format(koboldai_vars.generated_tkns))
-                    raise RuntimeError("WI scanning error")
-
-                for r in range(koboldai_vars.numseqs):
-                    for c in range(already_generated):
-                        assert koboldai_vars.lua_koboldbridge.generated[r+1][c+1] is not None
-                        genout[r][genout.shape[-1] - already_generated + c] = koboldai_vars.lua_koboldbridge.generated[r+1][c+1]
-
-                encoded = []
-
-                for i in range(koboldai_vars.numseqs):
-                    txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
-                    #winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=koboldai_vars.actions)
-                    #txt, _, _ = calcsubmitbudget(len(koboldai_vars.actions), winfo, mem, anotetxt, koboldai_vars.actions, submission=txt)
-                    txt, _, _, _found_entries = koboldai_vars.calc_ai_text(submitted_text=txt, send_context=False)
-                    found_entries[i].update(_found_entries)
-                    encoded.append(torch.tensor(txt, dtype=torch.long, device=genout.device))
-
-                max_length = len(max(encoded, key=len))
-                encoded = torch.stack(tuple(torch.nn.functional.pad(e, (max_length - len(e), 0), value=model.config.pad_token_id or model.config.eos_token_id) for e in encoded))
-                genout = torch.cat(
-                    (
-                        encoded,
-                        genout[..., -already_generated:],
-                    ),
-                    dim=-1
-                )
-
-                if(koboldai_vars.sp is not None):
-                    soft_tokens = torch.arange(
-                        model.config.vocab_size,
-                        model.config.vocab_size + koboldai_vars.sp.shape[0],
-                        device=genout.device,
-                    )
-                    genout = torch.cat((soft_tokens.tile(koboldai_vars.numseqs, 1), genout), dim=-1)
-                assert genout.shape[-1] + koboldai_vars.genamt - already_generated <= koboldai_vars.max_length
-                gen_in = genout
-                numseqs = 1
-            if total_gens is None:
-                total_gens = genout
-            else:
-                total_gens = torch.cat((total_gens, genout))
-    
-    return total_gens, already_generated
-
-class GenerationResult:
-    def __init__(
-        self,
-        out_batches: list,
-        prompt: list,
-
-        # Controls if generate() does it's looping thing. This should only be
-        # done for HF models that use that StoppingCondition
-        is_whole_generation: bool,
-
-        # Controls if we should trim output by prompt length
-        output_includes_prompt: bool = False,
-
-        # Lazy filter to cut off extra lines where we can't manipulate
-        # probabilities
-        single_line: bool = False,
-    ):
-        # Shave prompt off of encoded response when needed (HF). Decoded does
-        # not return prompt.
-        if output_includes_prompt:
-            self.encoded = out_batches[:, len(prompt):]
-        else:
-            self.encoded = out_batches
-
-        self.prompt = prompt
-        self.is_whole_generation = is_whole_generation
-
-        self.decoded = [utils.decodenewlines(tokenizer.decode(enc)) for enc in self.encoded]
-
-        if single_line:
-            self.decoded = [x.split("\n", 1)[0] for x in self.decoded]
-            self.encoded = np.array(tokenizer(self.decoded).input_ids)
-
-class GenerationSettings:
-    def __init__(self, **overrides) -> None:
-        for setting in [
-            "temp",
-            "top_p",
-            "top_k",
-            "tfs",
-            "typical",
-            "top_a",
-            "rep_pen",
-            "rep_pen_slope",
-            "rep_pen_range",
-            "sampler_order",
-        ]:
-            setattr(
-                self,
-                setting,
-                overrides.get(setting, getattr(koboldai_vars, setting))
-            )
-
-def get_auxilary_device():
-    # NOTE: Does not include TPU!
-    if koboldai_vars.hascuda and koboldai_vars.usegpu:
-        return koboldai_vars.gpu_device
-    elif koboldai_vars.hascuda and koboldai_vars.breakmodel:
-        return breakmodel.primary_device
-    return "cpu"
-
-def raw_generate(
-    # prompt is either a string (text) or a list (token ids)
-    prompt: Union[str, list, np.ndarray],
-    max_new: int,
-
-    do_streaming: bool = False,
-    do_dynamic_wi: bool = False,
-    batch_count: int = 1,
-    bypass_hf_maxlength: bool = False,
-    generation_settings: Optional[dict] = None,
-    is_core: bool = False,
-    single_line: bool = False,
-    found_entries: set = ()
-) -> GenerationResult:
-    # TODO: Support singleline outside of torch
-
-    koboldai_vars.inference_config.do_core = is_core
-    gen_settings = GenerationSettings(*(generation_settings or {}))
-
-    model_functions = {
-        "GooseAI": oai_raw_generate,
-        "OAI": oai_raw_generate,
-        "CLUSTER": cluster_raw_generate,
-        "Colab": colab_raw_generate,
-        "API": api_raw_generate,
-    }
-
-    if isinstance(prompt, torch.Tensor):
-        prompt_tokens = prompt.cpu().numpy()
-    elif isinstance(prompt, list):
-        prompt_tokens = np.array(prompt)
-    elif isinstance(prompt, str):
-        prompt_tokens = np.array(tokenizer.encode(prompt))
-    else:
-        raise ValueError(f"Prompt is {type(prompt)}. Not a fan!")
-
-    assert isinstance(prompt_tokens, np.ndarray)
-    assert len(prompt_tokens.shape) == 1
-
-    if koboldai_vars.model == "ReadOnly":
-        raise NotImplementedError("No loaded model")
-
-    result: GenerationResult
-    time_start = time.time()
-
-    with use_core_manipulations():
-        if koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
-            batch_encoded = tpu_raw_generate(
-                prompt_tokens=prompt_tokens,
-                max_new=max_new,
-                batch_count=batch_count,
-                gen_settings=gen_settings
-            )
-            result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, single_line=single_line
-            )
-        elif koboldai_vars.model in model_functions:
-            batch_encoded = model_functions[koboldai_vars.model](
-                prompt_tokens=prompt_tokens,
-                max_new=max_new,
-                batch_count=batch_count,
-                gen_settings=gen_settings
-            )
-            result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, single_line=single_line
-            )
-        elif koboldai_vars.model.startswith("RWKV"):
-            batch_encoded = rwkv_raw_generate(
-                prompt_tokens=prompt_tokens,
-                max_new=max_new,
-                batch_count=batch_count,
-                gen_settings=gen_settings
-            )
-            result = GenerationResult(
-                out_batches=batch_encoded, prompt=prompt_tokens, is_whole_generation=True, output_includes_prompt=True, single_line=single_line
-            )
-        else:
-            # Torch HF
-            start_time = time.time()
-            batch_encoded = torch_raw_generate(
-                prompt_tokens=prompt_tokens,
-                max_new=max_new if not bypass_hf_maxlength else int(2e9),
-                do_streaming=do_streaming,
-                do_dynamic_wi=do_dynamic_wi,
-                single_line=single_line,
-                batch_count=batch_count,
-                gen_settings=gen_settings,
-            )
-            logger.debug("raw_generate: run torch_raw_generate {}s".format(time.time()-start_time))
-            start_time = time.time()
-            result = GenerationResult(
-                out_batches=batch_encoded,
-                prompt=prompt_tokens,
-                is_whole_generation=False,
-                output_includes_prompt=True,
-            )
-            logger.debug("raw_generate: run GenerationResult {}s".format(time.time()-start_time))
-    
-    time_end = round(time.time() - time_start, 2)
-    tokens_per_second = round(len(result.encoded[0]) / time_end, 2)
-
-    if not koboldai_vars.quiet:
-        logger.info(f"Generated {len(result.encoded[0])} tokens in {time_end} seconds, for an average rate of {tokens_per_second} tokens per second.")
-    
-    return result
-
-def tpu_raw_generate(
-    prompt_tokens: List[int],
-    max_new: int,
-    batch_count: int,
-    gen_settings: GenerationSettings
-):
-
-    # Mostly lifted from apiactionsubmit_tpumtjgenerate
-    soft_tokens = tpumtjgetsofttokens()
-
-    genout = tpool.execute(
-        tpu_mtj_backend.infer_static,
-        np.uint32(prompt_tokens),
-        gen_len = max_new,
-        temp=gen_settings.temp,
-        top_p=gen_settings.top_p,
-        top_k=gen_settings.top_k,
-        tfs=gen_settings.tfs,
-        typical=gen_settings.typical,
-        top_a=gen_settings.top_a,
-        numseqs=batch_count,
-        repetition_penalty=gen_settings.rep_pen,
-        rpslope=gen_settings.rep_pen_slope,
-        rprange=gen_settings.rep_pen_range,
-        soft_embeddings=koboldai_vars.sp,
-        soft_tokens=soft_tokens,
-        sampler_order=gen_settings.sampler_order,
-    )
-    genout = np.array(genout)
-
-    return genout
-
-def torch_raw_generate(
-    prompt_tokens: Union[List[int], torch.Tensor],
-    max_new: int,
-    gen_settings: GenerationSettings,
-
-    do_streaming: bool = False,
-    do_dynamic_wi: bool = False,
-    single_line: bool = False,
-    batch_count: int = 1,
-):
-    start_time = time.time()
-    koboldai_vars.inference_config.do_streaming = do_streaming
-    koboldai_vars.inference_config.do_dynamic_wi = do_dynamic_wi
-
-    # Dynamic WI depends on this!!! This is a main gen call.
-    koboldai_vars.inference_config.stop_at_genamt = do_dynamic_wi
-
-    # Makes stopping criteria hook happy
-    try:
-        model.kai_scanner_excluded_world_info = model.kai_scanner_excluded_world_info
-    except AttributeError:
-        model.kai_scanner_excluded_world_info = set()
-
-    logger.debug("torch_raw_generate: setup inference_config {}s".format(time.time()-start_time))
-    
-    if not isinstance(prompt_tokens, torch.Tensor):
-        gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]
-    else:
-        gen_in = prompt_tokens
-
-    device = get_auxilary_device()
-    gen_in = gen_in.to(device)
-
-    additional_bad_words_ids = [tokenizer.encode("\n")] if single_line else []
-
-    with torch.no_grad():
-        start_time = time.time()
-        genout = generator(
-            gen_in, 
-            do_sample=True, 
-            max_length=min(len(prompt_tokens) + max_new, koboldai_vars.max_length),
-            repetition_penalty=1.0,
-            bad_words_ids=koboldai_vars.badwordsids + additional_bad_words_ids,
-            use_cache=True,
-            num_return_sequences=batch_count,
-        )
-    logger.debug("torch_raw_generate: run generator {}s".format(time.time()-start_time))    
-    
-    return genout
-
-def oai_raw_generate(
-    prompt_tokens: List[int],
-    max_new: int,
-    batch_count: int,
-    gen_settings: GenerationSettings,
-):
-    # Taken mainly from oairequest()
-
-    decoded_prompt = utils.decodenewlines(tokenizer.decode(prompt_tokens))
-
-    # Log request to console
-    if not koboldai_vars.quiet:
-        print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(decoded_prompt), decoded_prompt, colors.END))
-    
-    # Store context in memory to use it for comparison with generated content
-    koboldai_vars.lastctx = decoded_prompt
-    
-    # Build request JSON data
-    # GooseAI is a subntype of OAI. So to check if it's this type, we check the configname as a workaround
-    # as the koboldai_vars.model will always be OAI
-    if 'GooseAI' in koboldai_vars.configname:
-        reqdata = {
-            'prompt': decoded_prompt,
-            'max_tokens': max_new,
-            'temperature': gen_settings.temp,
-            'top_a': gen_settings.top_a,
-            'top_p': gen_settings.top_p,
-            'top_k': gen_settings.top_k,
-            'tfs': gen_settings.tfs,
-            'typical_p': gen_settings.typical,
-            'repetition_penalty': gen_settings.rep_pen,
-            'repetition_penalty_slope': gen_settings.rep_pen_slope,
-            'repetition_penalty_range': gen_settings.rep_pen_range,
-            'n': batch_count,
-            # TODO: Implement streaming
-            'stream': False
-        }
-    else:
-        reqdata = {
-            'prompt': decoded_prompt,
-            'max_tokens': max_new,
-            'temperature': gen_settings.temp,
-            'top_p': gen_settings.top_p,
-            'frequency_penalty': gen_settings.rep_pen,
-            'n': batch_count,
-            'stream': False
-        }
-    
-    req = requests.post(
-        koboldai_vars.oaiurl, 
-        json    = reqdata,
-        headers = {
-            'Authorization': 'Bearer '+koboldai_vars.oaiapikey,
-            'Content-Type': 'application/json'
-            }
-        )
-    
-    j = req.json()
-    # Deal with the response
-    if req.ok:
-        outputs = [out["text"] for out in j["choices"]]
-
-        if not koboldai_vars.quiet:
-            print("{0}{1}{2}".format(colors.CYAN, outputs, colors.END))
-
-        return np.array([tokenizer.encode(x) for x in outputs])
-    else:
-        # Send error message to web client
-        if "error" in j:
-            error_type = j["error"]["type"]
-            error_message = j["error"]["message"]
-        else:
-            error_type = "Unknown"
-            error_message = "Unknown"
-            
-        emit('from_server', {
-            'cmd': 'errmsg',
-            'data': f"OpenAI API Error: {error_type} - {error_message}"
-        }, broadcast=True, room="UI_1")
-        set_aibusy(0)
-        return []
-
 class HordeException(Exception):
     pass
-
-def cluster_raw_generate(
-    prompt_tokens: List[int],
-    max_new: int,
-    batch_count: int,
-    gen_settings: GenerationSettings,
-):
-    decoded_prompt = utils.decodenewlines(tokenizer.decode(prompt_tokens))
-
-    # Store context in memory to use it for comparison with generated content
-    koboldai_vars.lastctx = decoded_prompt
-
-    # Build request JSON data
-    reqdata = {
-        'max_length': max_new,
-        'max_context_length': koboldai_vars.max_length,
-        'rep_pen': gen_settings.rep_pen,
-        'rep_pen_slope': gen_settings.rep_pen_slope,
-        'rep_pen_range': gen_settings.rep_pen_range,
-        'temperature': gen_settings.temp,
-        'top_p': gen_settings.top_p,
-        'top_k': int(gen_settings.top_k),
-        'top_a': gen_settings.top_a,
-        'tfs': gen_settings.tfs,
-        'typical': gen_settings.typical,
-        'n': batch_count,
-    }
-
-    cluster_metadata = {
-        'prompt': decoded_prompt,
-        'params': reqdata,
-        'models': [x for x in koboldai_vars.cluster_requested_models if x],
-        'trusted_workers': False,
-    }
-    
-    client_agent = "KoboldAI:2.0.0:koboldai.org"
-    cluster_headers = {
-        'apikey': koboldai_vars.horde_api_key,
-        "Client-Agent": client_agent
-    }
-    try:
-        # Create request
-        req = requests.post(
-            koboldai_vars.colaburl[:-8] + "/api/v2/generate/text/async",
-            json=cluster_metadata,
-            headers=cluster_headers
-        )
-    except requests.exceptions.ConnectionError:
-        errmsg = f"Horde unavailable. Please try again later"
-        logger.error(errmsg)
-        raise HordeException(errmsg)
-
-    if req.status_code == 503:
-        errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
-        logger.error(errmsg)
-        raise HordeException(errmsg)
-    elif not req.ok:
-        errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
-        logger.error(errmsg)
-        logger.error(f"HTTP {req.status_code}!!!")
-        logger.error(req.text)
-        raise HordeException(errmsg)
-    
-    try:
-        js = req.json()
-    except requests.exceptions.JSONDecodeError:
-        errmsg = f"Unexpected message received from the Horde: '{req.text}'"
-        logger.error(errmsg)
-        raise HordeException(errmsg)
-    
-    request_id = js["id"]
-    logger.debug("Horde Request ID: {}".format(request_id))
-
-    # We've sent the request and got the ID back, now we need to watch it to see when it finishes
-    finished = False
-
-    cluster_agent_headers = {
-        "Client-Agent": client_agent
-    }
-
-    while not finished:
-        try: 
-            req = requests.get(koboldai_vars.colaburl[:-8] + "/api/v2/generate/text/status/" + request_id, headers=cluster_agent_headers)
-        except requests.exceptions.ConnectionError:
-            errmsg = f"Horde unavailable. Please try again later"
-            logger.error(errmsg)
-            raise HordeException(errmsg)
-
-        if not req.ok:
-            errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
-            logger.error(req.text)
-            raise HordeException(errmsg)
-
-        try:
-            req_status = req.json()
-        except requests.exceptions.JSONDecodeError:
-            errmsg = f"Unexpected message received from the KoboldAI Horde: '{req.text}'"
-            logger.error(errmsg)
-            raise HordeException(errmsg)
-
-        if "done" not in req_status:
-            errmsg = f"Unexpected response received from the KoboldAI Horde: '{js}'"
-            logger.error(errmsg)
-            raise HordeException(errmsg)
-
-        finished = req_status["done"]
-        koboldai_vars.horde_wait_time = req_status["wait_time"]
-        koboldai_vars.horde_queue_position = req_status["queue_position"]
-        koboldai_vars.horde_queue_size = req_status["waiting"]
-
-        if not finished:
-            logger.debug(req_status)
-            time.sleep(1)
-    
-    logger.debug("Last Horde Status Message: {}".format(js))
-    if req_status["faulted"]:
-        raise HordeException("Horde Text generation faulted! Please try again")
-    
-    generations = req_status['generations']
-    gen_workers = [(cgen['worker_name'],cgen['worker_id']) for cgen in generations]
-    logger.info(f"Generations by: {gen_workers}")
-
-    # TODO: Fix this, using tpool so it's a context error
-    # Just in case we want to announce it to the user
-    # if len(js) == 1:        
-    #     warnmsg = f"Text generated by {js[0]['server_name']}"
-    #     emit('from_server', {'cmd': 'warnmsg', 'data': warnmsg}, broadcast=True)
-
-    return np.array([tokenizer.encode(cgen["text"]) for cgen in generations])
-
-def colab_raw_generate(
-    prompt_tokens: List[int],
-    max_new: int,
-    batch_count: int,
-    gen_settings: GenerationSettings,
-):
-    decoded_prompt = utils.decodenewlines(tokenizer.decode(prompt_tokens))
-
-    # Store context in memory to use it for comparison with generated content
-    koboldai_vars.lastctx = decoded_prompt
-    
-    # Build request JSON data
-    reqdata = {
-        'text': decoded_prompt,
-        'min': 0,
-        'max': max_new,
-        'rep_pen': gen_settings.rep_pen,
-        'rep_pen_slope': gen_settings.rep_pen_slope,
-        'rep_pen_range': gen_settings.rep_pen_range,
-        'temperature': gen_settings.temp,
-        'top_p': gen_settings.top_p,
-        'top_k': gen_settings.top_k,
-        'tfs': gen_settings.tfs,
-        'typical': gen_settings.typical,
-        'topa': gen_settings.top_a,
-        'numseqs': batch_count,
-        'retfultxt': False
-    }
-    
-    # Create request
-    req = requests.post(
-        koboldai_vars.colaburl, 
-        json = reqdata
-    )
-    
-    # Deal with the response
-    if(req.status_code == 200):
-        js = req.json()["data"]
-        
-        # Try to be backwards compatible with outdated colab
-        if("text" in js):
-            genout = [getnewcontent(js["text"])]
-        else:
-            genout = js["seqs"]
-        
-        return np.array([tokenizer.encode(x) for x in genout])
-
-def api_raw_generate(
-    prompt_tokens: List[int],
-    max_new: int,
-    batch_count: int,
-    gen_settings: GenerationSettings,
-):
-    decoded_prompt = utils.decodenewlines(tokenizer.decode(prompt_tokens))
-
-    # Store context in memory to use it for comparison with generated content
-    koboldai_vars.lastctx = decoded_prompt
-    
-    # Build request JSON data
-    reqdata = {
-        'prompt': decoded_prompt,
-        'max_length': max_new,
-        'max_context_length': koboldai_vars.max_length,
-        'rep_pen': gen_settings.rep_pen,
-        'rep_pen_slope': gen_settings.rep_pen_slope,
-        'rep_pen_range': gen_settings.rep_pen_range,
-        'temperature': gen_settings.temp,
-        'top_p': gen_settings.top_p,
-        'top_k': gen_settings.top_k,
-        'top_a': gen_settings.top_a,
-        'tfs': gen_settings.tfs,
-        'typical': gen_settings.typical,
-        'n': batch_count,
-    }
-    
-    # Create request
-    while True:
-        req = requests.post(
-            koboldai_vars.colaburl[:-8] + "/api/v1/generate",
-            json=reqdata,
-        )
-        if(req.status_code == 503):  # Server is currently generating something else so poll until it's our turn
-            time.sleep(1)
-            continue
-        js = req.json()
-        if(req.status_code != 200):
-            errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
-            print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
-            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
-            emit("error", errmsg, broadcast=True, room="UI_2")
-            set_aibusy(0)
-            return
-
-        genout = [obj["text"] for obj in js["results"]]
-        return np.array([tokenizer.encode(x) for x in genout])
-
-def rwkv_raw_generate(
-    prompt_tokens: List[int],
-    max_new: int,
-    batch_count: int,
-    gen_settings: GenerationSettings,
-):
-    import types
-
-    model.clear()
-    context = list(prompt_tokens)
-
-    input_length = len(prompt_tokens)
-
-    # TODO: Not needed every run? I think this is creating that huge wait time
-    # between generations.
-    init_state = types.SimpleNamespace()
-    for i in range(input_length):
-        x = context[:i+1]
-        if i == input_length - 1:
-            init_state.out = model.run(x)
-        else:
-            model.run(x)
-    model.save(init_state)
-
-    for ni, i in enumerate(range(input_length, input_length + max_new)):
-        x = context[:i+1]
-        x = x[-model.ctx_len:]
-
-        if i == input_length:
-            out = copy.deepcopy(init_state.out)
-        else:
-            out = model.run(x)
-        
-        # Don't generate EOS
-        out[0] = -9999999
-
-        char = tokenizer.sample_logits(
-            out=out,
-            x=x,
-            ctx_len=model.ctx_len,
-            temperature=gen_settings.temp,
-            top_p=gen_settings.top_p,
-        )
-        char = char.item()
-        context.append(char)
-
-        if koboldai_vars.output_streaming:
-            koboldai_vars.actions.stream_tokens([utils.decodenewlines(tokenizer.decode(char))])
-
-        # HACK
-        if ni > max_new:
-            break
-    
-    return np.array([context])
-
-
-@dataclass
-class RWKVConfig:
-    n_layer: int
-    n_embed: int
-    ctx_len: int
-
-def rwkv_init(model_class: str, use_gpu: bool = False):
-    torch.backends.cudnn.allow_tf32 = True
-    torch.backends.cuda.matmul.allow_tf32 = True
-    os.environ["RWKV_FLOAT_MODE"] = "bf16"
-
-    logger.info("[RWKV] RWKV support is in super-duper-uber-schmoober alpha and will ignore many options.")
-
-    device = "cpu"
-
-    if use_gpu:
-        logger.warning("[RWKV] Using GPU. This may not work out of the box and may require significant setup.")
-        device = "cuda"
-    
-    os.environ["RWKV_RUN_DEVICE"] = device
-
-    TOKENIZER_PATH = "RWKV4/20B_tokenizer.json"
-    MODEL_DIR = "models"
-
-    model_files = os.listdir(MODEL_DIR)
-    matching_models = [f for f in model_files if f.startswith(f"RWKV-4-{model_class}")]
-
-    if not matching_models:
-        raise RuntimeError(
-            f"No models of class '{model_class}' found in '{MODEL_DIR}'. Please download a model from " \
-            "https://huggingface.co/BlinkDL, rename the .pth file to 'model.pth', and place the it in a directory named "\
-            "'{MODEL_DIR}/RWKV-4-XYZ', where XYZ is the parameter string of the model (169M, 430M, 1B5, 3B, or 7B)."
-        )
-    model_path = os.path.join(MODEL_DIR, sorted(matching_models)[-1], "model.pth")
-
-    model_config = {
-        "169M": RWKVConfig(n_layer=12, n_embed=768, ctx_len=1024),
-        "430M": RWKVConfig(n_layer=24, n_embed=1024, ctx_len=1024),
-        "1B5": RWKVConfig(n_layer=24, n_embed=2048, ctx_len=1024),
-        "3B": RWKVConfig(n_layer=32, n_embed=2560, ctx_len=1024),
-        "7B": RWKVConfig(n_layer=32, n_embed=4096, ctx_len=1024),
-    }.get(model_class)
-
-    if not model_config:
-        raise RuntimeError(f"No config for model '{model_class}' found!")
-    
-    if not os.path.exists(TOKENIZER_PATH):
-        raise RuntimeError(
-            f"Can't find tokenizer at '{TOKENIZER_PATH}'! Please download it from " \
-            f"https://raw.githubusercontent.com/BlinkDL/RWKV-LM/main/RWKV-v4/20B_tokenizer.json and place it at '{TOKENIZER_PATH}"
-        )
-    
-    # Model stuff
-    from RWKV4.src.model_run import RWKV_RNN
-    from transformers import PreTrainedTokenizerFast
-    from torch.nn import functional as F
-
-    model = RWKV_RNN(
-        model_path.split(".")[0],
-        device,
-        "RWKV",
-        model_config.n_layer,
-        model_config.n_embed,
-        model_config.ctx_len,
-    )
-    tokenizer = PreTrainedTokenizerFast(tokenizer_file=TOKENIZER_PATH)
-
-    # We'll just patch tokenizer ourselves to make it easier
-    def _sample_logits(self, out, x, ctx_len, temperature, top_p):
-        last_char = int(x[-1])
-        probs = F.softmax(torch.tensor(out), dim=-1)
-        sorted_probs, s_index = torch.sort(probs, descending=True)
-
-        cumulative_probs = torch.cumsum(sorted_probs, dim=-1).numpy()
-        cutoff = float(sorted_probs[np.argmax(cumulative_probs > top_p)])
-
-        probs[probs < cutoff] = 0
-
-        if temperature != 1.0:
-            probs = probs.pow(1.0 / temperature)
-        
-        return torch.multinomial(probs, num_samples=1)[0]
-    
-    tokenizer.sample_logits = _sample_logits.__get__(tokenizer, AutoTokenizer)
-
-    tokenizer._koboldai_header = []
-    tokenizer.add_bos_token = False
-    tokenizer.add_prefix_space = False
-
-    logger.info("[RWKV] Loaded :^)")
-    return model, tokenizer
 
 #==================================================================#
 # Send text to generator and deal with output
@@ -6487,7 +4093,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 
     if not koboldai_vars.quiet:
         logger.debug(f"Prompt Min:{minimum}, Max:{maximum}")
-        logger.prompt(utils.decodenewlines(tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
+        logger.prompt(utils.decodenewlines(model.tokenizer.decode(txt)).encode("unicode_escape").decode("utf-8"))
 
     # Store context in memory to use it for comparison with generated content
     koboldai_vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
@@ -6500,7 +4106,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Submit input text to generator
     try:
         start_time = time.time()
-        genout, already_generated = tpool.execute(core_generate, txt, minimum, maximum, found_entries)
+        genout, already_generated = tpool.execute(model.core_generate, txt, found_entries)
         logger.debug("Generate: core_generate time {}s".format(time.time()-start_time))
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
@@ -6535,7 +4141,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
     else:
-        koboldai_vars.actions.append_options([applyoutputformatting(x["generated_text"]) for x in genout])
+        koboldai_vars.actions.append_options([utils.applyoutputformatting(x["generated_text"]) for x in genout])
         genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
         if(koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
             genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
@@ -6558,7 +4164,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 def genresult(genout, flash=True, ignore_formatting=False):
     # Format output before continuing
     if not ignore_formatting:
-        genout = applyoutputformatting(genout)
+        genout = utils.applyoutputformatting(genout)
 
     if not koboldai_vars.quiet:
         logger.generation(genout.encode("unicode_escape").decode("utf-8"))
@@ -6585,7 +4191,7 @@ def genselect(genout):
     i = 0
     for result in genout:
         # Apply output formatting rules to sequences
-        result["generated_text"] = applyoutputformatting(result["generated_text"])
+        result["generated_text"] = utils.applyoutputformatting(result["generated_text"])
         if not koboldai_vars.quiet:
             logger.info(f"Generation Result {i}")
             logger.generation(result["generated_text"].encode("unicode_escape").decode("utf-8"))
@@ -6661,64 +4267,6 @@ def applyinputformatting(txt):
     if(koboldai_vars.frmtadsnsp and not koboldai_vars.chatmode):
         txt = utils.addsentencespacing(txt, koboldai_vars)
  
-    return txt
-
-#==================================================================#
-# Applies chosen formatting options to text returned from AI
-#==================================================================#
-def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False):
-    #remove null ascii character (used to kill chat mode text in multi-generation)
-    txt = txt.replace(chr(0), "")
-    if len(txt) == 0:
-        return txt
-    
-    # Handle <|endoftext|> for models that want this
-    # In the future it would be nice if we could extend this to all EOS models.
-    # However, since EOS detection may have unforseen consequences for now we hardcode <|endoftext|> until more can be tested
-    # - Henk
-    eotregex = re.compile(r'<\|endoftext\|>[.|\n|\W|\w]*')
-    txt = eotregex.sub('', txt)
-
-    # Cleanup stray </s>
-    txt = txt.replace("</s>", "")
-
-    # Use standard quotes and apostrophes
-    txt = utils.fixquotes(txt)
-
-    # Adventure mode clipping of all characters after '>'
-    if(koboldai_vars.adventure):
-        txt = koboldai_vars.acregex_ai.sub('', txt)
-    
-    # Trim incomplete sentences
-    if(koboldai_vars.frmttriminc and not koboldai_vars.chatmode and not no_sentence_trimming):
-        txt = utils.trimincompletesentence(txt)
-    # Replace blank lines
-    if(koboldai_vars.frmtrmblln or koboldai_vars.chatmode):
-        txt = utils.replaceblanklines(txt)
-    # trim off starting new lines in replies if we're in chat mode
-    if koboldai_vars.chatmode and txt[0] == "\n":
-        txt = txt[1:]
-    # Remove special characters
-    if(koboldai_vars.frmtrmspch):
-        txt = utils.removespecialchars(txt, koboldai_vars)
-	# Single Line Mode
-    if(koboldai_vars.singleline and not no_single_line):
-        txt = utils.singlelineprocessing(txt, koboldai_vars)
- 	# Chat Mode Trimming
-    if(koboldai_vars.chatmode):
-        txt = utils.chatmodeprocessing(txt, koboldai_vars)   
-    for sub in koboldai_vars.substitutions:
-        if not sub["enabled"]:
-            continue
-        i = 0
-        while sub["trueTarget"] in txt or sub["target"] in txt:
-            i += 1
-            if i > 1000:
-                logger.error("[substitutions] Infinite recursion :^(")
-                break
-            txt = txt.replace(sub["trueTarget"], sub["substitution"])
-            txt = txt.replace(sub["target"], sub["substitution"])
-    
     return txt
 
 #==================================================================#
@@ -6965,8 +4513,7 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem(folder_uid=None):
-    str_folder_uid = str(folder_uid) if folder_uid is not None else None
-    assert str_folder_uid is None or str_folder_uid in koboldai_vars.wifolders_d
+    assert folder_uid is None or folder_uid in koboldai_vars.wifolders_d
     ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(koboldai_vars.worldinfo), "init": False, "selective": False, "constant": False}
     koboldai_vars.worldinfo.append(ob)
     while(True):
@@ -6974,9 +4521,9 @@ def addwiitem(folder_uid=None):
         if(uid not in koboldai_vars.worldinfo_u):
             break
     koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
-    koboldai_vars.worldinfo[-1]["uid"] = int(uid)
-    if(str_folder_uid is not None):
-        koboldai_vars.wifolders_u[str_folder_uid].append(koboldai_vars.worldinfo[-1])
+    koboldai_vars.worldinfo[-1]["uid"] = uid
+    if(folder_uid is not None):
+        koboldai_vars.wifolders_u[folder_uid].append(koboldai_vars.worldinfo[-1])
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
 
 #==================================================================#
@@ -6989,10 +4536,10 @@ def addwifolder():
             break
     ob = {"name": "", "collapsed": False}
     koboldai_vars.wifolders_d[uid] = ob
-    koboldai_vars.wifolders_l.append(int(uid))
+    koboldai_vars.wifolders_l.append(uid)
     koboldai_vars.wifolders_u[uid] = []
-    emit('from_server', {'cmd': 'addwifolder', 'uid': int(uid), 'data': ob}, broadcast=True, room="UI_1")
-    addwiitem(folder_uid=int(uid))
+    emit('from_server', {'cmd': 'addwifolder', 'uid': uid, 'data': ob}, broadcast=True, room="UI_1")
+    addwiitem(folder_uid=uid)
 
 #==================================================================#
 #   Move the WI entry with UID src so that it immediately precedes
@@ -7096,14 +4643,14 @@ def stablesortwi():
 #==================================================================#
 def commitwi(ar):
     for ob in ar:
-        str_uid = str(ob["uid"])
-        koboldai_vars.worldinfo_u[str_uid]["key"]          = ob["key"]
-        koboldai_vars.worldinfo_u[str_uid]["keysecondary"] = ob["keysecondary"]
-        koboldai_vars.worldinfo_u[str_uid]["content"]      = ob["content"]
-        koboldai_vars.worldinfo_u[str_uid]["comment"]      = ob.get("comment", "")
-        koboldai_vars.worldinfo_u[str_uid]["folder"]       = ob.get("folder", None)
-        koboldai_vars.worldinfo_u[str_uid]["selective"]    = ob["selective"]
-        koboldai_vars.worldinfo_u[str_uid]["constant"]     = ob.get("constant", False)
+        ob["uid"] = str(ob["uid"])
+        koboldai_vars.worldinfo_u[ob["uid"]]["key"]          = ob["key"]
+        koboldai_vars.worldinfo_u[ob["uid"]]["keysecondary"] = ob["keysecondary"]
+        koboldai_vars.worldinfo_u[ob["uid"]]["content"]      = ob["content"]
+        koboldai_vars.worldinfo_u[ob["uid"]]["comment"]      = ob.get("comment", "")
+        koboldai_vars.worldinfo_u[ob["uid"]]["folder"]       = ob.get("folder", None)
+        koboldai_vars.worldinfo_u[ob["uid"]]["selective"]    = ob["selective"]
+        koboldai_vars.worldinfo_u[ob["uid"]]["constant"]     = ob.get("constant", False)
     stablesortwi()
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
     koboldai_vars.sync_worldinfo_v1_to_v2()
@@ -7113,22 +4660,20 @@ def commitwi(ar):
 #  
 #==================================================================#
 def deletewi(uid):
-    if(str(uid) in koboldai_vars.worldinfo_u):
+    if(uid in koboldai_vars.worldinfo_u):
         setgamesaved(False)
         # Store UID of deletion request
         koboldai_vars.deletewi = uid
         if(koboldai_vars.deletewi is not None):
-            str_uid = str(uid)
-            if(koboldai_vars.worldinfo_u[str_uid]["folder"] is not None):
-                str_folder_uid = str(koboldai_vars.worldinfo_u[str_uid]["folder"])
-                for i, e in enumerate(koboldai_vars.wifolders_u[str_folder_uid]):
-                    if(e is koboldai_vars.worldinfo_u[str_uid]):
-                        koboldai_vars.wifolders_u[str_folder_uid].pop(i)
+            if(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"] is not None):
+                for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]]):
+                    if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
+                        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]].pop(i)
             for i, e in enumerate(koboldai_vars.worldinfo):
-                if(e is koboldai_vars.worldinfo_u[str_uid]):
+                if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
                     del koboldai_vars.worldinfo[i]
                     break
-            del koboldai_vars.worldinfo_u[str_uid]
+            del koboldai_vars.worldinfo_u[koboldai_vars.deletewi]
             # Send the new WI array structure
             sendwi()
             # And reset deletewi
@@ -7138,9 +4683,9 @@ def deletewi(uid):
 #  
 #==================================================================#
 def deletewifolder(uid):
-    str_uid = str(uid)
-    del koboldai_vars.wifolders_u[str_uid]
-    del koboldai_vars.wifolders_d[str_uid]
+    uid = str(uid)
+    del koboldai_vars.wifolders_u[uid]
+    del koboldai_vars.wifolders_d[uid]
     del koboldai_vars.wifolders_l[koboldai_vars.wifolders_l.index(uid)]
     setgamesaved(False)
     # Delete uninitialized entries in the folder we're going to delete
@@ -7650,7 +5195,7 @@ def loadJSON(json_text_or_dict, from_file=None):
     ignore = koboldai_vars.calc_ai_text()
 
 def load_story_v1(js, from_file=None):
-    logger.info("Loading V1 Story")
+    logger.debug("Loading V1 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     loadpath = js['v1_loadpath'] if 'v1_loadpath' in js else koboldai_vars.savedir
     filename = js['v1_filename'] if 'v1_filename' in js else 'untitled.json'
@@ -7679,7 +5224,7 @@ def load_story_v1(js, from_file=None):
     koboldai_vars.worldinfo   = []
     koboldai_vars.worldinfo_i = []
     koboldai_vars.worldinfo_u = {}
-    koboldai_vars.wifolders_d = {k: v for k, v in js.get("wifolders_d", {}).items()}
+    koboldai_vars.wifolders_d = {int(k): v for k, v in js.get("wifolders_d", {}).items()}
     koboldai_vars.wifolders_l = js.get("wifolders_l", [])
     koboldai_vars.wifolders_u = {uid: [] for uid in koboldai_vars.wifolders_d}
     koboldai_vars.lastact     = ""
@@ -7739,9 +5284,8 @@ def load_story_v1(js, from_file=None):
                 folder = "root" 
             else:
                 if 'wifolders_d' in js:
-                    str_folder_uid = str(wi['folder'])
-                    if str_folder_uid in js['wifolders_d']:
-                        folder = js['wifolders_d'][str_folder_uid]['name']
+                    if wi['folder'] in js['wifolders_d']:
+                        folder = js['wifolders_d'][wi['folder']]['name']
                     else:
                         folder = "root"
                 else:
@@ -7780,7 +5324,7 @@ def load_story_v1(js, from_file=None):
     
 
 def load_story_v2(js, from_file=None):
-    logger.info("Loading V2 Story")
+    logger.debug("Loading V2 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
     leave_room(session['story'])
     session['story'] = js['story_name']
@@ -7791,8 +5335,7 @@ def load_story_v2(js, from_file=None):
     if from_file is not None and os.path.basename(from_file) != "story.json":
         #Save the file so we get a new V2 format, then move the save file into the proper directory
         koboldai_vars.save_story()
-        #We're no longer moving the original file. It'll stay in place.
-        #shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v2_file.json"))
+        shutil.move(from_file, koboldai_vars.save_paths.story.replace("story.json", "v2_file.json"))
     
 
 
@@ -8142,26 +5685,8 @@ def final_startup():
         file.close()
 
     # Precompile TPU backend if required
-    if(koboldai_vars.use_colab_tpu or koboldai_vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
-        soft_tokens = tpumtjgetsofttokens()
-        if(koboldai_vars.dynamicscan or (not koboldai_vars.nogenmod and koboldai_vars.has_genmod)):
-            tpool.execute(tpu_mtj_backend.infer_dynamic, np.tile(np.uint32((23403, 727, 20185)), (koboldai_vars.numseqs, 1)), 
-                    soft_embeddings= koboldai_vars.sp,
-                    soft_tokens= soft_tokens,
-                    gen_len= 1,
-                    use_callback= False,
-                    numseqs= koboldai_vars.numseqs,
-                    excluded_world_info= list(set() for _ in range(koboldai_vars.numseqs))
-            )
-        else:
-            tpool.execute(
-                tpu_mtj_backend.infer_static,
-                np.uint32((23403, 727, 20185)),
-                    soft_embeddings= koboldai_vars.sp,
-                    soft_tokens= soft_tokens,
-                    gen_len= 1,
-                    numseqs= koboldai_vars.numseqs
-            )
+    if model and model.capabilties.uses_tpu:
+        model.raw_generate([23403, 727, 20185], max_new=1)
 
     # Set the initial RNG seed
     set_seed()
@@ -8219,7 +5744,14 @@ def show_folder_soft_prompt(data):
 def show_folder_usersripts(data):
     file_popup("Load Softprompt", "./userscripts", "", renameable=True, folder_only=False, editable=True, deleteable=True, jailed=True, item_check=None)
 
-    
+#==================================================================#
+# KoboldAI Lite Server
+#==================================================================#
+@app.route('/lite')
+@require_allowed_ip
+@logger.catch
+def lite_html():
+    return send_from_directory('static', "klite.html")
 
 #==================================================================#
 # UI V2 CODE
@@ -8792,7 +6324,7 @@ def UI_2_download_story():
 @logger.catch
 def UI_2_Set_Selected_Text(data):
     if not koboldai_vars.quiet:
-        print("Updating Selected Text: {}".format(data))
+        logger.info("Updating Selected Text: {}".format(data))
     action_id = int(data["id"])
 
     if not koboldai_vars.actions.actions[action_id].get("Original Text"):
@@ -8942,8 +6474,6 @@ def UI_2_load_model(data):
     if not os.path.exists("settings/"):
         os.mkdir("settings")
     changed = True
-    if not utils.HAS_ACCELERATE:
-        data['disk_layers'] = "0"
     if os.path.exists("settings/" + data['model'].replace('/', '_') + ".breakmodel"):
         with open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "r") as file:
             file_data = file.read().split('\n')[:2]
@@ -8960,7 +6490,7 @@ def UI_2_load_model(data):
     koboldai_vars.model = data['model']
     koboldai_vars.custmodpth = data['path']
     print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'], use_4_bit=data['use_4_bit'])
+    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
 #==================================================================#
 # Event triggered when load story is clicked
@@ -9421,7 +6951,7 @@ def UI_2_send_generated_images(path):
 @socketio.on("scratchpad_prompt")
 @logger.catch
 def UI_2_scratchpad_prompt(data):
-    out_text = raw_generate(
+    out_text = model.raw_generate(
         data,
         max_new=80,
     ).decoded
@@ -9714,7 +7244,7 @@ def UI_2_generate_wi(data):
     # logger.info(prompt)
     # TODO: Make single_line mode that stops on newline rather than bans it (for title)
     out_text = tpool.execute(
-        raw_generate,
+        model.raw_generate,
         prompt,
         max_new=gen_amount,
         single_line=True,
@@ -9735,11 +7265,11 @@ def UI_2_generate_raw():
         return Response(json.dumps({"error": "No model"}), status=500)
 
     try:
-        out = raw_generate(prompt, max_new=80)
+        out = model.raw_generate(prompt, max_new=80)
     except NotImplementedError as e:
         return Response(json.dumps({"error": str(e)}), status=500)
 
-    return out
+    return out.decoded
 
 #==================================================================#
 # Load Tweaks
@@ -10367,7 +7897,7 @@ def maybe_review_story() -> None:
 
 
     out_text = tpool.execute(
-        raw_generate,
+        model.raw_generate,
         context,
         max_new=30
     ).decoded[0]
@@ -10440,6 +7970,7 @@ def UI_2_get_applicable_genres():
 @socketio.on("create_new_softprompt")
 @logger.catch
 def UI_2_create_new_softprompt(data):
+    import breakmodel
     logger.info("Soft Prompt Dataset: {}".format(data))
     from prompt_tuner import BasicTrainer
     trainer = BasicTrainer(None, quiet=koboldai_vars.quiet)
@@ -10771,7 +8302,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     use_userscripts: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the userscripts from the KoboldAI GUI when generating text."})
     soft_prompt: Optional[str] = fields.String(metadata={"description": "Soft prompt to use when generating. If set to the empty string or any other string containing no non-whitespace characters, uses no soft prompt."}, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")])
     max_length: int = fields.Integer(validate=validate.Range(min=1, max=512), metadata={"description": "Number of tokens to generate."})
-    max_context_length: int = fields.Integer(validate=validate.Range(min=512, max=2048), metadata={"description": "Maximum number of tokens to send to the model."})
+    max_context_length: int = fields.Integer(validate=validate.Range(min=1), metadata={"description": "Maximum number of tokens to send to the model."})
     n: int = fields.Integer(validate=validate.Range(min=1, max=5), metadata={"description": "Number of outputs to generate."})
     disable_output_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all output formatting options default to `false` instead of the value in the KoboldAI GUI."})
     frmttriminc: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes some characters from the end of the output such that the output doesn't end in the middle of a sentence. If the output is less than one sentence long, does nothing.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
@@ -10784,6 +8315,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 6 and the array must be a permutation of the first N non-negative integers."})
     sampler_seed: Optional[int] = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), metadata={"description": "RNG seed to use for sampling. If not specified, the global RNG will be used."})
     sampler_full_determinism: Optional[bool] = fields.Boolean(metadata={"description": "If enabled, the generated text will always be the same as long as you use the same RNG seed, input and settings. If disabled, only the *sequence* of generated texts that you get when repeatedly generating text will be the same given the same RNG seed, input and settings."})
+    stop_sequence: Optional[List[str]] = fields.List(fields.String(),metadata={"description": "An array of string sequences where the API will stop generating further tokens. The returned text WILL contain the stop sequence."}, validate=[validate.Length(max=10)])
 
 class GenerationResultSchema(KoboldSchema):
     text: str = fields.String(required=True, metadata={"description": "Generated output as plain text."})
@@ -10925,6 +8457,7 @@ def _generate_text(body: GenerationInputSchema):
         "quiet": ("koboldai_vars", "quiet", None),
         "sampler_order": ("koboldai_vars", "sampler_order", None),
         "sampler_full_determinism": ("koboldai_vars", "full_determinism", None),
+        "stop_sequence": ("koboldai_vars", "stop_sequence", None),
     }
     saved_settings = {}
     set_aibusy(1)
@@ -13476,6 +11009,8 @@ print("", end="", flush=True)
 @logger.catch
 def run():
     global app
+    global tpu_mtj_backend
+
     general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
@@ -13489,6 +11024,11 @@ def run():
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
     koboldai_vars.port = port
+
+    # TODO: Top-level tpu_mtj_backend will be removed in modularity PR
+    if koboldai_vars.use_colab_tpu:
+        import tpu_mtj_backend
+        tpu_mtj_backend.socketio = socketio
     
     if(koboldai_vars.host):
         if(args.localtunnel):

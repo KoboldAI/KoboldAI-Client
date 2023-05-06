@@ -397,8 +397,8 @@ class koboldai_vars(object):
         
         ######################################### Setup Author's Note Data ########################################################
         authors_note_text = self.authornotetemplate.replace("<|>", self.authornote)
-        if len(authors_note_text) > 0 and authors_note_text[-1] not in [" ", "\n"]:
-            authors_note_text += " "
+        if len(authors_note_text) > 0 and authors_note_text[0] not in [" ", "\n"]:
+            authors_note_text = " " + authors_note_text
         authors_note_data = [[x, self.tokenizer.decode(x)] for x in self.tokenizer.encode(authors_note_text)]
         if used_tokens + len(authors_note_data) <= token_budget:
             used_tokens += len(authors_note_data)
@@ -525,7 +525,7 @@ class koboldai_vars(object):
         if return_text:
             return "".join([x['text'] for x in context])
         return tokens, used_tokens, used_tokens+self.genamt, set(used_world_info)
-
+    
     def is_model_torch(self) -> bool:
         if self.use_colab_tpu:
             return False
@@ -875,6 +875,7 @@ class story_settings(settings):
         self.chatmode    = False
         self.chatname    = "You"
         self.botname    = "Bot"
+        self.stop_sequence = []     #use for configuring stop sequences
         self.adventure   = False
         self.actionmode  = 0
         self.storymode   = 0
@@ -919,7 +920,13 @@ class story_settings(settings):
         # In percent!!!
         self.commentary_chance = 0
         self.commentary_enabled = False
-        
+
+        # 4bit model vals
+        self.gptq_model = False
+        self.gptq_bits = -1
+        self.gptq_groupsize = -1
+        self.gptq_file = None
+
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
 
         ################### must be at bottom #########################
@@ -1285,8 +1292,7 @@ class system_settings(settings):
             self.on_colab = True
         except:
             self.on_colab = False
-            pass
-        print("Colab Check: {}".format(self.on_colab))
+        print(f"Colab Check: {self.on_colab}, TPU: {self.use_colab_tpu}")
         self.horde_share = False
         self._horde_pid = None
         self.generating_image = False #The current status of image generation
@@ -1297,7 +1303,12 @@ class system_settings(settings):
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
         # Check if repos/gptq exists for 4-bit mode
-        self.bit_4_available = os.path.isdir("repos/gptq")
+        self.bit_4_available = True
+        try:
+            import gptq
+        except ImportError:
+            self.bit_4_available = False
+
         self.seen_messages = []
         self.git_repository = ""
         self.git_branch = ""
@@ -1387,7 +1398,11 @@ class KoboldStoryRegister(object):
         self.action_count = -1
         # The id of the last submission action, or 0 if the last append was not a submission
         self.submission_id = 0
-        self.sentence_re = re.compile(r"[^.!?]*[.!?]+\"?\s*", re.S)
+        # A regular expression used to break the story into sentences so that the author's
+        # note can be inserted with minimal disruption. Avoid ending a sentance with
+        # whitespace because most tokenizers deal better with whitespace at the beginning of text.
+        # Search for sentence end delimeters (i.e. .!?) and also capture closing parenthesis and quotes.
+        self.sentence_re = re.compile(r".*?[.!?]+(?=[.!?\]\)}>'\"›»\s])[.!?\]\)}>'\"›»]*", re.S)
         self.story_settings = story_settings
         self.tts_model = None
         self.tortoise = None

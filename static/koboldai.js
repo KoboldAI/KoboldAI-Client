@@ -1507,7 +1507,6 @@ function show_model_menu(data) {
 	document.getElementById("modelurl").classList.add("hidden");
 	document.getElementById("use_gpu_div").classList.add("hidden");
 	document.getElementById("use_8_bit_div").classList.add("hidden");
-	document.getElementById("use_4_bit_div").classList.add("hidden");
 	document.getElementById("modellayers").classList.add("hidden");
 	document.getElementById("oaimodel").classList.add("hidden");
 	var model_layer_bars = document.getElementById('model_layer_bars');
@@ -1682,14 +1681,6 @@ function selected_model_info(data) {
 		document.getElementById("use_8_bit").checked = false;
 	}
 	
-	//hide or unhide 4 bit mode
-	if (data.bit_4_available) {
-		document.getElementById("use_4_bit_div").classList.remove("hidden");
-	} else {
-		document.getElementById("use_4_bit_div").classList.add("hidden");
-		document.getElementById("use_4_bit").checked = false;
-	}
-
 	//default URL loading
 	if (data.default_url != null) {
 		document.getElementById("modelurl").value = data.default_url;
@@ -1859,7 +1850,7 @@ function selected_model_info(data) {
 	}
 	accept.disabled = false;
 	
-	set_4_bit_mode(invert=false);
+	
 }
 
 function update_gpu_layers() {
@@ -1920,8 +1911,7 @@ function load_model() {
 			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
 			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
 			   'online_model': selected_models,
-			   'use_8_bit': document.getElementById('use_8_bit').checked,
-			   'use_4_bit': document.getElementById('use_4_bit').checked};
+			   'use_8_bit': document.getElementById('use_8_bit').checked};
 	socket.emit("load_model", message);
 	closePopups();
 }
@@ -3139,7 +3129,6 @@ function gametextwatcher(records) {
 			}
 		}
 	}
-	//console.log(dirty_chunks);
 }
 
 function fix_dirty_game_text() {
@@ -3164,16 +3153,26 @@ function fix_dirty_game_text() {
 		//Fixing text outside of chunks
 		for (node of game_text.childNodes) {
 			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.textContent.trim() != "")) {
-				console.log("Found Node that needs to be combined");
-				console.log(node);
-				//We have a text only node. It should be moved into the previous chunk
+				//We have a text only node. It should be moved into the previous chunk if it is marked as dirty, next node if not and it's dirty, or the previous if neither is dirty
+				var node_text = ""
 				if (node instanceof HTMLElement) {
-					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.innerText;
+					node_text = node.innerText;
 				} else {
-					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.data;
+					node_text = node.data;
 				}
-				if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
-					dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
+				if (!(node.nextElementSibling) || !(dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) || dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node_text;
+					if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+						dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
+					}
+				} else {
+					node.nextElementSibling.innerText = node.nextElementSibling.innerText + node_text;
+				}
+				
+				//Looks like sometimes it splits the parent. Let's look for that and fix it too
+				if (node.nextElementSibling && (node.nextElementSibling.getAttribute("chunk") == node.previousElementSibling.getAttribute("chunk"))) {
+					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.nextElementSibling.innerText;
+					node.nextElementSibling.remove();
 				}
 				node.remove();
 			}
@@ -3233,15 +3232,6 @@ function save_preset() {
 	socket.emit("save_new_preset", {"preset": document.getElementById("new_preset_name").value, "description": document.getElementById("new_preset_description").value});
 	closePopups();
 }
-
-function set_4_bit_mode(invert=true) {
-	bit_4_status = document.getElementById("use_4_bit").checked;
-	if (invert) {
-		bit_4_status = !bit_4_status;
-	}
-}
-
-
 
 //--------------------------------------------General UI Functions------------------------------------
 function put_cursor_at_element(element) {
