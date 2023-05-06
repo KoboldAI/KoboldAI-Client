@@ -42,6 +42,7 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
+    - git+https://github.com/0cc4m/hf_bleeding_edge/
     - --find-links=https://0cc4m.github.io/KoboldAI/gptq-whl-links.html
-    - quant_rocm
+    - gptq_rocm
     - einops

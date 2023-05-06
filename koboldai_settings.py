@@ -1303,7 +1303,12 @@ class system_settings(settings):
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
         # Check if repos/gptq exists for 4-bit mode
-        self.bit_4_available = os.path.isdir("repos/gptq")
+        self.bit_4_available = True
+        try:
+            import gptq
+        except ImportError:
+            self.bit_4_available = False
+
         self.seen_messages = []
         self.git_repository = ""
         self.git_branch = ""

@@ -21,7 +21,7 @@ from transformers import (
     GPT2LMHeadModel,
     LogitsProcessorList,
 )
-from repos.hf_bleeding_edge import AutoModelForCausalLM
+from hf_bleeding_edge import AutoModelForCausalLM
 
 import utils
 import modeling.lazy_loader as lazy_loader

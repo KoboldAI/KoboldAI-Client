@@ -7,7 +7,7 @@ import shutil
 from typing import Union
 
 from transformers import GPTNeoForCausalLM, GPT2LMHeadModel
-from repos.hf_bleeding_edge import AutoModelForCausalLM
+from hf_bleeding_edge import AutoModelForCausalLM
 
 import utils
 import modeling.lazy_loader as lazy_loader

@@ -10,7 +10,7 @@ import sys
 from typing import Union
 
 from transformers import GPTNeoForCausalLM, AutoTokenizer, LlamaTokenizer
-from repos.hf_bleeding_edge import AutoModelForCausalLM
+from hf_bleeding_edge import AutoModelForCausalLM
 
 import utils
 import modeling.lazy_loader as lazy_loader
@@ -28,14 +28,13 @@ from modeling.inference_models.hf_torch import HFTorchInferenceModel
 from modeling.tokenizer import GenericTokenizer
 
 # 4-bit dependencies
+import gptq
 from pathlib import Path
-sys.path.insert(0, os.path.abspath(Path("repos/gptq")))
-from gptj import load_quant as gptj_load_quant
-from gptneox import load_quant as gptneox_load_quant
-from llama import load_quant as llama_load_quant
-from opt import load_quant as opt_load_quant
-from offload import load_quant_offload
-monkey_patched_4bit = False
+from gptq.gptj import load_quant as gptj_load_quant
+from gptq.gptneox import load_quant as gptneox_load_quant
+from gptq.llama import load_quant as llama_load_quant
+from gptq.opt import load_quant as opt_load_quant
+from gptq.offload import load_quant_offload
 
 
 def prepare_4bit_load(modelpath):
@@ -63,9 +62,6 @@ def prepare_4bit_load(modelpath):
                 groupsize = int(g[0])
             break
 
-    global monkey_patched_4bit
-
-    # Monkey-patch in old-format pt-file support
     if not result:
         print("4-bit file not found, falling back to old format.")
         for p in paths_4bit_old:
@@ -78,28 +74,16 @@ def prepare_4bit_load(modelpath):
             print("4-bit old-format file not found, loading failed.")
             raise RuntimeError("4-bit load failed. PT/Safetensors-File not found.")
 
-        import llama, opt, gptneox, gptj, old_quant
-        llama.make_quant = old_quant.old_make_quant
-        opt.make_quant = old_quant.old_make_quant
-        gptneox.make_quant = old_quant.old_make_quant
-        gptj.make_quant = old_quant.old_make_quant
-        monkey_patched_4bit = True
-    elif monkey_patched_4bit:
-        # Undo monkey patch
-        print("Undoing 4-bit old format monkey patch")
-        import llama, opt, gptneox, gptj, quant
-        llama.make_quant = quant.make_quant
-        opt.make_quant = quant.make_quant
-        gptneox.make_quant = quant.make_quant
-        gptj.make_quant = quant.make_quant
-        monkey_patched_4bit = False
+        gptq.modelutils.set_gptq_version(0)
+    else:
+        gptq.modelutils.set_gptq_version(1)
 
     return result, groupsize
 
 
 def load_model_gptq_settings():
     try:
-        js   = json.loads(str(model.model_config).partition(' ')[2])
+        js = json.loads(str(model.model_config).partition(' ')[2])
     except Exception as e:
         try:
             try:
