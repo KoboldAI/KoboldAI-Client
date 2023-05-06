@@ -22,7 +22,6 @@ from transformers import (
     AutoModelForCausalLM,
     LogitsProcessorList,
 )
-from peft import PeftModel, PeftConfig
 
 import utils
 import modeling.lazy_loader as lazy_loader
@@ -215,6 +214,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         # PEFT Loading. This MUST be done after all save_pretrained calls are
         # finished on the main model.
         if utils.args.peft:
+            from peft import PeftModel, PeftConfig
             local_peft_dir = os.path.join(m_self.get_local_model_path(), "peft")
 
             # Make PEFT dir if it doesn't exist
