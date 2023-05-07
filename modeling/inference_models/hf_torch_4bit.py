@@ -139,10 +139,8 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
             self.gpu_layers_list = [int(l) for l in gpulayers.split(",")]
         except ValueError:
             self.gpu_layers_list = [utils.num_layers(self.model_config)]
-        self.offload_4bit = sum(self.gpu_layers_list) < utils.num_layers(self.model_config)
 
-        if self.offload_4bit:
-            utils.koboldai_vars.lazy_load = False
+        if sum(self.gpu_layers_list) < utils.num_layers(self.model_config):
             print("4-bit CPU offloader active")
 
         tf_kwargs = {
@@ -343,9 +341,6 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
 
         self.patch_embedding()
 
-        if not self.offload_4bit:
-            self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
-
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
 
@@ -375,7 +370,7 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
         else:
             raise RuntimeError(f"4-bit load failed. Model type {utils.koboldai_vars.model_type} not supported in 4-bit")
 
-        return model.half() if not self.offload_4bit else model
+        return model
 
     def _get_tokenizer(self, location: str):
         if utils.koboldai_vars.model_type == "llama":
