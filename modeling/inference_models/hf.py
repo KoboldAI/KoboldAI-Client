@@ -59,7 +59,7 @@ class HFInferenceModel(InferenceModel):
                         token_ids = [first]
                     elif len(token_ids) > 0:
                         first = int(token_ids[0])
-                elif token_ids:
+                elif token_ids is not None and len(token_ids) > 0:
                     first = token_ids[0]
                 result = original_decode(self, token_ids, *args, **kwargs)
                 if first is not None and first in has_prefix_space:
