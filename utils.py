@@ -714,7 +714,7 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
         txt = replaceblanklines(txt)
 
     # trim off starting new lines in replies if we're in chat mode
-    if koboldai_vars.chatmode and txt[0] == "\n":
+    if koboldai_vars.chatmode and txt and txt[0] == "\n":
         txt = txt[1:]
 
     # Remove special characters
