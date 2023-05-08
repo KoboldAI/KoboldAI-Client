@@ -3708,6 +3708,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         soft_tokens=soft_tokens,
         sampler_order=koboldai_vars.sampler_order,
     )
+    genout = np.array(genout)
     genout = [utils.applyoutputformatting(utils.decodenewlines(tokenizer.decode(txt))) for txt in genout]
 
     return genout
