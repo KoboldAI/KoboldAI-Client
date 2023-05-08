@@ -243,6 +243,11 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                                 )
                     shutil.rmtree("cache/")
 
+        if not self.lazy_load:
+            utils.layers_module_names = utils.get_layers_module_names(self.model)
+            utils.module_names = list(self.model.state_dict().keys())
+            utils.named_buffers = list(self.model.named_buffers(recurse=True))
+
         self.patch_embedding()
 
         if utils.koboldai_vars.hascuda:
