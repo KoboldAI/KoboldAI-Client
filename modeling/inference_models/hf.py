@@ -181,7 +181,8 @@ class HFInferenceModel(InferenceModel):
             if "gptq_bits" in dir(self.model_config):
                 utils.koboldai_vars.gptq_model = True
                 utils.koboldai_vars.gptq_bits = self.model_config.gptq_bits
-                utils.koboldai_vars.gptq_groupsize = self.model_config.gptq_groupsize
+                utils.koboldai_vars.gptq_groupsize = self.model_config.gptq_groupsize if getattr(self.model_config, "gptq_groupsize", False) else -1
+                utils.koboldai_vars.gptq_version = self.model_config.gptq_version if getattr(self.model_config, "gptq_version", False) else 1
                 utils.koboldai_vars.gptq_file = None
             else:
                 utils.koboldai_vars.gptq_model = False

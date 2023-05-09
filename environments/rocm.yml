@@ -24,8 +24,8 @@ dependencies:
   - Pillow
   - psutil
   - pip:
-    - --extra-index-url https://download.pytorch.org/whl/rocm5.4.2
-    - torch==2.0.0+rocm5.4.2
+    - --extra-index-url https://download.pytorch.org/whl/rocm5.2
+    - torch==1.13.1+rocm5.2
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
@@ -44,5 +44,5 @@ dependencies:
     - diffusers
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - --find-links=https://0cc4m.github.io/KoboldAI/gptq-whl-links.html
-    - gptq_koboldai_rocm==0.0.1
+    - gptq_koboldai_rocm==0.0.2
     - einops

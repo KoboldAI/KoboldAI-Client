@@ -48,8 +48,7 @@ def prepare_4bit_load(modelpath):
         return path_4bit, False
 
     # Legacy format support
-    paths_4bit = ["4bit*.safetensors", "4bit*.pt"]
-    paths_4bit_old = ["4bit-old.pt", "4bit-old.safetensors"]
+    paths_4bit = ["4bit*.safetensors", "4bit*.pt", "4bit-old.safetensors", "4bit-old.pt"]
     result = False
     groupsize = -1
     for p in paths_4bit:
@@ -59,25 +58,10 @@ def prepare_4bit_load(modelpath):
             result = val[0]
             fname = Path(result).parts[-1]
             g = re.findall("^(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
+            groupsize = -1
             if g:
                 groupsize = int(g[0])
             break
-
-    if not result:
-        print("4-bit file not found, falling back to old format.")
-        for p in paths_4bit_old:
-            p = os.path.join(modelpath, p)
-            if os.path.isfile(p):
-                result = p
-                break
-
-        if not result:
-            print("4-bit old-format file not found, loading failed.")
-            raise RuntimeError("4-bit load failed. PT/Safetensors-File not found.")
-
-        gptq.modelutils.set_gptq_version(0)
-    else:
-        gptq.modelutils.set_gptq_version(1)
 
     return result, groupsize
 
@@ -103,6 +87,7 @@ def load_model_gptq_settings():
         safetensors_file = os.path.join(utils.koboldai_vars.custmodpth, "model.safetensors")
         pt_file = os.path.join(utils.koboldai_vars.custmodpth, "model.ckpt")
         utils.koboldai_vars.gptq_file = safetensors_file if os.path.isfile(safetensors_file) else pt_file
+        utils.koboldai_vars.gptq_version = js.get("gptq_version", -1)
     elif gptq_legacy_files:
         utils.koboldai_vars.gptq_model = True
         utils.koboldai_vars.gptq_bits = 4
@@ -110,8 +95,35 @@ def load_model_gptq_settings():
         fname = Path(utils.koboldai_vars.gptq_file).parts[-1]
         g = re.findall("^(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
         utils.koboldai_vars.gptq_groupsize = int(g[0]) if g else -1
+        utils.koboldai_vars.gptq_version = -1
     else:
         utils.koboldai_vars.gptq_model = False
+
+
+def get_gptq_version(fpath):
+    v1_strings = ["zeros", "scales", "bias", "qweight"]
+    v2_strings = ["qzeros", "scales", "bias", "qweight"]
+    v3_strings = ["qzeros", "scales", "g_idx", "qweight"]
+
+    with open(fpath, "rb") as f:
+        data = str(f.read(1024*1024))
+
+    v0 = all([s in data for s in v1_strings]) and not "qzeros" in data
+    v1 = all([s in data for s in v2_strings])
+    v2 = all([s in data for s in v3_strings])
+
+    if v2:
+        if v0 or v1:
+            logger.warning(f"GPTQ model identified as v2, but v0={v0} and v1={v1}")
+        return 2
+    if v1:
+        if v0 or v2:
+            logger.warning(f"GPTQ model identified as v1, but v0={v0} and v2={v2}")
+        return 1
+    if v0:
+        if v1 or v2:
+            logger.warning(f"GPTQ model identified as v0, but v1={v1} and v2={v2}")
+        return 0
 
 
 class HFTorch4BitInferenceModel(HFTorchInferenceModel):
@@ -139,9 +151,6 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
             self.gpu_layers_list = [int(l) for l in gpulayers.split(",")]
         except ValueError:
             self.gpu_layers_list = [utils.num_layers(self.model_config)]
-
-        if sum(self.gpu_layers_list) < utils.num_layers(self.model_config):
-            print("4-bit CPU offloader active")
 
         tf_kwargs = {
             "low_cpu_mem_usage": True,
@@ -351,12 +360,14 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
 
         path_4bit, legacy_groupsize = prepare_4bit_load(utils.koboldai_vars.custmodpth)
 
+        if utils.koboldai_vars.gptq_version < 0:
+            utils.koboldai_vars.gptq_version = get_gptq_version(path_4bit)
+        gptq.modelutils.set_gptq_version(utils.koboldai_vars.gptq_version)
+
         if legacy_groupsize is not False:
             groupsize = legacy_groupsize
 
-        print(f"Using 4-bit file: {path_4bit}, groupsize {groupsize}")
-
-        print(f"Trying to load {utils.koboldai_vars.model_type} model in 4-bit")
+        logger.info(f"Using 4-bit file: {path_4bit}, type {utils.koboldai_vars.model_type}, version {utils.koboldai_vars.gptq_version}, groupsize {groupsize}")
         if utils.koboldai_vars.model_type == "gptj":
             model = load_quant_offload(gptj_load_quant, utils.koboldai_vars.custmodpth, path_4bit, 4, groupsize, self.gpu_layers_list)
         elif utils.koboldai_vars.model_type == "gpt_neox":
