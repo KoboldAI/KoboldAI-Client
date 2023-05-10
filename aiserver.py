@@ -168,6 +168,7 @@ class MenuFolder(MenuItem):
             "size": "",
             "isMenu": True,
             "isDownloaded": False,
+            "isDirectory":  False
         }
 
 class MenuModel(MenuItem):
@@ -200,8 +201,28 @@ class MenuModel(MenuItem):
             "size": self.vram_requirements,
             "isMenu": False,
             "isDownloaded": self.is_downloaded,
+            "isDirectory": False,
         }
 
+class MenuPath(MenuItem):
+    def to_ui1(self) -> list:
+        return [
+            self.label,
+            self.name,
+            "",
+            True,
+        ]
+    
+    def to_json(self) -> dict:
+        return {
+            "label": self.label,
+            "name": self.name,
+            "size": "",
+            "isMenu": True,
+            "isDownloaded": False,
+            "isDirectory": True,
+            "path": "./models"
+        }
 
 # AI models Menu
 # This is a dict of lists where they key is the menu name, and the list is the menu items.
@@ -209,8 +230,8 @@ class MenuModel(MenuItem):
 # 3: the memory requirement for the model, 4: if the item is a menu or not (True/False)
 model_menu = {
     "mainmenu": [
-        MenuModel("Load a model from its directory", "NeoCustom"),
-        MenuModel("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
+        MenuPath("Load a model from its directory", "NeoCustom"),
+        MenuPath("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
         MenuFolder("Load custom model from Hugging Face", "customhuggingface"),
         MenuFolder("Adventure Models", "adventurelist"),
         MenuFolder("Novel Models", "novellist"),
@@ -600,6 +621,15 @@ utils.socketio = socketio
 # Weird import position to steal koboldai_vars from utils
 from modeling.patches import patch_transformers
 
+#Load all of the model importers
+import importlib
+model_loader_code = {}
+model_loaders = {}
+for module in os.listdir("./modeling/inference_models"):
+    if os.path.isfile(os.path.join("./modeling/inference_models",module)) and module[-3:] == '.py':
+        model_loader_code[module[:-3]] = importlib.import_module('modeling.inference_models.{}'.format(module[:-3]))
+        model_loaders[module[:-3]] = model_loader_code[module[:-3]].model_loader()
+        
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -906,6 +936,8 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         )
 
 def get_folder_path_info(base):
+    if base is None:
+        return [], []
     if base == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
         paths = [["{}:\\".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]
@@ -1932,25 +1964,25 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         koboldai_vars.breakmodel = False
 
         if koboldai_vars.model == "Colab":
-            from modeling.inference_models.basic_api import BasicAPIInferenceModel
-            model = BasicAPIInferenceModel()
+            from modeling.inference_models.basic_api import model_loader
+            model = model_loader()
         elif koboldai_vars.model == "API":
-            from modeling.inference_models.api import APIInferenceModel
-            model = APIInferenceModel(koboldai_vars.colaburl.replace("/request", ""))
+            from modeling.inference_models.api import model_loader
+            model = model_loader(koboldai_vars.colaburl.replace("/request", ""))
         elif koboldai_vars.model == "CLUSTER":
-            from modeling.inference_models.horde import HordeInferenceModel
-            model = HordeInferenceModel()
+            from modeling.inference_models.horde import model_loader
+            model = model_loader()
         elif koboldai_vars.model == "OAI":
-            from modeling.inference_models.openai import OpenAIAPIInferenceModel
-            model = OpenAIAPIInferenceModel()
+            from modeling.inference_models.openai import model_loader
+            model = model_loader()
 
         model.load(initial_load=initial_load)
     # TODO: This check sucks, make a model object or somethign
     elif "rwkv" in koboldai_vars.model:
         if koboldai_vars.use_colab_tpu:
             raise RuntimeError("RWKV is not supported on the TPU.")
-        from modeling.inference_models.rwkv import RWKVInferenceModel
-        model = RWKVInferenceModel(koboldai_vars.model)
+        from modeling.inference_models.rwkv import model_loader
+        model = model_loader(koboldai_vars.model)
         model.load()
     elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
         # HF Torch
@@ -1961,8 +1993,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             except:
                 pass
 
-        from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
-        model = GenericHFTorchInferenceModel(
+        from modeling.inference_models.generic_hf_torch import model_loader
+        model = model_loader(
             koboldai_vars.model,
             lazy_load=koboldai_vars.lazy_load,
             low_mem=args.lowmem
@@ -1975,8 +2007,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         logger.info(f"Pipeline created: {koboldai_vars.model}")
     else:
         # TPU
-        from modeling.inference_models.hf_mtj import HFMTJInferenceModel
-        model = HFMTJInferenceModel(
+        from modeling.inference_models.hf_mtj import model_loader
+        model = model_loader(
             koboldai_vars.model
         )
         model.load(
@@ -6430,7 +6462,9 @@ def UI_2_retry(data):
 @socketio.on('load_model_button')
 @logger.catch
 def UI_2_load_model_button(data):
-    sendModelSelection()
+    emit("open_model_load_menu", {"items": [{**item.to_json(), **{"menu":"mainmenu"}} for item in model_menu['mainmenu'] if item.should_show()]})
+    
+
     
 #==================================================================#
 # Event triggered when user clicks the a model
@@ -6438,6 +6472,38 @@ def UI_2_load_model_button(data):
 @socketio.on('select_model')
 @logger.catch
 def UI_2_select_model(data):
+    logger.debug("Clicked on model entry: {}".format(data))
+    if data["name"] in model_menu and data['ismenu'] == "true":
+        emit("open_model_load_menu", {"items": [{**item.to_json(), **{"menu":data["name"]}} for item in model_menu[data["name"]] if item.should_show()]})
+    else:
+        #Get load methods
+        logger.debug("Asking for model info on potential model: {}".format(data))
+        valid = False
+        if 'path' not in data or data['path'] == "":
+            valid_loaders = {}
+            for model_loader in model_loaders:
+                logger.debug("Testing Loader {} for model {}: {}".format(model_loader, data["name"], model_loaders[model_loader].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"])))
+                if model_loaders[model_loader].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
+                    valid_loaders[model_loader] = model_loaders[model_loader].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
+                    valid = True
+            if valid:
+                logger.debug("Valid Loaders: {}".format(valid_loaders))
+                emit("selected_model_info", valid_loaders)
+        if not valid:
+            #Get directories
+            paths, breadcrumbs = get_folder_path_info(data['path'])
+            output = []
+            for path in paths:
+                valid=False
+                for model_loader in model_loaders:
+                    if model_loaders[model_loader].is_valid(path[1], path[0], "Custom"):
+                        valid=True
+                        break
+                output.append({'label': path[1], 'name': path[0], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
+            emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})
+    
+    return
+    
     
     #We've selected a menu
     if data['model'] in model_menu:
@@ -6462,26 +6528,9 @@ def UI_2_select_model(data):
 @socketio.on('load_model')
 @logger.catch
 def UI_2_load_model(data):
-    if not os.path.exists("settings/"):
-        os.mkdir("settings")
-    changed = True
-    if os.path.exists("settings/" + data['model'].replace('/', '_') + ".breakmodel"):
-        with open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "r") as file:
-            file_data = file.read().split('\n')[:2]
-            if len(file_data) < 2:
-                file_data.append("0")
-            gpu_layers, disk_layers = file_data
-            if gpu_layers == data['gpu_layers'] and disk_layers == data['disk_layers']:
-                changed = False
-    if changed:
-        f = open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "w")
-        f.write("{}\n{}".format(data['gpu_layers'], data['disk_layers']))
-        f.close()
-    koboldai_vars.colaburl = data['url'] + "/request"
-    koboldai_vars.model = data['model']
-    koboldai_vars.custmodpth = data['path']
-    print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
+    logger.info("loading Model")
+    logger.info(data)
+    #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
 #==================================================================#
 # Event triggered when load story is clicked

@@ -17,7 +17,7 @@ from torch.nn import functional as F
 os.environ["RWKV_JIT_ON"] = "1"
 # TODO: Include compiled kernel
 os.environ["RWKV_CUDA_ON"] = "1"
-from rwkv.model import RWKV
+
 
 import utils
 from logger import logger
@@ -55,13 +55,13 @@ MODEL_FILES = {
 }
 
 
-class RWKVInferenceModel(InferenceModel):
+class model_loader(InferenceModel):
     def __init__(
         self,
-        model_name: str,
+        #model_name: str,
     ) -> None:
         super().__init__()
-        self.model_name = model_name
+        #self.model_name = model_name
 
         self.post_token_hooks = [
             PostTokenHooks.stream_tokens,
@@ -82,6 +82,23 @@ class RWKVInferenceModel(InferenceModel):
             post_token_probs=True,
         )
         self._old_stopping_criteria = None
+
+    def is_valid(self, model_name, model_path, menu_path):
+        try:
+            from rwkv.model import RWKV
+            valid = True
+        except:
+            valid = False
+        return valid and "rwkv" in model_name.lower()
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path):
+        self.source = model_name
+        requested_parameters = []
+        return requested_parameters
+        
+    def set_input_parameters(self):
+        return
+
 
     def _ensure_directory_structure(self) -> None:
         for path in ["models/rwkv", "models/rwkv/models"]:
@@ -145,6 +162,7 @@ class RWKVInferenceModel(InferenceModel):
         # Now we load!
 
         # TODO: Breakmodel to strat
+        from rwkv.model import RWKV
         self.model = RWKV(model=model_path, strategy="cuda:0 fp16")
 
     def _apply_warpers(

@@ -20,10 +20,14 @@ except ModuleNotFoundError as e:
     if not utils.koboldai_vars.use_colab_tpu:
         raise e
 
-from modeling.inference_models.hf_torch import HFTorchInferenceModel
+from modeling.inference_models.parents.hf_torch import HFTorchInferenceModel
 
 
-class GenericHFTorchInferenceModel(HFTorchInferenceModel):
+class model_loader(HFTorchInferenceModel):
+    
+    def _initialize_model(self):
+        return
+    
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
 

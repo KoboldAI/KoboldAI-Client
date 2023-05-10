@@ -169,6 +169,15 @@ class InferenceModel:
         ]
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
+    
+    def is_valid(self, model_name, model_path, menu_path, vram):
+        return True
+        
+    def requested_parameters(self, model_name, model_path, menu_path, vram):
+        return {}
+        
+    def define_input_parameters(self):
+        return
 
     def load(self, save_model: bool = False, initial_load: bool = False) -> None:
         """User-facing load function. Do not override this; try `_load()` instead."""

@@ -22,9 +22,31 @@ class APIException(Exception):
     """To be used for errors when using the Kobold API as an interface."""
 
 
-class APIInferenceModel(InferenceModel):
-    def __init__(self, base_url: str) -> None:
+class model_loader(InferenceModel):
+    def __init__(self) -> None:
         super().__init__()
+        #self.base_url = ""
+
+    def is_valid(self, model_name, model_path, menu_path):
+        return model_name == "API"
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path):
+        requested_parameters = []
+        requested_parameters.append({
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "URL",
+                                        "id": "base_url",
+                                        "default": False,
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "The URL of the KoboldAI API to connect to.",
+                                        "menu_path": "",
+                                        "extra_classes": "",
+                                        "refresh_model_inputs": False
+                                    })
+        return requested_parameters
+        
+    def set_input_parameters(self, base_url=""):
         self.base_url = base_url.rstrip("/")
 
     def _load(self, save_model: bool, initial_load: bool) -> None:

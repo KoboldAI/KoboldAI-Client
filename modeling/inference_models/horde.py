@@ -21,12 +21,98 @@ class HordeException(Exception):
     """To be used for errors on server side of the Horde."""
 
 
-class HordeInferenceModel(InferenceModel):
+class model_loader(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
+        self.url = "https://horde.koboldai.net"
+        self.key = "0000000000"
+        self.models = self.get_cluster_models()
+        
 
         # Do not allow API to be served over the API
         self.capabilties = ModelCapabilities(api_host=False)
+
+    def is_valid(self, model_name, model_path, menu_path):
+        logger.debug("Horde Models: {}".format(self.models))
+        return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path):
+        requested_parameters = []
+        requested_parameters.extend([{
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "URL",
+                                        "id": "url",
+                                        "default": self.url,
+                                        "tooltip": "URL to the horde.",
+                                        "menu_path": "",
+                                        "check": {"value": "", 'check': "!="},
+                                        "refresh_model_inputs": True,
+                                        "extra_classes": ""
+                                    },
+                                    {
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "Key",
+                                        "id": "key",
+                                        "default": self.key,
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "User Key to use when connecting to Horde (0000000000 is anonymous).",
+                                        "menu_path": "",
+                                        "refresh_model_inputs": True,
+                                        "extra_classes": ""
+                                    },
+                                    {
+                                        "uitype": "dropdown",
+                                        "unit": "text",
+                                        "label": "Model",
+                                        "id": "model",
+                                        "default": "",
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "Which model to use when running OpenAI/GooseAI.",
+                                        "menu_path": "",
+                                        "refresh_model_inputs": False,
+                                        "extra_classes": "",
+                                        'children': self.models,
+
+                                    }])
+        return requested_parameters
+        
+    def set_input_parameters(self, url="", key="", model=""):
+        self.key = key.strip()
+        self.model = model
+        self.url = url
+        
+    def get_cluster_models(self):
+        # Get list of models from public cluster
+        logger.info("<purple>Retrieving engine list...</purple>")
+        try:
+            req = requests.get(f"{self.url}/api/v2/status/models?type=text")
+        except:
+            logger.init_err("KAI Horde Models", status="Failed")
+            logger.error("Provided KoboldAI Horde URL unreachable")
+            emit('from_server', {'cmd': 'errmsg', 'data': "Provided KoboldAI Horde URL unreachable"})
+            return
+        if not req.ok:
+            # Something went wrong, print the message and quit since we can't initialize an engine
+            logger.init_err("KAI Horde Models", status="Failed")
+            logger.error(req.json())
+            emit('from_server', {'cmd': 'errmsg', 'data': req.json()}, room="UI_1")
+            return
+
+        engines = req.json()
+        try:
+            engines = [{"text": en["name"], "value": en["name"]} for en in engines]
+        except:
+            logger.error(engines)
+            raise
+        logger.debug(engines)
+        
+        online_model = ""
+
+        logger.init_ok("KAI Horde Models", status="OK")
+
+        return engines
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer(

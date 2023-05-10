@@ -12,13 +12,96 @@ from modeling.inference_model import (
 )
 
 
+
 class OpenAIAPIError(Exception):
     def __init__(self, error_type: str, error_message) -> None:
         super().__init__(f"{error_type}: {error_message}")
 
 
-class OpenAIAPIInferenceModel(InferenceModel):
+class model_loader(InferenceModel):
     """InferenceModel for interfacing with OpenAI's generation API."""
+    
+    def __init__(self):
+        super().__init__()
+        self.key = ""
+    
+    def is_valid(self, model_name, model_path, menu_path):
+        return model_name == "OAI" or model_name == "GooseAI"
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path):
+        self.source = model_name
+        requested_parameters = []
+        requested_parameters.extend([{
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "Key",
+                                        "id": "key",
+                                        "default": "",
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "User Key to use when connecting to OpenAI/GooseAI.",
+                                        "menu_path": "",
+                                        "refresh_model_inputs": True,
+                                        "extra_classes": ""
+                                    },
+                                    {
+                                        "uitype": "dropdown",
+                                        "unit": "text",
+                                        "label": "Model",
+                                        "id": "model",
+                                        "default": "",
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "Which model to use when running OpenAI/GooseAI.",
+                                        "menu_path": "",
+                                        "refresh_model_inputs": False,
+                                        "extra_classes": "",
+                                        'children': self.get_oai_models(),
+
+                                    }])
+        return requested_parameters
+        
+    def set_input_parameters(self, key="", model=""):
+        self.key = key.strip()
+        self.model = model
+
+    def get_oai_models(self):
+        if self.key == "":
+            return []
+        if self.source == 'OAI':
+            url = "https://api.openai.com/v1/engines"
+        elif self.source == 'GooseAI':
+            url = "https://api.goose.ai/v1/engines"
+        else:
+            return
+            
+        # Get list of models from OAI
+        logger.init("OAI Engines", status="Retrieving")
+        req = requests.get(
+            url, 
+            headers = {
+                'Authorization': 'Bearer '+self.key
+                }
+            )
+        if(req.status_code == 200):
+            r = req.json()
+            engines = r["data"]
+            try:
+                engines = [{"value": en["id"], "text": "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")} for en in engines]
+            except:
+                logger.error(engines)
+                raise
+            
+            online_model = ""
+
+                
+            logger.init_ok("OAI Engines", status="OK")
+            return engines
+        else:
+            # Something went wrong, print the message and quit since we can't initialize an engine
+            logger.init_err("OAI Engines", status="Failed")
+            logger.error(req.json())
+            emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
+            return []
+            
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("gpt2")

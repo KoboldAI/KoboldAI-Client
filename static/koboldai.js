@@ -15,6 +15,7 @@ socket.on('popup_items', function(data){popup_items(data);});
 socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
 socket.on('popup_edit_file', function(data){popup_edit_file(data);});
 socket.on('show_model_menu', function(data){show_model_menu(data);});
+socket.on('open_model_load_menu', function(data){new_show_model_menu(data);});
 socket.on('selected_model_info', function(data){selected_model_info(data);});
 socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
@@ -81,6 +82,7 @@ const on_colab = $el("#on_colab").textContent == "true";
 let story_id = -1;
 var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
+var selected_model_data;
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -1500,49 +1502,46 @@ function getModelParameterCount(modelName) {
 	return base * multiplier;
 }
 
-function show_model_menu(data) {
-	//clear old options
-	document.getElementById("modelkey").classList.add("hidden");
-	document.getElementById("modelkey").value = "";
-	document.getElementById("modelurl").classList.add("hidden");
-	document.getElementById("use_gpu_div").classList.add("hidden");
-	document.getElementById("use_8_bit_div").classList.add("hidden");
-	document.getElementById("modellayers").classList.add("hidden");
-	document.getElementById("oaimodel").classList.add("hidden");
-	var model_layer_bars = document.getElementById('model_layer_bars');
-	while (model_layer_bars.firstChild) {
-		model_layer_bars.removeChild(model_layer_bars.firstChild);
+function new_show_model_menu(data) {
+	//clear out the loadmodelsettings
+	var loadmodelsettings = document.getElementById('loadmodelsettings')
+	while (loadmodelsettings.firstChild) {
+		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
 	}
+	document.getElementById("modelplugin").classList.add("hidden");
+	var accept = document.getElementById("btn_loadmodelaccept");
+	accept.disabled = false;
 	
 	//clear out the breadcrumbs
 	var breadcrumbs = document.getElementById('loadmodellistbreadcrumbs')
 	while (breadcrumbs.firstChild) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
-	//add breadcrumbs
-	//console.log(data.breadcrumbs);
-	for (item of data.breadcrumbs) {
-		var button = document.createElement("button");
-		button.classList.add("breadcrumbitem");
-		button.setAttribute("model", data.menu);
-		button.setAttribute("folder", item[0]);
-		button.textContent = item[1];
-		button.onclick = function () {
-					socket.emit('select_model', {'menu': "", 'model': this.getAttribute("model"), 'path': this.getAttribute("folder")});
-				};
-		breadcrumbs.append(button);
-		var span = document.createElement("span");
-		span.textContent = "\\";
-		breadcrumbs.append(span);
-	}
 	
+	//add breadcrumbs
+	if ('breadcrumbs' in data) {
+		for (item of data.breadcrumbs) {
+			var button = document.createElement("button");
+			button.classList.add("breadcrumbitem");
+			button.setAttribute("model", data.menu);
+			button.setAttribute("folder", item[0]);
+			button.textContent = item[1];
+			button.onclick = function () {
+						socket.emit('select_model', {'menu': "", 'name': this.getAttribute("model"), 'path': this.getAttribute("folder")});
+					};
+			breadcrumbs.append(button);
+			var span = document.createElement("span");
+			span.textContent = "\\";
+			breadcrumbs.append(span);
+		}
+	}
 	//clear out the items
 	var model_list = document.getElementById('loadmodellistcontent')
 	while (model_list.firstChild) {
 		model_list.removeChild(model_list.firstChild);
 	}
 	//add items
-	for (item of data.data) {
+	for (item of data.items) {
 		var list_item = document.createElement("span");
 		list_item.classList.add("model_item");
 		
@@ -1564,10 +1563,27 @@ function show_model_menu(data) {
 		//create the actual item
 		var popup_item = document.createElement("span");
 		popup_item.classList.add("model");
-		popup_item.setAttribute("display_name", item.label);
-		popup_item.id = item.name;
+		for (const key in item) {
+			if (key == "name") {
+				popup_item.id = item[key];
+			} 
+			popup_item.setAttribute(key, item[key]);
+		}
 		
-		popup_item.setAttribute("Menu", data.menu)
+		popup_item.onclick = function() { 
+			var attributes = this.attributes;
+			var obj = {};
+
+			for (var i = 0, len = attributes.length; i < len; i++) {
+				obj[attributes[i].name] = attributes[i].value;
+			}
+			//put the model data on the accept button so we can send it to the server when you accept
+			var accept = document.getElementById("popup_accept");
+			selected_model_data = obj;
+			//send the data to the server so it can figure out what data we need from the user for the model
+			socket.emit('select_model', obj); 
+		}
+		
 		//name text
 		var text = document.createElement("span");
 		text.style="grid-area: item;";
@@ -1615,241 +1631,223 @@ function show_model_menu(data) {
 			});
 		})();
 		
-		popup_item.onclick = function () {
-						var accept = document.getElementById("btn_loadmodelaccept");
-						accept.classList.add("disabled");
-						socket.emit("select_model", {"model": this.id, "menu": this.getAttribute("Menu"), "display_name": this.getAttribute("display_name")});
-						var model_list = document.getElementById('loadmodellistcontent').getElementsByClassName("selected");
-						for (model of model_list) {
-							model.classList.remove("selected");
-						}
-						this.classList.add("selected");
-						accept.setAttribute("selected_model", this.id);
-						accept.setAttribute("menu", this.getAttribute("Menu"));
-						accept.setAttribute("display_name", this.getAttribute("display_name"));
-					};
 		list_item.append(popup_item);
-		
-		
 		model_list.append(list_item);
 	}
-	var accept = document.getElementById("btn_loadmodelaccept");
-	accept.disabled = true;
 	
-	//finally, if they selected the custom hugging face menu we show the input box
-	if (data['menu'] == "customhuggingface") {
-		document.getElementById("custommodelname").classList.remove("hidden");
-	} else {
-		document.getElementById("custommodelname").classList.add("hidden");
-	}
-
-
-	// detect if we are in a model selection screen and show the reference
-	var refelement = document.getElementById("modelspecifier");
-	var check = document.getElementById("mainmenu");
-	if (check) {
-		refelement.classList.remove("hidden");
-	} else {
-		refelement.classList.add("hidden");
-	}
 	
 	openPopup("load-model");
+	
 }
 
+
 function selected_model_info(data) {
+	//clear out the loadmodelsettings
+	var loadmodelsettings = document.getElementById('loadmodelsettings')
+	while (loadmodelsettings.firstChild) {
+		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
+	}
 	var accept = document.getElementById("btn_loadmodelaccept");
-	//hide or unhide key
-	if (data.key) {
-		document.getElementById("modelkey").classList.remove("hidden");
-		document.getElementById("modelkey").value = data.key_value;
-	} else {
-		document.getElementById("modelkey").classList.add("hidden");
-		document.getElementById("modelkey").value = "";
-	}
-	//hide or unhide URL
-	if  (data.url) {
-		document.getElementById("modelurl").classList.remove("hidden");
-	} else {
-		document.getElementById("modelurl").classList.add("hidden");
-	}
-	
-	//hide or unhide 8 bit mode
-	if (data.bit_8_available) {
-		document.getElementById("use_8_bit_div").classList.remove("hidden");
-	} else {
-		document.getElementById("use_8_bit_div").classList.add("hidden");
-		document.getElementById("use_8_bit").checked = false;
-	}
-	
-	//default URL loading
-	if (data.default_url != null) {
-		document.getElementById("modelurl").value = data.default_url;
-	}
-	
-	//change model loading on url if needed
-	if (data.models_on_url) {
-		document.getElementById("modelurl").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': document.getElementById("modelkey").value, 'url': this.value});};
-		document.getElementById("modelkey").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value, 'url': document.getElementById("modelurl").value});};
-	} else {
-		document.getElementById("modelkey").ochange = function () {socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});};
-		document.getElementById("modelurl").ochange = null;
-	}
-	
-	//show model select for APIs
-	if (data.show_online_model_select) {
-		document.getElementById("oaimodel").classList.remove("hidden");
-	} else {
-		document.getElementById("oaimodel").classList.add("hidden");
-	}
-	
-	//Multiple Model Select?
-	if (data.multi_online_models) {
-		document.getElementById("oaimodel").setAttribute("multiple", "");
-		document.getElementById("oaimodel").options[0].textContent = "All"
-	} else {
-		document.getElementById("oaimodel").removeAttribute("multiple");
-		document.getElementById("oaimodel").options[0].textContent = "Select Model(s)"
-	}
-	
-	//hide or unhide the use gpu checkbox
-	if  (data.gpu) {
-		document.getElementById("use_gpu_div").classList.remove("hidden");
-	} else {
-		document.getElementById("use_gpu_div").classList.add("hidden");
-	}
-	//setup breakmodel
-	if (data.breakmodel) {
-		document.getElementById("modellayers").classList.remove("hidden");
-		//setup model layer count
-		document.getElementById("gpu_layers_current").textContent = data.break_values.reduce((a, b) => a + b, 0);
-		document.getElementById("gpu_layers_max").textContent = data.layer_count;
-		document.getElementById("gpu_count").value = data.gpu_count;
-		
-		//create the gpu load bars
-		var model_layer_bars = document.getElementById('model_layer_bars');
-		while (model_layer_bars.firstChild) {
-			model_layer_bars.removeChild(model_layer_bars.firstChild);
-		}
-		
-		//Add the bars
-		for (let i = 0; i < data.gpu_names.length; i++) {
-			var div = document.createElement("div");
-			div.classList.add("model_setting_container");
-			//build GPU text
-			var span = document.createElement("span");
-			span.classList.add("model_setting_label");
-			span.textContent = "GPU " + i + " " + data.gpu_names[i] + ": "
-			//build layer count box
-			var input = document.createElement("input");
-			input.classList.add("model_setting_value");
-			input.classList.add("setting_value");
-			input.inputmode = "numeric";
-			input.id = "gpu_layers_box_"+i;
-			input.value = data.break_values[i];
-			input.onblur = function () {
-								document.getElementById(this.id.replace("_box", "")).value = this.value;
-								update_gpu_layers();
-							}
-			span.append(input);
-			div.append(span);
-			//build layer count slider
-			var input = document.createElement("input");
-			input.classList.add("model_setting_item");
-			input.type = "range";
-			input.min = 0;
-			input.max = data.layer_count;
-			input.step = 1;
-			input.value = data.break_values[i];
-			input.id = "gpu_layers_" + i;
-			input.onchange = function () {
-								document.getElementById(this.id.replace("gpu_layers", "gpu_layers_box")).value = this.value;
-								update_gpu_layers();
-							}
-			div.append(input);
-			//build slider bar #s
-			//min
-			var span = document.createElement("span");
-			span.classList.add("model_setting_minlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = 0;
-			span.append(span2);
-			div.append(span);
-			//max
-			var span = document.createElement("span");
-			span.classList.add("model_setting_maxlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = data.layer_count;
-			span.append(span2);
-			div.append(span);
-			
-			model_layer_bars.append(div);
-		}
-		
-		//add the disk layers
-		if (data.disk_break) {
-			var div = document.createElement("div");
-			div.classList.add("model_setting_container");
-			//build GPU text
-			var span = document.createElement("span");
-			span.classList.add("model_setting_label");
-			span.textContent = "Disk cache: "
-			//build layer count box
-			var input = document.createElement("input");
-			input.classList.add("model_setting_value");
-			input.classList.add("setting_value");
-			input.inputmode = "numeric";
-			input.id = "disk_layers_box";
-			input.value = data.disk_break_value;
-			input.onblur = function () {
-								document.getElementById(this.id.replace("_box", "")).value = this.value;
-								update_gpu_layers();
-							}
-			span.append(input);
-			div.append(span);
-			//build layer count slider
-			var input = document.createElement("input");
-			input.classList.add("model_setting_item");
-			input.type = "range";
-			input.min = 0;
-			input.max = data.layer_count;
-			input.step = 1;
-			input.value = data.disk_break_value;
-			input.id = "disk_layers";
-			input.onchange = function () {
-								document.getElementById(this.id+"_box").value = this.value;
-								update_gpu_layers();
-							}
-			div.append(input);
-			//build slider bar #s
-			//min
-			var span = document.createElement("span");
-			span.classList.add("model_setting_minlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = 0;
-			span.append(span2);
-			div.append(span);
-			//max
-			var span = document.createElement("span");
-			span.classList.add("model_setting_maxlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = data.layer_count;
-			span.append(span2);
-			div.append(span);
-		}
-		
-		model_layer_bars.append(div);
-		
-		update_gpu_layers();
-	} else {
-		document.getElementById("modellayers").classList.add("hidden");
-		accept.classList.remove("disabled");
-	}
 	accept.disabled = false;
 	
+	modelplugin = document.getElementById("modelplugin");
+	modelplugin.classList.remove("hidden");
+	modelplugin.onchange = function () {
+		for (const area of document.getElementsByClassName("model_plugin_settings_area")) {
+				area.classList.add("hidden");
+		}
+		document.getElementById(this.value + "_settings_area").classList.remove("hidden");
+	}
+	//create the content
+	for (const [loader, items] of Object.entries(data)) {
+		model_area = document.createElement("DIV");
+		model_area.id = loader + "_settings_area";
+		model_area.classList.add("model_plugin_settings_area");
+		model_area.classList.add("hidden");
+		modelpluginoption = document.createElement("option");
+		modelpluginoption.innerText = loader;
+		modelpluginoption.value = loader;
+		modelplugin.append(modelpluginoption);
+		
+		for (item of items) {
+			let new_setting = document.getElementById('blank_model_settings').cloneNode(true);
+			new_setting.id = loader;
+			new_setting.classList.remove("hidden");
+			new_setting.querySelector('#blank_model_settings_label').innerText = item['label'];
+			new_setting.querySelector('#blank_model_settings_tooltip').setAttribute("tooltip", item['tooltip']);
+			
+			onchange_event = function () {
+				//get check value:
+				if ('sum' in this.check_data) {
+					check_value = 0
+					for (const temp of this.check_data['sum']) {
+						if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+							check_value += parseInt(document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").value);
+						}
+					}
+				} else {
+					check_value = this.value
+				}
+				if (this.check_data['check'] == "=") {
+					valid = (check_value == this.check_data['value']);
+				} else if (this.check_data['check'] == "!=") {
+					valid = (check_value != this.check_data['value']);
+				} else if (this.check_data['check'] == ">=") {
+					valid = (check_value >= this.check_data['value']);
+				} else if (this.check_data['check'] == "<=") {	
+					valid = (check_value <= this.check_data['value']);
+				} else if (this.check_data['check'] == "<=") {	
+					valid = (check_value > this.check_data['value']);
+				} else if (this.check_data['check'] == "<=") {	
+					valid = (check_value < this.check_data['value']);
+				}
+				if (valid) {
+					//if we are supposed to refresh when this value changes we'll resubmit
+					if (this.getAttribute("refresh_model_inputs") == "true") {
+						console.log("resubmit");
+					}
+					if ('sum' in this.check_data) {
+						for (const temp of this.check_data['sum']) {
+							if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.remove('input_error');
+								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
+							}
+						}
+					} else {
+						this.closest(".setting_container_model").classList.remove('input_error');
+						this.closest(".setting_container_model").removeAttribute("tooltip");
+					}
+					var accept = document.getElementById("btn_loadmodelaccept");
+					if (document.getElementsByClassName("input_error").length)
+					accept.disabled = true;
+				} else {
+					if ('sum' in this.check_data) {
+						for (const temp of this.check_data['sum']) {
+							if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.add('input_error');
+								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+							}
+						}
+					} else {
+						this.closest(".setting_container_model").classList.add('input_error');
+						this.closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+					}
+				}
+				var accept = document.getElementById("btn_loadmodelaccept");
+				if (document.getElementsByClassName("input_error").length > 0) {
+					accept.classList.add("disabled");
+					accept.disabled = true;
+				} else {
+					accept.classList.remove("disabled");
+					accept.disabled = false;
+				}
+				
+			}
+			if (item['uitype'] == "slider") {
+				var slider_number = new_setting.querySelector('#blank_model_settings_value_slider_number');
+				slider_number.value = item['default'];
+				slider_number.id = loader + "|" + item['id'] + "_value_text";
+				slider_number.onchange = function() { document.getElementById(this.id.replace("_text", "")).value = this.value;};
+
+				var slider = new_setting.querySelector('#blank_model_settings_slider');
+				slider.value = item['default'];
+				slider.min = item['min'];
+				slider.max = item['max'];
+				slider.id = loader + "|" + item['id'] + "_value";
+				if ('check' in item) {
+					slider.check_data = item['check'];
+					slider_number.check_data = item['check'];
+				} else {
+					slider.check_data = null;
+					slider_number.check_data = null;
+				}
+				slider.oninput = function() { document.getElementById(this.id+"_text").value = this.value;};
+				slider.onchange = onchange_event;
+				slider.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				new_setting.querySelector('#blank_model_settings_min_label').innerText = item['min'];
+				new_setting.querySelector('#blank_model_settings_max_label').innerText = item['max'];
+				slider.onchange();
+			} else {
+				new_setting.querySelector('#blank_model_settings_slider').classList.add("hidden");
+			}
+			if (item['uitype'] == "toggle") {
+				var toggle = new_setting.querySelector('#blank_model_settings_toggle');
+				toggle.id = loader + "|" + item['id'] + "_value";
+				toggle.checked = item['default'];
+				toggle.onchange = onchange_event;
+				toggle.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					toggle.check_data = item['check'];
+				} else {
+					toggle.check_data = null;
+				}
+				toggle.onchange();
+			} else {
+				new_setting.querySelector('#blank_model_settings_checkbox_container').classList.add("hidden");
+				new_setting.querySelector('#blank_model_settings_toggle').classList.add("hidden");
+			}
+			if (item['uitype'] == "dropdown") {
+				var select_element = new_setting.querySelector('#blank_model_settings_dropdown');
+				select_element.id = loader + "|" + item['id'] + "_value";
+				for (const dropdown_value of item['children']) {
+					new_option = document.createElement("option");
+					new_option.value = dropdown_value['value'];
+					new_option.innerText = dropdown_value['text'];
+					select_element.append(new_option);
+				}
+				select_element.value = item['default'];
+				select_element.onchange = onchange_event;
+				select_element.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					select_element.check_data = item['check'];
+				} else {
+					select_element.check_data = null;
+				}
+				select_element.onchange();
+			} else {
+				new_setting.querySelector('#blank_model_settings_dropdown').classList.add("hidden");
+			}
+			if (item['uitype'] == "password") {
+				var password_item = new_setting.querySelector('#blank_model_settings_password');
+				password_item.id = loader + "|" + item['id'] + "_value";
+				password_item.value = item['default'];
+				password_item.onchange = onchange_event;
+				password_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					password_item.check_data = item['check'];
+				} else {
+					password_item.check_data = null;
+				}
+				password_item.onchange();
+			} else {
+				new_setting.querySelector('#blank_model_settings_password').classList.add("hidden");
+			}
+			if (item['uitype'] == "text") {
+				var text_item = new_setting.querySelector('#blank_model_settings_text');
+				text_item.id = loader + "|" + item['id'] + "_value";
+				text_item.value = item['default'];
+				text_item.onchange = onchange_event;
+				text_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					text_item.check_data = item['check'];
+				} else {
+					text_item.check_data = null;
+				}
+				text_item.onchange();
+			} else {
+				new_setting.querySelector('#blank_model_settings_text').classList.add("hidden");
+			}
+			
+			model_area.append(new_setting);
+			loadmodelsettings.append(model_area);
+		}
+	}
+	
+	//unhide the first plugin settings
+	console.log(document.getElementById("modelplugin").value + "_settings_area");
+	if (document.getElementById(document.getElementById("modelplugin").value + "_settings_area")) {
+		document.getElementById(document.getElementById("modelplugin").value + "_settings_area").classList.remove("hidden");
+	}
 	
 }
 
@@ -1877,42 +1875,16 @@ function update_gpu_layers() {
 
 function load_model() {
 	var accept = document.getElementById('btn_loadmodelaccept');
-	gpu_layers = []
-	disk_layers = 0;
-	if (!(document.getElementById("modellayers").classList.contains("hidden"))) {
-		for (let i=0; i < document.getElementById("gpu_count").value; i++) {
-			gpu_layers.push(document.getElementById("gpu_layers_"+i).value);
-		}
-		if (document.getElementById("disk_layers")) {
-			disk_layers = document.getElementById("disk_layers").value;
-		}
-	}
-	//Need to do different stuff with custom models
-	if ((accept.getAttribute('menu') == 'GPT2Custom') || (accept.getAttribute('menu') == 'NeoCustom')) {
-		var model = document.getElementById("btn_loadmodelaccept").getAttribute("menu");
-		var path = document.getElementById("btn_loadmodelaccept").getAttribute("display_name");
-	} else {
-		var model = document.getElementById("btn_loadmodelaccept").getAttribute("selected_model");
-		var path = "";
-	}
+	settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
 	
-	let selected_models = [];
-	for (item of document.getElementById("oaimodel").selectedOptions) {
-		selected_models.push(item.value);
+	//get an object of all the input settings from the user
+	data = {}
+	for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+		data[element.id.split("|")[1].replace("_value", "")] = element.value;
 	}
-	if (selected_models == ['']) {
-
-		selected_models = [];
-	} else if (selected_models.length == 1) {
-		selected_models = selected_models[0];
-	}
+	data = {...data, ...selected_model_data}
 	
-	message = {'model': model, 'path': path, 'use_gpu': document.getElementById("use_gpu").checked, 
-			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
-			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
-			   'online_model': selected_models,
-			   'use_8_bit': document.getElementById('use_8_bit').checked};
-	socket.emit("load_model", message);
+	socket.emit("load_model", data);
 	closePopups();
 }
 

@@ -16,19 +16,17 @@ from modeling.inference_model import (
     GenerationSettings,
     ModelCapabilities,
 )
-from modeling.inference_models.hf import HFInferenceModel
-
-# This file shouldn't be imported unless using the TPU
-assert utils.koboldai_vars.use_colab_tpu
-import tpu_mtj_backend
+from modeling.inference_models.parents.hf import HFInferenceModel
 
 
-class HFMTJInferenceModel(HFInferenceModel):
+
+
+class model_loader(HFInferenceModel):
     def __init__(
         self,
-        model_name: str,
+        #model_name: str,
     ) -> None:
-        super().__init__(model_name)
+        super().__init__()
 
         self.model_config = None
         self.capabilties = ModelCapabilities(
@@ -38,8 +36,13 @@ class HFMTJInferenceModel(HFInferenceModel):
             post_token_probs=False,
             uses_tpu=True,
         )
+        
+    def is_valid(self, model_name, model_path, menu_path):
+        # This file shouldn't be imported unless using the TPU
+        return utils.koboldai_vars.use_colab_tpu and super().is_valid(model_name, model_path, menu_path)
 
     def setup_mtj(self) -> None:
+        import tpu_mtj_backend
         def mtj_warper_callback(scores) -> "np.array":
             scores_shape = scores.shape
             scores_list = scores.tolist()
@@ -175,6 +178,7 @@ class HFMTJInferenceModel(HFInferenceModel):
         tpu_mtj_backend.settings_callback = mtj_settings_callback
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
+        import tpu_mtj_backend
         self.setup_mtj()
         self.init_model_config()
         utils.koboldai_vars.allowsp = True
@@ -207,6 +211,7 @@ class HFMTJInferenceModel(HFInferenceModel):
             ]
 
     def get_soft_tokens(self) -> np.array:
+        import tpu_mtj_backend
         soft_tokens = None
 
         if utils.koboldai_vars.sp is None:
@@ -258,6 +263,7 @@ class HFMTJInferenceModel(HFInferenceModel):
         seed: Optional[int] = None,
         **kwargs,
     ) -> GenerationResult:
+        import tpu_mtj_backend
         warpers.update_settings()
 
         soft_tokens = self.get_soft_tokens()

@@ -19,12 +19,37 @@ class BasicAPIException(Exception):
     """To be used for errors when using the Basic API as an interface."""
 
 
-class BasicAPIInferenceModel(InferenceModel):
+class model_loader(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
 
         # Do not allow API to be served over the API
         self.capabilties = ModelCapabilities(api_host=False)
+    
+    def is_valid(self, model_name, model_path, menu_path):
+        return model_name == "Colab"
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path):
+        requested_parameters = []
+        requested_parameters.append({
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "URL",
+                                        "id": "colaburl",
+                                        "default": False,
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "The URL of the Colab KoboldAI API to connect to.",
+                                        "menu_path": "",
+                                        "extra_classes": "",
+                                        "refresh_model_inputs": False
+                                    })
+        return requested_parameters
+        
+    def set_input_parameters(self, colaburl=""):
+        self.colaburl = colaburl
+
+    def _initialize_model(self):
+        return
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("EleutherAI/gpt-neo-2.7B")
@@ -68,7 +93,7 @@ class BasicAPIInferenceModel(InferenceModel):
         }
 
         # Create request
-        req = requests.post(utils.koboldai_vars.colaburl, json=reqdata)
+        req = requests.post(self.colaburl, json=reqdata)
 
         if req.status_code != 200:
             raise BasicAPIException(f"Bad status code {req.status_code}")
