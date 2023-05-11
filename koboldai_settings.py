@@ -1129,7 +1129,7 @@ class story_settings(settings):
                 
 class user_settings(settings):
     local_only_variables = ['importjs']
-    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid', "revision"]
+    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid', "revision", "model_selected"]
     settings_name = "user"
     def __init__(self, socketio):
         self._socketio = socketio
@@ -1185,6 +1185,7 @@ class user_settings(settings):
         self.horde_api_key = "0000000000"
         self.horde_worker_name = "My Awesome Instance"
         self.horde_url = "https://horde.koboldai.net"
+        self.model_selected = ""
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
