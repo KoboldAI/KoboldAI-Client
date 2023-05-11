@@ -218,7 +218,7 @@ class InferenceModel:
             try:
                 return GenericTokenizer(try_get_tokenizer())
             except Exception as e:
-                logger.warning(f"Tokenizer falling back due to {e}")
+                logger.warning(f"Tokenizer falling back due to {e} (This can be normal behavior for some architectures that lack a slow tokenizer such as NeoX)")
                 # If we error on each attempt, raise the last one
                 if i == len(suppliers) - 1:
                     raise
