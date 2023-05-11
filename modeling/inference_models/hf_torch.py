@@ -332,10 +332,13 @@ class HFTorchInferenceModel(HFInferenceModel):
                 raise
 
             logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
+            logger.debug(traceback.format_exc())
+
             try:
                 return GPT2LMHeadModel.from_pretrained(location, **tf_kwargs)
             except Exception as e:
                 logger.warning(f"Fell back to GPTNeoForCausalLM due to {e}")
+                logger.debug(traceback.format_exc())
                 return GPTNeoForCausalLM.from_pretrained(location, **tf_kwargs)
 
     def get_hidden_size(self) -> int:
