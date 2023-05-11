@@ -78,10 +78,10 @@ class model_loader(InferenceModel):
                                     }])
         return requested_parameters
         
-    def set_input_parameters(self, url="", key="", model=""):
-        self.key = key.strip()
-        self.model = model
-        self.url = url
+    def set_input_parameters(self, parameters):
+        self.key = parameters['key'].strip()
+        self.model = parameters['model']
+        self.url = parameters['url']
         
     def get_cluster_models(self):
         # Get list of models from public cluster

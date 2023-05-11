@@ -45,8 +45,8 @@ class model_loader(InferenceModel):
                                     })
         return requested_parameters
         
-    def set_input_parameters(self, colaburl=""):
-        self.colaburl = colaburl
+    def set_input_parameters(self, parameters):
+        self.colaburl = parameters['colaburl']
 
     def _initialize_model(self):
         return

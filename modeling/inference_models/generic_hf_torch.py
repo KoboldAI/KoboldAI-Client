@@ -30,6 +30,7 @@ class model_loader(HFTorchInferenceModel):
     
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
+        self.lazy_load = utils.koboldai_vars.lazy_load
 
         # Make model path the same as the model name to make this consistent
         # with the other loading method if it isn't a known model type. This

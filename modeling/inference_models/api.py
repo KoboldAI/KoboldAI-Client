@@ -46,8 +46,8 @@ class model_loader(InferenceModel):
                                     })
         return requested_parameters
         
-    def set_input_parameters(self, base_url=""):
-        self.base_url = base_url.rstrip("/")
+    def set_input_parameters(self, parameters):
+        self.base_url = parameters['base_url'].rstrip("/")
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         tokenizer_id = requests.get(f"{self.base_url}/api/v1/model").json()["result"]

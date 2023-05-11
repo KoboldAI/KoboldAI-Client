@@ -14,8 +14,8 @@ socket.on('load_popup', function(data){load_popup(data);});
 socket.on('popup_items', function(data){popup_items(data);});
 socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
 socket.on('popup_edit_file', function(data){popup_edit_file(data);});
-socket.on('show_model_menu', function(data){show_model_menu(data);});
-socket.on('open_model_load_menu', function(data){new_show_model_menu(data);});
+//socket.on('show_model_menu', function(data){show_model_menu(data);});
+socket.on('open_model_load_menu', function(data){show_model_menu(data);});
 socket.on('selected_model_info', function(data){selected_model_info(data);});
 socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
@@ -1502,13 +1502,18 @@ function getModelParameterCount(modelName) {
 	return base * multiplier;
 }
 
-function new_show_model_menu(data) {
+function show_model_menu(data) {
 	//clear out the loadmodelsettings
 	var loadmodelsettings = document.getElementById('loadmodelsettings')
 	while (loadmodelsettings.firstChild) {
 		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
 	}
-	document.getElementById("modelplugin").classList.add("hidden");
+	//Clear out plugin selector
+	var model_plugin = document.getElementById('modelplugin');
+	while (model_plugin.firstChild) {
+		model_plugin.removeChild(model_plugin.firstChild);
+	}
+	model_plugin.classList.add("hidden");
 	var accept = document.getElementById("btn_loadmodelaccept");
 	accept.disabled = false;
 	

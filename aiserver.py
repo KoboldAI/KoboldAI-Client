@@ -645,10 +645,14 @@ def new_socketio_on(*a, **k):
 socketio.on = new_socketio_on
 
 def emit(*args, **kwargs):
-    try:
-        return _emit(*args, **kwargs)
-    except AttributeError:
-        return socketio.emit(*args, **kwargs)
+    if has_request_context():
+        try:
+            return _emit(*args, **kwargs)
+        except AttributeError:
+            return socketio.emit(*args, **kwargs)
+    else: #We're trying to send data outside of the http context. This won't work. Try the relay
+        if koboldai_settings.queue is not None:
+            koboldai_settings.queue.put([args[0], args[1], kwargs])
 utils.emit = emit
 
 #replacement for tpool.execute to maintain request contexts
@@ -1780,10 +1784,6 @@ def get_cluster_models(msg):
     emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
     emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
 
-
-def reset_model_settings():
-    koboldai_vars.reset_for_model_load()
-    
     
 def unload_model():
     global model
@@ -1816,7 +1816,7 @@ def unload_model():
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
     
     
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
+def load_model(plugin, initial_load=False):
     global model
     global tokenizer
     global model_config
@@ -1827,79 +1827,18 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if initial_load:
         use_breakmodel_args = True
 
-    reset_model_settings()
     koboldai_vars.reset_model()
 
-    koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
-    if koboldai_vars.cluster_requested_models == [""]:
-        koboldai_vars.cluster_requested_models = []
-
     koboldai_vars.noai = False
-    if not use_breakmodel_args:
-        set_aibusy(True)
-        if koboldai_vars.model != 'ReadOnly':
-            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
-            #Have to add a sleep so the server will send the emit for some reason
-            time.sleep(0.1)
+    set_aibusy(True)
+    if koboldai_vars.model != 'ReadOnly':
+        emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
+        #Have to add a sleep so the server will send the emit for some reason
+        time.sleep(0.1)
 
-    if gpu_layers is not None:
-        args.breakmodel_gpulayers = gpu_layers
-    elif use_breakmodel_args:
-        gpu_layers = args.breakmodel_gpulayers
-    if breakmodel_args_default_to_cpu and gpu_layers is None:
-        gpu_layers = args.breakmodel_gpulayers = []
-    if disk_layers is not None:
-        args.breakmodel_disklayers = int(disk_layers)
-    elif use_breakmodel_args:
-        disk_layers = args.breakmodel_disklayers
-    if breakmodel_args_default_to_cpu and disk_layers is None:
-        disk_layers = args.breakmodel_disklayers = 0
+    if 'model' in globals():
+        model.unload()
     
-    unload_model()
-    
-    if online_model == "":
-        koboldai_vars.configname = getmodelname()
-    #Let's set the GooseAI or OpenAI server URLs if that's applicable
-    else:
-        koboldai_vars.online_model = online_model
-        # Swap OAI Server if GooseAI was selected
-        if koboldai_vars.model == "GooseAI":
-            koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
-            koboldai_vars.model = "OAI"
-            koboldai_vars.configname = f"GooseAI_{online_model.replace('/', '_')}"
-        elif koboldai_vars.model == "CLUSTER" and isinstance(online_model, list):
-                if len(online_model) != 1:
-                    koboldai_vars.configname = koboldai_vars.model
-                else:
-                    koboldai_vars.configname = f"{koboldai_vars.model}_{online_model[0].replace('/', '_')}"
-        else:
-            koboldai_vars.configname = f"{koboldai_vars.model}_{online_model.replace('/', '_')}"
-
-        if path.exists(get_config_filename()):
-            changed=False
-            with open(get_config_filename(), "r") as file:
-                # Check if API key exists
-                js = json.load(file)
-                if 'online_model' in js:
-                    if js['online_model'] != online_model:
-                        changed=True
-                        js['online_model'] = online_model
-                else:
-                    changed=True
-                    js['online_model'] = online_model
-
-            if changed:
-                with open("settings/{}.v2_settings".format(koboldai_vars.model), "w") as file:
-                    file.write(json.dumps(js, indent=3))
-
-        # Swap OAI Server if GooseAI was selected
-        if koboldai_vars.model == "GooseAI":
-            koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
-            koboldai_vars.model = "OAI"
-            args.configname = "GooseAI" + "/" + online_model
-        elif koboldai_vars.model != "CLUSTER":
-            args.configname = koboldai_vars.model + "/" + online_model
-        koboldai_vars.oaiurl = koboldai_vars.oaiengines + "/{0}/completions".format(online_model)
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
@@ -1937,84 +1876,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     else:
         koboldai_vars.default_preset = koboldai_settings.default_preset
 
-
-    # Ask for API key if InferKit was selected
-    if koboldai_vars.model == "InferKit":
-        koboldai_vars.apikey = koboldai_vars.oaiapikey
                     
-    # Swap OAI Server if GooseAI was selected
-    if koboldai_vars.model == "GooseAI":
-        koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
-        koboldai_vars.model = "OAI"
-        koboldai_vars.configname = "GooseAI"
-
-    # Ask for API key if OpenAI was selected
-    if koboldai_vars.model == "OAI" and not koboldai_vars.configname:
-        koboldai_vars.configname = "OAI"
-        
-    if koboldai_vars.model == "ReadOnly":
-        koboldai_vars.noai = True
-
-    # TODO: InferKit
-    if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
-        pass
-    elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
-        koboldai_vars.colaburl = url or koboldai_vars.colaburl
-        koboldai_vars.usegpu = False
-        koboldai_vars.breakmodel = False
-
-        if koboldai_vars.model == "Colab":
-            from modeling.inference_models.basic_api import model_loader
-            model = model_loader()
-        elif koboldai_vars.model == "API":
-            from modeling.inference_models.api import model_loader
-            model = model_loader(koboldai_vars.colaburl.replace("/request", ""))
-        elif koboldai_vars.model == "CLUSTER":
-            from modeling.inference_models.horde import model_loader
-            model = model_loader()
-        elif koboldai_vars.model == "OAI":
-            from modeling.inference_models.openai import model_loader
-            model = model_loader()
-
-        model.load(initial_load=initial_load)
-    # TODO: This check sucks, make a model object or somethign
-    elif "rwkv" in koboldai_vars.model:
-        if koboldai_vars.use_colab_tpu:
-            raise RuntimeError("RWKV is not supported on the TPU.")
-        from modeling.inference_models.rwkv import model_loader
-        model = model_loader(koboldai_vars.model)
-        model.load()
-    elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
-        # HF Torch
-        logger.init("Transformers", status='Starting')
-        for m in ("GPTJModel", "XGLMModel"):
-            try:
-                globals()[m] = getattr(__import__("transformers"), m)
-            except:
-                pass
-
-        from modeling.inference_models.generic_hf_torch import model_loader
-        model = model_loader(
-            koboldai_vars.model,
-            lazy_load=koboldai_vars.lazy_load,
-            low_mem=args.lowmem
-        )
-
-        model.load(
-            save_model=not (args.colab or args.cacheonly) or args.savemodel,
-            initial_load=initial_load,
-        )
-        logger.info(f"Pipeline created: {koboldai_vars.model}")
-    else:
-        # TPU
-        from modeling.inference_models.hf_mtj import model_loader
-        model = model_loader(
-            koboldai_vars.model
-        )
-        model.load(
-            save_model=not (args.colab or args.cacheonly) or args.savemodel,
-            initial_load=initial_load,
-        )
+    model = model_loaders[plugin]
+    model.load(initial_load=initial_load)
     
     # TODO: Convert everywhere to use model.tokenizer
     if model:
@@ -6532,7 +6396,8 @@ def UI_2_select_model(data):
 def UI_2_load_model(data):
     logger.info("loading Model")
     logger.info(data)
-    model_loaders[data['plugin']].set_input_parameters(**data)
+    model_loaders[data['plugin']].set_input_parameters(data)
+    load_model(data['plugin'])
     #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
 #==================================================================#
@@ -8155,7 +8020,8 @@ def send_one_time_messages(data, wait_time=0):
 # Test
 #==================================================================#
 def model_info():
-    if model_config is not None:
+    global model_config
+    if 'model_config' in globals() and model_config is not None:
         if isinstance(model_config, dict):
             if 'model_type' in model_config:
                 model_type = str(model_config['model_type'])
@@ -11045,7 +10911,7 @@ for schema in config_endpoint_schemas:
 def startup():
     if koboldai_vars.model == "" or koboldai_vars.model is None:
         koboldai_vars.model = "ReadOnly"
-    socketio.start_background_task(load_model, **{'initial_load':True})
+        socketio.start_background_task(load_model, *('readonly',), **{'initial_load':True})
             
 print("", end="", flush=True)
 

@@ -34,12 +34,12 @@ class HFInferenceModel(InferenceModel):
         requested_parameters = []
         
         if model_path is not None and os.path.exists(model_path):
-            model_config = AutoConfig.from_pretrained(model_path)
+            self.model_config = AutoConfig.from_pretrained(model_path)
         elif(os.path.exists("models/{}".format(model_name.replace('/', '_')))):
-            model_config = AutoConfig.from_pretrained("models/{}".format(model_name.replace('/', '_')), revision=utils.koboldai_vars.revision, cache_dir="cache")
+            self.model_config = AutoConfig.from_pretrained("models/{}".format(model_name.replace('/', '_')), revision=utils.koboldai_vars.revision, cache_dir="cache")
         else:
-            model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
-        layer_count = model_config["n_layer"] if isinstance(model_config, dict) else model_config.num_layers if hasattr(model_config, "num_layers") else model_config.n_layer if hasattr(model_config, "n_layer") else model_config.num_hidden_layers if hasattr(model_config, 'num_hidden_layers') else None
+            self.model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
+        layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
         if layer_count is not None and layer_count >= 0:
             if os.path.exists("settings/{}.breakmodel".format(model_name.replace("/", "_"))):
                 with open("settings/{}.breakmodel".format(model_name.replace("/", "_")), "r") as file:
@@ -61,11 +61,11 @@ class HFInferenceModel(InferenceModel):
                                                 "uitype": "slider",
                                                 "unit": "int",
                                                 "label": "{} Layers".format(torch.cuda.get_device_name(i)),
-                                                "id": "{} Layers".format(i),
+                                                "id": "{}_Layers".format(i),
                                                 "min": 0,
                                                 "max": layer_count,
                                                 "step": 1,
-                                                "check": {"sum": ["{} Layers".format(i) for i in range(gpu_count)]+['CPU Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
+                                                "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
                                                 "check_message": "The sum of assigned layers must equal {}".format(layer_count),
                                                 "default": break_values[i],
                                                 "tooltip": "The number of layers to put on {}.".format(torch.cuda.get_device_name(i)),
@@ -77,11 +77,11 @@ class HFInferenceModel(InferenceModel):
                                             "uitype": "slider",
                                             "unit": "int",
                                             "label": "CPU Layers",
-                                            "id": "CPU Layers",
+                                            "id": "CPU_Layers",
                                             "min": 0,
                                             "max": layer_count,
                                             "step": 1,
-                                            "check": {"sum": ["{} Layers".format(i) for i in range(gpu_count)]+['CPU Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
+                                            "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
                                             "check_message": "The sum of assigned layers must equal {}".format(layer_count),
                                             "default": layer_count - sum(break_values),
                                             "tooltip": "The number of layers to put on the CPU. This will use your system RAM. It will also do inference partially on CPU. Use if you must.",
@@ -98,7 +98,7 @@ class HFInferenceModel(InferenceModel):
                                                 "min": 0,
                                                 "max": layer_count,
                                                 "step": 1,
-                                                "check": {"sum": ["{} Layers".format(i) for i in range(gpu_count)]+['CPU Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
+                                                "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
                                                 "check_message": "The sum of assigned layers must equal {}".format(layer_count),
                                                 "default": disk_blocks,
                                                 "tooltip": "The number of layers to put on the disk. This will use your hard drive. The is VERY slow in comparison to GPU or CPU. Use as a last resort.",
@@ -122,10 +122,40 @@ class HFInferenceModel(InferenceModel):
         
         return requested_parameters
         
-    def set_input_parameters(self, layers=[], disk_layers=0, use_gpu=False):
+    def set_input_parameters(self, parameters):
+        gpu_count = torch.cuda.device_count()
+        layers = []
+        for i in range(gpu_count):
+            layers.append(int(parameters["{}_Layers".format(i)]) if parameters["{}_Layers".format(i)].isnumeric() else None)
+        self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
         self.layers = layers
-        self.disk_layers = disk_layers
-        self.use_gpu = use_gpu
+        self.disk_layers = parameters['disk_layers'] if 'disk_layers' in parameters else None
+        self.use_gpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
+        self.model_name = parameters['id']
+        self.path = parameters['path'] if 'path' in parameters else None
+
+    def unload(self):
+        if hasattr(self, 'model'):
+            self.model = None
+        if hasattr(self, 'tokenizer'):
+            self.tokenizer = None
+        if hasattr(self, 'model_config'):
+            self.model_config = None
+        with torch.no_grad():
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="torch.distributed.reduce_op is deprecated")
+                for tensor in gc.get_objects():
+                    try:
+                        if torch.is_tensor(tensor):
+                            tensor.set_(torch.tensor((), device=tensor.device, dtype=tensor.dtype))
+                    except:
+                        pass
+        gc.collect()
+        try:
+            with torch.no_grad():
+                torch.cuda.empty_cache()
+        except:
+            pass
 
     def _post_load(self) -> None:
         # These are model specific tokenizer overrides if a model has bad defaults
@@ -187,7 +217,7 @@ class HFInferenceModel(InferenceModel):
 
             return model_path
 
-        basename = utils.koboldai_vars.model.replace("/", "_")
+        basename = self.model_name.replace("/", "_")
         if legacy:
             ret = basename
         else:

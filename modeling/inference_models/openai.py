@@ -59,9 +59,9 @@ class model_loader(InferenceModel):
                                     }])
         return requested_parameters
         
-    def set_input_parameters(self, key="", model=""):
-        self.key = key.strip()
-        self.model = model
+    def set_input_parameters(self, parameters):
+        self.key = parameters['key'].strip()
+        self.model = parameters['model']
 
     def get_oai_models(self):
         if self.key == "":

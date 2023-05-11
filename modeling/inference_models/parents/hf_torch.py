@@ -398,7 +398,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         Embedding._koboldai_patch_causallm_model = self.model
 
     def _get_lazy_load_callback(self, n_layers: int, convert_to_float16: bool = True):
-        if not self.lazy_load:
+        if not utils.koboldai_vars.lazy_load:
             return
 
         if utils.args.breakmodel_disklayers is not None:

@@ -169,6 +169,7 @@ class InferenceModel:
         ]
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
+        self.model_name = "Not Defined"
     
     def is_valid(self, model_name, model_path, menu_path, vram):
         return True
@@ -176,7 +177,7 @@ class InferenceModel:
     def requested_parameters(self, model_name, model_path, menu_path, vram):
         return {}
         
-    def define_input_parameters(self):
+    def set_input_parameters(self, parameters):
         return
 
     def load(self, save_model: bool = False, initial_load: bool = False) -> None:
@@ -185,6 +186,9 @@ class InferenceModel:
         self._pre_load()
         self._load(save_model=save_model, initial_load=initial_load)
         self._post_load()
+
+    def unload(self):
+        return
 
     def _pre_load(self) -> None:
         """Pre load hook. Called before `_load()`."""
