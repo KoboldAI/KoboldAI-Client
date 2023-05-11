@@ -116,9 +116,9 @@ class model_loader(InferenceModel):
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer(
-            utils.koboldai_vars.cluster_requested_models[0]
-            if len(utils.koboldai_vars.cluster_requested_models) > 0
-            else "gpt2",
+            self.model
+            #if len(self.model) > 0
+            #else "gpt2",
         )
 
     def _raw_generate(
@@ -166,14 +166,14 @@ class model_loader(InferenceModel):
 
         client_agent = "KoboldAI:2.0.0:koboldai.org"
         cluster_headers = {
-            "apikey": utils.koboldai_vars.horde_api_key,
+            "apikey": self.key,
             "Client-Agent": client_agent,
         }
 
         try:
             # Create request
             req = requests.post(
-                f"{utils.koboldai_vars.horde_url}/api/v2/generate/text/async",
+                f"{self.url}/api/v2/generate/text/async",
                 json=cluster_metadata,
                 headers=cluster_headers,
             )
@@ -211,7 +211,7 @@ class model_loader(InferenceModel):
         while not finished:
             try:
                 req = requests.get(
-                    f"{utils.koboldai_vars.horde_url}/api/v2/generate/text/status/{request_id}",
+                    f"{self.url}/api/v2/generate/text/status/{request_id}",
                     headers=cluster_agent_headers,
                 )
             except requests.exceptions.ConnectionError:
