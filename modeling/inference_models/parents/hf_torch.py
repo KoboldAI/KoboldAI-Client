@@ -245,7 +245,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                     len(prompt_tokens) + max_new, utils.koboldai_vars.max_length
                 ),
                 repetition_penalty=1.0,
-                bad_words_ids=utils.koboldai_vars.badwordsids
+                bad_words_ids=self.badwordsids
                 + additional_bad_words_ids,
                 use_cache=True,
                 num_return_sequences=batch_count,

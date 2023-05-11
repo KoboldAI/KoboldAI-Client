@@ -43,7 +43,7 @@ class model_loader(HFTorchInferenceModel):
             self.model_name = os.path.basename(
                 os.path.normpath(utils.koboldai_vars.custmodpth)
             )
-            utils.koboldai_vars.model = self.model_name
+        utils.koboldai_vars.model = self.model_name
 
         # If we specify a model and it's in the root directory, we need to move
         # it to the models directory (legacy folder structure to new)

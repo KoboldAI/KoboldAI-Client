@@ -17,6 +17,7 @@ class HFInferenceModel(InferenceModel):
 
         self.model = None
         self.tokenizer = None
+        self.badwordsids = koboldai_settings.badwordsids_default
 
     def is_valid(self, model_name, model_path, menu_path):
         try:
