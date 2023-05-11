@@ -1882,7 +1882,9 @@ function load_model() {
 	for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
 		data[element.id.split("|")[1].replace("_value", "")] = element.value;
 	}
-	data = {...data, ...selected_model_data}
+	data = {...data, ...selected_model_data};
+	
+	data['plugin'] = document.getElementById("modelplugin").value;
 	
 	socket.emit("load_model", data);
 	closePopups();

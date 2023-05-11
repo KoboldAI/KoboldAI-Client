@@ -67,7 +67,7 @@ class model_loader(InferenceModel):
                                         "unit": "text",
                                         "label": "Model",
                                         "id": "model",
-                                        "default": "",
+                                        "default": model_name,
                                         "check": {"value": "", 'check': "!="},
                                         "tooltip": "Which model to use when running OpenAI/GooseAI.",
                                         "menu_path": "",

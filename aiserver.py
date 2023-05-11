@@ -6489,7 +6489,7 @@ def UI_2_select_model(data):
             if valid:
                 logger.debug("Valid Loaders: {}".format(valid_loaders))
                 emit("selected_model_info", valid_loaders)
-        if not valid:
+        if not valid and 'path' in data:
             #Get directories
             paths, breadcrumbs = get_folder_path_info(data['path'])
             output = []
@@ -6501,7 +6501,9 @@ def UI_2_select_model(data):
                         break
                 output.append({'label': path[1], 'name': path[0], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
             emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})
-    
+        elif not valid:
+            logger.error("Nothing can load the model: {}".format(valid_loaders))
+            
     return
     
     
@@ -6530,6 +6532,7 @@ def UI_2_select_model(data):
 def UI_2_load_model(data):
     logger.info("loading Model")
     logger.info(data)
+    model_loaders[data['plugin']].set_input_parameters(**data)
     #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
 #==================================================================#
