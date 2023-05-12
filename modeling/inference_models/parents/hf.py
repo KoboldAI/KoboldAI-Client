@@ -18,6 +18,7 @@ class HFInferenceModel(InferenceModel):
         self.model = None
         self.tokenizer = None
         self.badwordsids = koboldai_settings.badwordsids_default
+        self.usegpu = False
 
     def is_valid(self, model_name, model_path, menu_path):
         try:
@@ -136,7 +137,7 @@ class HFInferenceModel(InferenceModel):
             self.disk_layers = int(parameters['disk_layers']) if 'disk_layers' in parameters and parameters['disk_layers'].isnumeric() else 0    
             breakmodel.gpu_blocks = layers
             breakmodel.disk_blocks = self.disk_layers
-            self.use_gpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
+            self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
             self.model_type = self.get_model_type()
             self.breakmodel = ((self.model_type != 'gpt2') or self.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not self.nobreakmodel
         self.model_name = parameters['id']

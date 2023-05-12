@@ -289,6 +289,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                 raise
 
             logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
+            logger.debug(traceback_string)
             try:
                 return GPT2LMHeadModel.from_pretrained(location, **tf_kwargs)
             except Exception as e:
@@ -437,10 +438,10 @@ class HFTorchInferenceModel(HFInferenceModel):
                 ):
                     device_map[key] = (
                         utils.koboldai_vars.gpu_device
-                        if utils.koboldai_vars.hascuda and utils.koboldai_vars.usegpu
+                        if utils.koboldai_vars.hascuda and self.usegpu
                         else "cpu"
                         if not utils.koboldai_vars.hascuda
-                        or not utils.koboldai_vars.breakmodel
+                        or not self.breakmodel
                         else breakmodel.primary_device
                     )
                 else:
@@ -456,12 +457,12 @@ class HFTorchInferenceModel(HFInferenceModel):
                     )
                     device = (
                         utils.koboldai_vars.gpu_device
-                        if utils.koboldai_vars.hascuda and utils.koboldai_vars.usegpu
+                        if utils.koboldai_vars.hascuda and self.usegpu
                         else "disk"
                         if layer < disk_blocks and layer < ram_blocks
                         else "cpu"
                         if not utils.koboldai_vars.hascuda
-                        or not utils.koboldai_vars.breakmodel
+                        or not self.breakmodel
                         else "shared"
                         if layer < ram_blocks
                         else bisect.bisect_right(
@@ -566,15 +567,15 @@ class HFTorchInferenceModel(HFInferenceModel):
                                 and breakmodel.primary_device != "cpu"
                                 and utils.koboldai_vars.hascuda
                                 and (
-                                    utils.koboldai_vars.breakmodel
-                                    or utils.koboldai_vars.usegpu
+                                    self.breakmodel
+                                    or self.usegpu
                                 )
                                 and model_dict[key].dtype is torch.float32
                             ):
                                 model_dict[key] = model_dict[key].to(torch.float16)
                             if breakmodel.primary_device == "cpu" or (
-                                not utils.koboldai_vars.usegpu
-                                and not utils.koboldai_vars.breakmodel
+                                not self.usegpu
+                                and not self.breakmodel
                                 and model_dict[key].dtype is torch.float16
                             ):
                                 model_dict[key] = model_dict[key].to(torch.float32)
@@ -612,14 +613,14 @@ class HFTorchInferenceModel(HFInferenceModel):
                                         and breakmodel.primary_device != "cpu"
                                         and utils.koboldai_vars.hascuda
                                         and (
-                                            utils.koboldai_vars.breakmodel
-                                            or utils.koboldai_vars.usegpu
+                                            self.breakmodel
+                                            or self.usegpu
                                         )
                                     ):
                                         dtype = torch.float16
                                     if breakmodel.primary_device == "cpu" or (
-                                        not utils.koboldai_vars.usegpu
-                                        and not utils.koboldai_vars.breakmodel
+                                        not self.usegpu
+                                        and not self.breakmodel
                                     ):
                                         dtype = torch.float32
                                     if (
@@ -675,16 +676,16 @@ class HFTorchInferenceModel(HFInferenceModel):
                             and breakmodel.primary_device != "cpu"
                             and utils.koboldai_vars.hascuda
                             and (
-                                utils.koboldai_vars.breakmodel
-                                or utils.koboldai_vars.usegpu
+                                self.breakmodel
+                                or self.usegpu
                             )
                             and model_dict[key].dtype is torch.float32
                         ):
                             model_dict[key] = model_dict[key].to(torch.float16)
 
                         if breakmodel.primary_device == "cpu" or (
-                            not utils.koboldai_vars.usegpu
-                            and not utils.koboldai_vars.breakmodel
+                            not self.usegpu
+                            and not self.breakmodel
                             and model_dict[key].dtype is torch.float16
                         ):
                             model_dict[key] = model_dict[key].to(torch.float32)
@@ -723,14 +724,14 @@ class HFTorchInferenceModel(HFInferenceModel):
                                     and breakmodel.primary_device != "cpu"
                                     and utils.koboldai_vars.hascuda
                                     and (
-                                        utils.koboldai_vars.breakmodel
-                                        or utils.koboldai_vars.usegpu
+                                        self.breakmodel
+                                        or self.usegpu
                                     )
                                 ):
                                     dtype = torch.float16
                                 if breakmodel.primary_device == "cpu" or (
-                                    not utils.koboldai_vars.usegpu
-                                    and not utils.koboldai_vars.breakmodel
+                                    not self.usegpu
+                                    and not self.breakmodel
                                 ):
                                     dtype = torch.float32
                                 if (
@@ -764,7 +765,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         if always_use or (
             utils.koboldai_vars.hascuda
             and self.low_mem
-            and (utils.koboldai_vars.usegpu or utils.koboldai_vars.breakmodel)
+            and (self.usegpu or self.breakmodel)
         ):
             original_dtype = torch.get_default_dtype()
             torch.set_default_dtype(torch.float16)
@@ -956,8 +957,9 @@ class HFTorchInferenceModel(HFInferenceModel):
             -1,
             utils.num_layers(config),
         ):
-            utils.koboldai_vars.breakmodel = False
-            utils.koboldai_vars.usegpu = True
+            logger.debug("All layers on same GPU. Breakmodel disabled")
+            self.breakmodel = False
+            self.usegpu = True
             utils.koboldai_vars.gpu_device = len(breakmodel.gpu_blocks) - 1
             return
 
@@ -966,6 +968,6 @@ class HFTorchInferenceModel(HFInferenceModel):
             import breakmodel
 
             breakmodel.primary_device = "cpu"
-            utils.koboldai_vars.breakmodel = False
-            utils.koboldai_vars.usegpu = False
+            self.breakmodel = False
+            self.usegpu = False
             return
