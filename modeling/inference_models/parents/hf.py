@@ -22,18 +22,19 @@ class HFInferenceModel(InferenceModel):
     def is_valid(self, model_name, model_path, menu_path):
         try:
             if model_path is not None and os.path.exists(model_path):
-                model_config = AutoConfig.from_pretrained(model_path)
+                self.model_config = AutoConfig.from_pretrained(model_path)
             elif(os.path.exists("models/{}".format(model_name.replace('/', '_')))):
-                model_config = AutoConfig.from_pretrained("models/{}".format(model_name.replace('/', '_')), revision=utils.koboldai_vars.revision, cache_dir="cache")
+                self.model_config = AutoConfig.from_pretrained("models/{}".format(model_name.replace('/', '_')), revision=utils.koboldai_vars.revision, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
+                self.model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
             return True
         except:
             return False
         
     def get_requested_parameters(self, model_name, model_path, menu_path):
         requested_parameters = []
-        
+        if not self.hf_torch:
+            return []
         if model_path is not None and os.path.exists(model_path):
             self.model_config = AutoConfig.from_pretrained(model_path)
         elif(os.path.exists("models/{}".format(model_name.replace('/', '_')))):
@@ -124,14 +125,20 @@ class HFInferenceModel(InferenceModel):
         return requested_parameters
         
     def set_input_parameters(self, parameters):
-        gpu_count = torch.cuda.device_count()
-        layers = []
-        for i in range(gpu_count):
-            layers.append(int(parameters["{}_Layers".format(i)]) if parameters["{}_Layers".format(i)].isnumeric() else None)
-        self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
-        self.layers = layers
-        self.disk_layers = parameters['disk_layers'] if 'disk_layers' in parameters else None
-        self.use_gpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
+        if self.hf_torch:
+            import breakmodel
+            gpu_count = torch.cuda.device_count()
+            layers = []
+            for i in range(gpu_count):
+                layers.append(int(parameters["{}_Layers".format(i)]) if parameters["{}_Layers".format(i)].isnumeric() else None)
+            self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
+            self.layers = layers
+            self.disk_layers = int(parameters['disk_layers']) if 'disk_layers' in parameters and parameters['disk_layers'].isnumeric() else 0    
+            breakmodel.gpu_blocks = layers
+            breakmodel.disk_blocks = self.disk_layers
+            self.use_gpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
+            self.model_type = self.get_model_type()
+            self.breakmodel = ((self.model_type != 'gpt2') or self.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not self.nobreakmodel
         self.model_name = parameters['id']
         self.path = parameters['path'] if 'path' in parameters else None
 
@@ -157,6 +164,10 @@ class HFInferenceModel(InferenceModel):
                 torch.cuda.empty_cache()
         except:
             pass
+        if self.hf_torch:
+            breakmodel.breakmodel = True
+            breakmodel.gpu_blocks = []
+            breakmodel.disk_blocks = 0
 
     def _post_load(self) -> None:
         # These are model specific tokenizer overrides if a model has bad defaults

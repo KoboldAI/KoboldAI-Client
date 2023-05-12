@@ -25,7 +25,7 @@ class model_loader(openai_gooseai_model_loader):
     
     def __init__(self):
         super().__init__()
-        self.url = "https://api.openai.com/v1/engines"
+        self.url = "https://api.goose.ai/v1/engines"
     
     def is_valid(self, model_name, model_path, menu_path):
-        return model_name == "OAI"
+        return  model_name == "GooseAI"

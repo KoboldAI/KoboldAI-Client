@@ -30,7 +30,6 @@ class model_loader(HFTorchInferenceModel):
     
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
-        self.lazy_load = utils.koboldai_vars.lazy_load
 
         # Make model path the same as the model name to make this consistent
         # with the other loading method if it isn't a known model type. This
@@ -69,12 +68,14 @@ class model_loader(HFTorchInferenceModel):
 
         # If we're using torch_lazy_loader, we need to get breakmodel config
         # early so that it knows where to load the individual model tensors
+        logger.debug("lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(self.lazy_load, utils.koboldai_vars.hascuda, self.breakmodel, self.nobreakmodel))
         if (
             self.lazy_load
             and utils.koboldai_vars.hascuda
-            and utils.koboldai_vars.breakmodel
-            and not utils.koboldai_vars.nobreakmodel
+            and self.breakmodel
+            and not self.nobreakmodel
         ):
+            logger.debug("loading breakmodel")
             self.breakmodel_device_config(self.model_config)
 
         if self.lazy_load:

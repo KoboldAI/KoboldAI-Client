@@ -53,15 +53,12 @@ LOG_SAMPLER_NO_EFFECT = False
 
 
 class HFTorchInferenceModel(HFInferenceModel):
-    def __init__(
-        self,
-        #model_name: str,
-        #lazy_load: bool,
-        #low_mem: bool,
-    ) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        #self.lazy_load = lazy_load
-        #self.low_mem = low_mem
+        self.hf_torch = True
+        self.lazy_load = True
+        self.low_mem = False
+        self.nobreakmodel = False
 
         self.post_token_hooks = [
             PostTokenHooks.stream_tokens,
@@ -398,7 +395,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         Embedding._koboldai_patch_causallm_model = self.model
 
     def _get_lazy_load_callback(self, n_layers: int, convert_to_float16: bool = True):
-        if not utils.koboldai_vars.lazy_load:
+        if not self.lazy_load:
             return
 
         if utils.args.breakmodel_disklayers is not None:
@@ -819,14 +816,14 @@ class HFTorchInferenceModel(HFInferenceModel):
         elif (
             utils.args.breakmodel_gpulayers is not None
             or utils.args.breakmodel_disklayers is not None
+            or breakmodel.gpu_blocks != []
         ):
             try:
-                if not utils.args.breakmodel_gpulayers:
-                    breakmodel.gpu_blocks = []
-                else:
-                    breakmodel.gpu_blocks = list(
-                        map(int, utils.args.breakmodel_gpulayers.split(","))
-                    )
+                if breakmodel.gpu_blocks == []:
+                    if utils.args.breakmodel_gpulayers:
+                        breakmodel.gpu_blocks = list(
+                            map(int, utils.args.breakmodel_gpulayers.split(","))
+                        )
                 assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
                 s = n_layers
                 for i in range(len(breakmodel.gpu_blocks)):

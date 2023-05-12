@@ -27,7 +27,7 @@ class model_loader(HFInferenceModel):
         #model_name: str,
     ) -> None:
         super().__init__()
-
+        self.hf_torch = False
         self.model_config = None
         self.capabilties = ModelCapabilities(
             embedding_manipulation=False,

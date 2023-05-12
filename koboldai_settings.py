@@ -710,7 +710,6 @@ class model_settings(settings):
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
         self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
-        self.lazy_load   = True # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
         self.uid_presets = []
@@ -1236,7 +1235,7 @@ class system_settings(settings):
         self.corescript  = "default.lua"  # Filename of corescript to load
         self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
-        self.hascuda     = False  # Whether torch has detected CUDA on the system
+        self.hascuda     = torch.cuda.is_available()  # Whether torch has detected CUDA on the system
         self.usegpu      = False  # Whether to launch pipeline with GPU support
         self.splist      = []
         self.spselect    = ""     # Temporary storage for soft prompt filename to load

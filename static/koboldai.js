@@ -1652,6 +1652,12 @@ function selected_model_info(data) {
 	while (loadmodelsettings.firstChild) {
 		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
 	}
+	//Clear out plugin selector
+	var model_plugin = document.getElementById('modelplugin');
+	while (model_plugin.firstChild) {
+		model_plugin.removeChild(model_plugin.firstChild);
+	}
+	
 	var accept = document.getElementById("btn_loadmodelaccept");
 	accept.disabled = false;
 	
