@@ -4006,7 +4006,7 @@ function update_context(data) {
 					document.getElementById('world_info_'+entry.uid).classList.add("used_in_game");
 				}
 				break;
-			case 'memory':
+			case 'genre':
 				genre_length += entry.tokens.length;
 				break;
 			case 'memory':

@@ -332,10 +332,13 @@ class HFTorchInferenceModel(HFInferenceModel):
                 raise
 
             logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
+            logger.debug(traceback.format_exc())
+
             try:
                 return GPT2LMHeadModel.from_pretrained(location, **tf_kwargs)
             except Exception as e:
                 logger.warning(f"Fell back to GPTNeoForCausalLM due to {e}")
+                logger.debug(traceback.format_exc())
                 return GPTNeoForCausalLM.from_pretrained(location, **tf_kwargs)
 
     def get_hidden_size(self) -> int:
@@ -462,18 +465,24 @@ class HFTorchInferenceModel(HFInferenceModel):
             device_map: Dict[str, Union[str, int]] = {}
 
             @functools.lru_cache(maxsize=None)
-            def get_original_key(key):
-                return max(
-                    (
-                        original_key
-                        for original_key in utils.module_names
-                        if original_key.endswith(key)
-                    ),
-                    key=len,
-                )
+            def get_original_key(key) -> Optional[str]:
+                key_candidates = [
+                    original_key
+                    for original_key in utils.module_names
+                    if original_key.endswith(key)
+                ]
+
+                if not key_candidates:
+                    logger.debug(f"!!! No key candidates for {key}")
+                    return None
+
+                return max(key_candidates, key=len)
 
             for key, value in model_dict.items():
                 original_key = get_original_key(key)
+
+                if not original_key:
+                    continue
 
                 if isinstance(value, lazy_loader.LazyTensor) and not any(
                     original_key.startswith(n) for n in utils.layers_module_names
