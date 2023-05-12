@@ -780,6 +780,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         device_count = torch.cuda.device_count()
         if device_count < 2:
             primary = None
+        logger.debug("n_layers: {}".format(n_layers))
         gpu_blocks = breakmodel.gpu_blocks + (
             device_count - len(breakmodel.gpu_blocks)
         ) * [0]
@@ -835,10 +836,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         s -= breakmodel.gpu_blocks[i]
                 assert sum(breakmodel.gpu_blocks) <= n_layers
                 n_layers -= sum(breakmodel.gpu_blocks)
-                if utils.args.breakmodel_disklayers is not None:
-                    assert utils.args.breakmodel_disklayers <= n_layers
-                    breakmodel.disk_blocks = utils.args.breakmodel_disklayers
-                    n_layers -= utils.args.breakmodel_disklayers
+                n_layers -= breakmodel.disk_blocks
             except:
                 logger.warning(
                     "--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0."
@@ -949,6 +947,8 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         logger.init_ok("Final device configuration:", status="Info")
         self.breakmodel_device_list(n_layers, primary=breakmodel.primary_device)
+        with open("settings/{}.breakmodel".format(self.model_name.replace("/", "_")), "w") as file:
+            file.write("{}\n{}".format(",".join(map(str, breakmodel.gpu_blocks)), breakmodel.disk_blocks))
 
         # If all layers are on the same device, use the old GPU generation mode
         while len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0:

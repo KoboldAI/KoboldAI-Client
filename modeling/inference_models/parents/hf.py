@@ -53,12 +53,12 @@ class HFInferenceModel(InferenceModel):
                     break_values = break_values.split(",")
             else:
                 break_values = [layer_count]
-                disk_blocks = None
+                disk_blocks = 0
             break_values = [int(x) for x in break_values if x != '' and x is not None]
             gpu_count = torch.cuda.device_count()
             break_values += [0] * (gpu_count - len(break_values))
             if disk_blocks is not None:
-                break_values += [disk_blocks]
+                break_values += [int(disk_blocks)]
             for i in range(gpu_count):
                 requested_parameters.append({
                                                 "uitype": "slider",
@@ -134,7 +134,7 @@ class HFInferenceModel(InferenceModel):
                 layers.append(int(parameters["{}_Layers".format(i)]) if parameters["{}_Layers".format(i)].isnumeric() else None)
             self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
             self.layers = layers
-            self.disk_layers = int(parameters['disk_layers']) if 'disk_layers' in parameters and parameters['disk_layers'].isnumeric() else 0    
+            self.disk_layers = int(parameters['Disk_Layers']) if 'Disk_Layers' in parameters and parameters['Disk_Layers'].isnumeric() else 0    
             breakmodel.gpu_blocks = layers
             breakmodel.disk_blocks = self.disk_layers
             self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
