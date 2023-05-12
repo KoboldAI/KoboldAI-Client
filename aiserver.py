@@ -136,7 +136,6 @@ class MenuModelType(Enum):
     HUGGINGFACE = 0
     ONLINE_API = 1
     OTHER = 2
-    RWKV = 3
 
 class MenuItem:
     def __init__(
@@ -243,7 +242,7 @@ model_menu = {
         MenuFolder("Untuned Fairseq Dense", "fsdlist"),
         MenuFolder("Untuned Bloom", "bloomlist"),
         MenuFolder("Untuned XGLM", "xglmlist"),
-        MenuFolder("Untuned RWKV-4 (Experimental)", "rwkvlist", experimental=True),
+        MenuFolder("Official RWKV-4", "rwkvlist"),
         MenuFolder("Untuned GPT2", "gpt2list"),
         MenuFolder("Online Services", "apilist"),
         MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER),
@@ -370,16 +369,16 @@ model_menu = {
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'rwkvlist': [
-        MenuModel("RWKV-4 14B ctx4096", "rwkv-4-pile-14b:ctx4096", "??GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 14B ctx1024", "rwkv-4-pile-14b", "??GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 7B ctx4096", "rwkv-4-pile-7b:ctx4096", "??GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 7B ctx1024", "rwkv-4-pile-7b", "??GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 3B ctx4096", "rwkv-4-pile-3b:ctx4096", "?GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 3B ctx1024", "rwkv-4-pile-3b", "?GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 1.5B ctx4096", "rwkv-4-pile-1b5:ctx4096", "9GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 1.5B ctx1024", "rwkv-4-pile-1b5", "9GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 340M", "rwkv-4-pile-430m", "?GB", model_type=MenuModelType.RWKV),
-        MenuModel("RWKV-4 169M ctx1024", "rwkv-4-pile-169m", "?GB", model_type=MenuModelType.RWKV),
+        MenuModel("RWKV Raven 14B", "RWKV/rwkv-raven-14b", ""),
+        MenuModel("RWKV Pile 14B", "RWKV/rwkv-4-14b-pile", ""),
+        MenuModel("RWKV Raven 7B", "RWKV/rwkv-raven-7b", ""),        
+        MenuModel("RWKV Pile 7B", "RWKV/rwkv-4-7b-pile", ""), 
+        MenuModel("RWKV Raven 3B", "RWKV/rwkv-raven-3b", ""), 
+        MenuModel("RWKV Pile 3B", "RWKV/rwkv-4-3b-pile", ""), 
+        MenuModel("RWKV Raven 1.5B", "RWKV/rwkv-raven-1b5", ""), 
+        MenuModel("RWKV Pile 1.5B", "RWKV/rwkv-4-1b5-pile", ""), 
+        MenuModel("RWKV Pile 430M", "RWKV/rwkv-4-430m-pile", ""), 
+        MenuModel("RWKV Pile 169B", "RWKV/rwkv-4-169m-pile", ""), 
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'apilist': [
@@ -3366,6 +3365,7 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         soft_tokens=soft_tokens,
         sampler_order=koboldai_vars.sampler_order,
     )
+    genout = np.array(genout)
     genout = [utils.applyoutputformatting(utils.decodenewlines(tokenizer.decode(txt))) for txt in genout]
 
     return genout

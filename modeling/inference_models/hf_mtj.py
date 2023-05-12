@@ -17,6 +17,7 @@ from modeling.inference_model import (
     ModelCapabilities,
 )
 from modeling.inference_models.parents.hf import HFInferenceModel
+from modeling.tokenizer import GenericTokenizer
 
 
 
@@ -197,8 +198,7 @@ class model_loader(HFInferenceModel):
         utils.koboldai_vars.modeldim = int(
             tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])
         )
-
-        self.tokenizer = tpu_mtj_backend.tokenizer
+        self.tokenizer = GenericTokenizer(tpu_mtj_backend.tokenizer)
 
         if (
             utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
