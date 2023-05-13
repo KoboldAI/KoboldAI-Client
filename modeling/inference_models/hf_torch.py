@@ -581,10 +581,9 @@ class HFTorchInferenceModel(HFInferenceModel):
                                 last_storage_key = storage_key
                                 if isinstance(f, zipfile.ZipExtFile):
                                     f.close()
-                                try:
-                                    f = z.open(f"archive/data/{storage_key}")
-                                except:
-                                    f = z.open(f"{zipfolder}/data/{storage_key}")
+                                ziproot = z.namelist()[0].split("/")[0]
+                                f = z.open(f"{ziproot}/data/{storage_key}")
+                                
                                 current_offset = 0
                             if current_offset != model_dict[key].seek_offset:
                                 f.read(model_dict[key].seek_offset - current_offset)
