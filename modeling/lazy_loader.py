@@ -141,7 +141,8 @@ class TorchLazyTensor(LazyTensor):
             try:
                 f = checkpoint.open(f"archive/data/{self.key}", "r")
             except:
-                f = checkpoint.open(f"{filename}/data/{self.key}", "r")
+                ziproot = z.namelist()[0].split("/")[0]
+                f = z.open(f"{ziproot}/data/{self.key}", "r")
             f.read(self.seek_offset)
         else:
             f = checkpoint

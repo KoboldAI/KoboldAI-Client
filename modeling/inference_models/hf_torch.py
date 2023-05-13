@@ -291,7 +291,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                 logger.error("Invalid load key! Aborting.")
                 raise
 
-            logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
+            logger.warning(f"Fell back to GPT2LMHeadModel due to {traceback.format_exc()}")
             try:
                 return GPT2LMHeadModel.from_pretrained(location, **tf_kwargs)
             except Exception as e:
@@ -538,7 +538,8 @@ class HFTorchInferenceModel(HFInferenceModel):
                                 try:
                                     f = z.open(f"archive/data/{storage_key}")
                                 except:
-                                    f = z.open(f"{zipfolder}/data/{storage_key}")
+                                    ziproot = z.namelist()[0].split("/")[0]
+                                    f = z.open(f"{ziproot}/data/{storage_key}")
                                 current_offset = 0
                             if current_offset != model_dict[key].seek_offset:
                                 f.read(model_dict[key].seek_offset - current_offset)
