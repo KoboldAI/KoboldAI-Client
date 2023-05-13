@@ -28,8 +28,7 @@ Next step, (Windows) subfolder mode or B: option doesn't matter choose either
   ```
   ./install_requirements.sh rocm
   ./commandline-rocm.sh
-  cd repos/gptq
-  python setup_cuda.py install
+  pip install git+https://github.com/0cc4m/GPTQ-for-LLaMa@c884b421a233f9603d8224c9b22c2d83dd2c1fc4
   ```
   * If you get error missing hip/hip_runtime_xxx.h you dont have proper rocm & hip pkg installed
   * If you get CUDA_HOME envar is not set run in env: 
