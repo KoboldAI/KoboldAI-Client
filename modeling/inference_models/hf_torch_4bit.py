@@ -149,7 +149,7 @@ class HFTorch4BitInferenceModel(HFTorchInferenceModel):
 
         try:
             self.gpu_layers_list = [int(l) for l in gpulayers.split(",")]
-        except ValueError:
+        except (ValueError, AttributeError):
             self.gpu_layers_list = [utils.num_layers(self.model_config)]
 
         tf_kwargs = {
