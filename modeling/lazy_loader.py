@@ -196,6 +196,8 @@ class RestrictedUnpickler(pickle.Unpickler):
             return collections.OrderedDict
         elif module == "torch._utils" and name == "_rebuild_tensor_v2":
             return torch._utils._rebuild_tensor_v2
+        elif module == "torch._tensor" and name == "_rebuild_tensor_v2":
+            return torch._tensor._rebuild_tensor_v2
         elif module == "torch" and name in (
             "DoubleStorage",
             "FloatStorage",
