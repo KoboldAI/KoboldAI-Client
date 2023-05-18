@@ -1645,8 +1645,85 @@ function show_model_menu(data) {
 	
 }
 
+function model_settings_checker() {
+	//get check value:
+	missing_element = false;
+	if (this.check_data != null) {
+		if ('sum' in this.check_data) {
+			check_value = 0
+			for (const temp of this.check_data['sum']) {
+				if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+					check_value += parseInt(document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").value);
+				} else {
+					missing_element = true;
+				}
+			}
+		} else {
+			check_value = this.value
+		}
+		if (this.check_data['check'] == "=") {
+			valid = (check_value == this.check_data['value']);
+		} else if (this.check_data['check'] == "!=") {
+			valid = (check_value != this.check_data['value']);
+		} else if (this.check_data['check'] == ">=") {
+			valid = (check_value >= this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value <= this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value > this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value < this.check_data['value']);
+		}
+		if (valid || missing_element) {
+			//if we are supposed to refresh when this value changes we'll resubmit
+			if ((this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
+				console.log("resubmit");
+			}
+			if ('sum' in this.check_data) {
+				for (const temp of this.check_data['sum']) {
+					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.remove('input_error');
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
+					}
+				}
+			} else {
+				this.closest(".setting_container_model").classList.remove('input_error');
+				this.closest(".setting_container_model").removeAttribute("tooltip");
+			}
+		} else {
+			if ('sum' in this.check_data) {
+				for (const temp of this.check_data['sum']) {
+					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.add('input_error');
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+					}
+				}
+			} else {
+				this.closest(".setting_container_model").classList.add('input_error');
+				this.closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+			}
+		}
+	}
+	var accept = document.getElementById("btn_loadmodelaccept");
+	ok_to_load = true;
+	for (const item of document.getElementsByClassName("input_error")) {
+		if (item.classList.contains("input_error") && !item.closest(".model_plugin_settings_area").classList.contains("hidden")) {
+			ok_to_load = false;
+			break;
+		}
+	}
+	
+	if (ok_to_load) {
+		accept.classList.remove("disabled");
+		accept.disabled = false;
+	} else {
+		accept.classList.add("disabled");
+		accept.disabled = true;
+	}
+}
 
-function selected_model_info(data) {
+function selected_model_info(sent_data) {
+	const data = sent_data['model_backends'];
 	//clear out the loadmodelsettings
 	var loadmodelsettings = document.getElementById('loadmodelsettings')
 	while (loadmodelsettings.firstChild) {
@@ -1667,7 +1744,10 @@ function selected_model_info(data) {
 		for (const area of document.getElementsByClassName("model_plugin_settings_area")) {
 				area.classList.add("hidden");
 		}
-		document.getElementById(this.value + "_settings_area").classList.remove("hidden");
+		if (document.getElementById(this.value + "_settings_area")) {
+			document.getElementById(this.value + "_settings_area").classList.remove("hidden");
+		}
+		model_settings_checker()
 	}
 	//create the content
 	for (const [loader, items] of Object.entries(data)) {
@@ -1679,7 +1759,11 @@ function selected_model_info(data) {
 		modelpluginoption.innerText = loader;
 		modelpluginoption.value = loader;
 		modelplugin.append(modelpluginoption);
+		if (loader == sent_data['preselected']) {
+			modelplugin.value = sent_data['preselected'];
+		}
 		
+		//create the user input for each requested input
 		for (item of items) {
 			let new_setting = document.getElementById('blank_model_settings').cloneNode(true);
 			new_setting.id = loader;
@@ -1687,73 +1771,7 @@ function selected_model_info(data) {
 			new_setting.querySelector('#blank_model_settings_label').innerText = item['label'];
 			new_setting.querySelector('#blank_model_settings_tooltip').setAttribute("tooltip", item['tooltip']);
 			
-			onchange_event = function () {
-				//get check value:
-				if ('sum' in this.check_data) {
-					check_value = 0
-					for (const temp of this.check_data['sum']) {
-						if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
-							check_value += parseInt(document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").value);
-						}
-					}
-				} else {
-					check_value = this.value
-				}
-				if (this.check_data['check'] == "=") {
-					valid = (check_value == this.check_data['value']);
-				} else if (this.check_data['check'] == "!=") {
-					valid = (check_value != this.check_data['value']);
-				} else if (this.check_data['check'] == ">=") {
-					valid = (check_value >= this.check_data['value']);
-				} else if (this.check_data['check'] == "<=") {	
-					valid = (check_value <= this.check_data['value']);
-				} else if (this.check_data['check'] == "<=") {	
-					valid = (check_value > this.check_data['value']);
-				} else if (this.check_data['check'] == "<=") {	
-					valid = (check_value < this.check_data['value']);
-				}
-				if (valid) {
-					//if we are supposed to refresh when this value changes we'll resubmit
-					if (this.getAttribute("refresh_model_inputs") == "true") {
-						console.log("resubmit");
-					}
-					if ('sum' in this.check_data) {
-						for (const temp of this.check_data['sum']) {
-							if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
-								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.remove('input_error');
-								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
-							}
-						}
-					} else {
-						this.closest(".setting_container_model").classList.remove('input_error');
-						this.closest(".setting_container_model").removeAttribute("tooltip");
-					}
-					var accept = document.getElementById("btn_loadmodelaccept");
-					if (document.getElementsByClassName("input_error").length)
-					accept.disabled = true;
-				} else {
-					if ('sum' in this.check_data) {
-						for (const temp of this.check_data['sum']) {
-							if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
-								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.add('input_error');
-								document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
-							}
-						}
-					} else {
-						this.closest(".setting_container_model").classList.add('input_error');
-						this.closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
-					}
-				}
-				var accept = document.getElementById("btn_loadmodelaccept");
-				if (document.getElementsByClassName("input_error").length > 0) {
-					accept.classList.add("disabled");
-					accept.disabled = true;
-				} else {
-					accept.classList.remove("disabled");
-					accept.disabled = false;
-				}
-				
-			}
+			onchange_event = model_settings_checker;
 			if (item['uitype'] == "slider") {
 				var slider_number = new_setting.querySelector('#blank_model_settings_value_slider_number');
 				slider_number.value = item['default'];
@@ -1764,6 +1782,7 @@ function selected_model_info(data) {
 				slider.value = item['default'];
 				slider.min = item['min'];
 				slider.max = item['max'];
+				slider.setAttribute("data_type", item['unit']);
 				slider.id = loader + "|" + item['id'] + "_value";
 				if ('check' in item) {
 					slider.check_data = item['check'];
@@ -1777,25 +1796,37 @@ function selected_model_info(data) {
 				slider.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
 				new_setting.querySelector('#blank_model_settings_min_label').innerText = item['min'];
 				new_setting.querySelector('#blank_model_settings_max_label').innerText = item['max'];
+				slider.noresubmit = true;
 				slider.onchange();
+				slider.noresubmit = false;
 			} else {
-				new_setting.querySelector('#blank_model_settings_slider').classList.add("hidden");
+				new_setting.querySelector('#blank_model_settings_slider').remove();
 			}
 			if (item['uitype'] == "toggle") {
-				var toggle = new_setting.querySelector('#blank_model_settings_toggle');
+				toggle = document.createElement("input");
+				toggle.type='checkbox';
+				toggle.classList.add("setting_item_input");
+				toggle.classList.add("blank_model_settings_input");
+				toggle.classList.add("model_settings_input");
 				toggle.id = loader + "|" + item['id'] + "_value";
 				toggle.checked = item['default'];
-				toggle.onchange = onchange_event;
+				toggle.onclick = onchange_event;
+				toggle.setAttribute("data_type", item['unit']);
 				toggle.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
 				if ('check' in item) {
 					toggle.check_data = item['check'];
 				} else {
 					toggle.check_data = null;
 				}
-				toggle.onchange();
+				new_setting.querySelector('#blank_model_settings_toggle').append(toggle);
+				setTimeout(function() {
+										  $('#'+loader + "\\|" + item['id'] + "_value").bootstrapToggle({size: "mini", onstyle: "success", toggle: "toggle"});
+										}, 200);
+				toggle.noresubmit = true;
+				toggle.onclick();
+				toggle.noresubmit = false;
 			} else {
-				new_setting.querySelector('#blank_model_settings_checkbox_container').classList.add("hidden");
-				new_setting.querySelector('#blank_model_settings_toggle').classList.add("hidden");
+				new_setting.querySelector('#blank_model_settings_toggle').remove();
 			}
 			if (item['uitype'] == "dropdown") {
 				var select_element = new_setting.querySelector('#blank_model_settings_dropdown');
@@ -1807,6 +1838,7 @@ function selected_model_info(data) {
 					select_element.append(new_option);
 				}
 				select_element.value = item['default'];
+				select_element.setAttribute("data_type", item['unit']);
 				select_element.onchange = onchange_event;
 				select_element.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
 				if ('check' in item) {
@@ -1814,14 +1846,17 @@ function selected_model_info(data) {
 				} else {
 					select_element.check_data = null;
 				}
+				select_element.noresubmit = true;
 				select_element.onchange();
+				select_element.noresubmit = false;
 			} else {
-				new_setting.querySelector('#blank_model_settings_dropdown').classList.add("hidden");
+				new_setting.querySelector('#blank_model_settings_dropdown').remove();
 			}
 			if (item['uitype'] == "password") {
 				var password_item = new_setting.querySelector('#blank_model_settings_password');
 				password_item.id = loader + "|" + item['id'] + "_value";
 				password_item.value = item['default'];
+				password_item.setAttribute("data_type", item['unit']);
 				password_item.onchange = onchange_event;
 				password_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
 				if ('check' in item) {
@@ -1829,24 +1864,29 @@ function selected_model_info(data) {
 				} else {
 					password_item.check_data = null;
 				}
+				password_item.noresubmit = true;
 				password_item.onchange();
+				password_item.noresubmit = false;
 			} else {
-				new_setting.querySelector('#blank_model_settings_password').classList.add("hidden");
+				new_setting.querySelector('#blank_model_settings_password').remove();
 			}
 			if (item['uitype'] == "text") {
 				var text_item = new_setting.querySelector('#blank_model_settings_text');
 				text_item.id = loader + "|" + item['id'] + "_value";
 				text_item.value = item['default'];
 				text_item.onchange = onchange_event;
+				text_item.setAttribute("data_type", item['unit']);
 				text_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
 				if ('check' in item) {
 					text_item.check_data = item['check'];
 				} else {
 					text_item.check_data = null;
 				}
+				text_item.noresubmit = true;
 				text_item.onchange();
+				text_item.noresubmit = false;
 			} else {
-				new_setting.querySelector('#blank_model_settings_text').classList.add("hidden");
+				new_setting.querySelector('#blank_model_settings_text').remove();
 			}
 			
 			model_area.append(new_setting);
@@ -1891,7 +1931,15 @@ function load_model() {
 	//get an object of all the input settings from the user
 	data = {}
 	for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
-		data[element.id.split("|")[1].replace("_value", "")] = element.value;
+		var element_data = element.value;
+		if (element.getAttribute("data_type") == "int") {
+			element_data = parseInt(element_data);
+		} else if (element.getAttribute("data_type") == "float") {
+			element_data = parseFloat(element_data);
+		} else if (element.getAttribute("data_type") == "bool") {
+			element_data = (element_data == 'on');
+		}
+		data[element.id.split("|")[1].replace("_value", "")] = element_data;
 	}
 	data = {...data, ...selected_model_data};
 	

@@ -16,12 +16,13 @@ from modeling.inference_model import (
     ModelCapabilities,
 )
 
+model_backend_name = "Horde"
 
 class HordeException(Exception):
     """To be used for errors on server side of the Horde."""
 
 
-class model_loader(InferenceModel):
+class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
         self.url = "https://horde.koboldai.net"

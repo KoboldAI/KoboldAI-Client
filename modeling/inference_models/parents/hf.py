@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 from transformers import AutoConfig
-
+import warnings
 import utils
 import koboldai_settings
 from logger import logger
@@ -43,7 +43,7 @@ class HFInferenceModel(InferenceModel):
         else:
             self.model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
         layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
-        if layer_count is not None and layer_count >= 0:
+        if layer_count is not None and layer_count >= 0 and not self.nobreakmodel:
             if os.path.exists("settings/{}.breakmodel".format(model_name.replace("/", "_"))):
                 with open("settings/{}.breakmodel".format(model_name.replace("/", "_")), "r") as file:
                     data = [x for x in file.read().split("\n")[:2] if x != '']
@@ -128,15 +128,17 @@ class HFInferenceModel(InferenceModel):
     def set_input_parameters(self, parameters):
         if self.hf_torch:
             import breakmodel
-            gpu_count = torch.cuda.device_count()
-            layers = []
-            for i in range(gpu_count):
-                layers.append(int(parameters["{}_Layers".format(i)]) if parameters["{}_Layers".format(i)].isnumeric() else None)
-            self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
-            self.layers = layers
-            self.disk_layers = int(parameters['Disk_Layers']) if 'Disk_Layers' in parameters and parameters['Disk_Layers'].isnumeric() else 0    
-            breakmodel.gpu_blocks = layers
-            breakmodel.disk_blocks = self.disk_layers
+            layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
+            if layer_count is not None and layer_count >= 0 and not self.nobreakmodel:
+                gpu_count = torch.cuda.device_count()
+                layers = []
+                for i in range(gpu_count):
+                    layers.append(int(parameters["{}_Layers".format(i)]) if parameters["{}_Layers".format(i)].isnumeric() else None)
+                self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
+                self.layers = layers
+                self.disk_layers = int(parameters['Disk_Layers']) if 'Disk_Layers' in parameters and parameters['Disk_Layers'].isnumeric() else 0    
+                breakmodel.gpu_blocks = layers
+                breakmodel.disk_blocks = self.disk_layers
             self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
             self.model_type = self.get_model_type()
             self.breakmodel = ((self.model_type != 'gpt2') or self.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not self.nobreakmodel

@@ -55,7 +55,10 @@ MODEL_FILES = {
 }
 
 
-class model_loader(InferenceModel):
+model_backend_name = "RWKV"
+
+
+class model_backend(InferenceModel):
     def __init__(
         self,
         #model_name: str,

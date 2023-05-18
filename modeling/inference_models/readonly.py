@@ -14,12 +14,13 @@ from modeling.inference_model import (
     ModelCapabilities,
 )
 
+model_backend_name = "Read Only"
 
 class BasicAPIException(Exception):
     """To be used for errors when using the Basic API as an interface."""
 
 
-class model_loader(InferenceModel):
+class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
 

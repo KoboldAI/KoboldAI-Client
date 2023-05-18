@@ -18,7 +18,7 @@ class OpenAIAPIError(Exception):
         super().__init__(f"{error_type}: {error_message}")
 
 
-class model_loader(InferenceModel):
+class model_backend(InferenceModel):
     """InferenceModel for interfacing with OpenAI's generation API."""
     
     def __init__(self):

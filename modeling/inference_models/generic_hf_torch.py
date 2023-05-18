@@ -22,8 +22,9 @@ except ModuleNotFoundError as e:
 
 from modeling.inference_models.parents.hf_torch import HFTorchInferenceModel
 
+model_backend_name = "Huggingface"
 
-class model_loader(HFTorchInferenceModel):
+class model_backend(HFTorchInferenceModel):
     
     def _initialize_model(self):
         return

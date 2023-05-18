@@ -11,16 +11,17 @@ from modeling.inference_model import (
     InferenceModel,
 )
 
-from modeling.inference_models.parents.openai_gooseai import model_loader as openai_gooseai_model_loader
+from modeling.inference_models.parents.openai_gooseai import model_backend as openai_gooseai_model_backend
 
 
+model_backend_name = "GooseAI"
 
 class OpenAIAPIError(Exception):
     def __init__(self, error_type: str, error_message) -> None:
         super().__init__(f"{error_type}: {error_message}")
 
 
-class model_loader(openai_gooseai_model_loader):
+class model_backend(openai_gooseai_model_backend):
     """InferenceModel for interfacing with OpenAI's generation API."""
     
     def __init__(self):

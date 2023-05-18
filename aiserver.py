@@ -622,12 +622,12 @@ from modeling.patches import patch_transformers
 
 #Load all of the model importers
 import importlib
-model_loader_code = {}
-model_loaders = {}
+model_backend_code = {}
+model_backends = {}
 for module in os.listdir("./modeling/inference_models"):
     if os.path.isfile(os.path.join("./modeling/inference_models",module)) and module[-3:] == '.py':
-        model_loader_code[module[:-3]] = importlib.import_module('modeling.inference_models.{}'.format(module[:-3]))
-        model_loaders[module[:-3]] = model_loader_code[module[:-3]].model_loader()
+        model_backend_code[module[:-3]] = importlib.import_module('modeling.inference_models.{}'.format(module[:-3]))
+        model_backends[model_backend_code[module[:-3]].model_backend_name] = model_backend_code[module[:-3]].model_backend()
         
 
 old_socketio_on = socketio.on
@@ -1354,6 +1354,7 @@ def general_startup(override_args=None):
     parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
+    parser.add_argument("--model_backend", help="Specify the model backend you want to use")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
     parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://horde.koboldai.net/register")
@@ -1447,6 +1448,12 @@ def general_startup(override_args=None):
     args.max_summary_length = int(args.max_summary_length)
 
     if args.model:
+        # At this point we have to try to load the model through the selected backend
+        if not args.model_backend:
+            logger.error("Didn't select a model backend. Please enter one through the --model_backend or remove the --model from the run command")
+            exit()
+        #if 
+        
         koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
     koboldai_settings.multi_story = args.multi_story
@@ -1472,7 +1479,7 @@ def general_startup(override_args=None):
         koboldai_vars.quiet = True
 
     if args.nobreakmodel:
-        model_loaders['generic_hf_torch'].nobreakmodel = True
+        model_backends['Huggingface'].nobreakmodel = True
 
     if args.remote:
         koboldai_vars.host = True;
@@ -1484,7 +1491,7 @@ def general_startup(override_args=None):
         koboldai_vars.host = True;
 
     if args.lowmem:
-        model_loaders['generic_hf_torch'].low_mem = True
+        model_backends['Huggingface'].low_mem = True
 
     if args.host != "Disabled":
             # This means --host option was submitted without an argument
@@ -1520,7 +1527,7 @@ def general_startup(override_args=None):
         koboldai_vars.use_colab_tpu = False
         koboldai_vars.hascuda = False
         koboldai_vars.usegpu = False
-        model_loaders['generic_hf_torch'].nobreakmodel = True
+        model_backends['Huggingface'].nobreakmodel = True
 
     koboldai_vars.smandelete = koboldai_vars.host == args.override_delete
     koboldai_vars.smanrename = koboldai_vars.host == args.override_rename
@@ -1582,7 +1589,7 @@ def unload_model():
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
     
     
-def load_model(plugin, initial_load=False):
+def load_model(model_backend, initial_load=False):
     global model
     global tokenizer
     global model_config
@@ -1637,7 +1644,7 @@ def load_model(plugin, initial_load=False):
         koboldai_vars.default_preset = koboldai_settings.default_preset
 
                     
-    model = model_loaders[plugin]
+    model = model_backends[model_backend]
     model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
     logger.debug("Model Type: {}".format(koboldai_vars.model_type))
     
@@ -6103,33 +6110,23 @@ def UI_2_select_model(data):
         emit("open_model_load_menu", {"items": [{**item.to_json(), **{"menu":data["name"]}} for item in model_menu[data["name"]] if item.should_show()]})
     else:
         #Get load methods
-        logger.debug("Asking for model info on potential model: {}".format(data))
-        valid = False
         if 'path' not in data or data['path'] == "":
             valid_loaders = {}
-            for model_loader in model_loaders:
-                logger.debug("Testing Loader {} for model {}: {}".format(model_loader, data["name"], model_loaders[model_loader].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"])))
-                if model_loaders[model_loader].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
-                    valid_loaders[model_loader] = model_loaders[model_loader].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
-                    valid = True
-            if valid:
-                logger.debug("Valid Loaders: {}".format(valid_loaders))
-                emit("selected_model_info", valid_loaders)
-        if not valid and 'path' in data:
+            for model_backend in model_backends:
+                valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
+            emit("selected_model_info", {"model_backends": valid_loaders, "preselected": "Huggingface"})
+        else:
             #Get directories
             paths, breadcrumbs = get_folder_path_info(data['path'])
             output = []
             for path in paths:
                 valid=False
-                for model_loader in model_loaders:
-                    if model_loaders[model_loader].is_valid(path[1], path[0], "Custom"):
+                for model_backend in model_backends:
+                    if model_backends[model_backend].is_valid(path[1], path[0], "Custom"):
                         valid=True
                         break
                 output.append({'label': path[1], 'name': path[0], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
-            emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})
-        elif not valid:
-            logger.error("Nothing can load the model: {}".format(valid_loaders))
-            
+            emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})            
     return
     
     
@@ -6156,7 +6153,7 @@ def UI_2_select_model(data):
 @socketio.on('load_model')
 @logger.catch
 def UI_2_load_model(data):
-    model_loaders[data['plugin']].set_input_parameters(data)
+    model_backends[data['plugin']].set_input_parameters(data)
     load_model(data['plugin'])
     #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
@@ -10671,7 +10668,7 @@ for schema in config_endpoint_schemas:
 def startup():
     if koboldai_vars.model == "" or koboldai_vars.model is None:
         koboldai_vars.model = "ReadOnly"
-        socketio.start_background_task(load_model, *('readonly',), **{'initial_load':True})
+        socketio.start_background_task(load_model, *('Read Only',), **{'initial_load':True})
             
 print("", end="", flush=True)
 

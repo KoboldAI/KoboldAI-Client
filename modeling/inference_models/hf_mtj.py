@@ -19,10 +19,10 @@ from modeling.inference_model import (
 from modeling.inference_models.parents.hf import HFInferenceModel
 from modeling.tokenizer import GenericTokenizer
 
+model_backend_name = "Huggingface MTJ"
 
 
-
-class model_loader(HFInferenceModel):
+class model_backend(HFInferenceModel):
     def __init__(
         self,
         #model_name: str,
