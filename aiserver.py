@@ -1355,6 +1355,7 @@ def general_startup(override_args=None):
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--model_backend", help="Specify the model backend you want to use")
+    parser.add_argument("--model_parameters", action="store", default="", help="json of id values to use for the input to the model loading process (leave blank to get required parameters)")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
     parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://horde.koboldai.net/register")
@@ -1447,14 +1448,6 @@ def general_startup(override_args=None):
 
     args.max_summary_length = int(args.max_summary_length)
 
-    if args.model:
-        # At this point we have to try to load the model through the selected backend
-        if not args.model_backend:
-            logger.error("Didn't select a model backend. Please enter one through the --model_backend or remove the --model from the run command")
-            exit()
-        #if 
-        
-        koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
     koboldai_settings.multi_story = args.multi_story
 
@@ -1556,6 +1549,37 @@ def general_startup(override_args=None):
     
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
     
+    if args.model:
+        # At this point we have to try to load the model through the selected backend
+        if not args.model_backend:
+            logger.error("Didn't select a model backend. Please enter one through the --model_backend or remove the --model from the run command")
+            logger.error("Possible model backends are: {}".format(", ".join([x for x in model_backends])))
+            exit()
+        if args.model_backend not in model_backends:
+            logger.error("Your selected model backend ({}) isn't in the model backends we know about ({})".format(args.model_backend, ", ".join([x for x in model_backends])))
+            exit()
+        #OK, we've been given a model to load and a backend to load it through. Now we need to get a list of parameters and make sure we get what we need to actually load it
+        parameters = model_backends[args.model_backend].get_requested_parameters(args.model, args.path, "")
+        ok_to_load = True
+        arg_parameters = json.loads(args.model_parameters.replace("'", "\"")) if args.model_parameters != "" else {}
+        for parameter in parameters:
+            if parameter['default'] == "" or parameter['id'] not in arg_parameters:
+                ok_to_load = False
+            elif parameter['id'] not in arg_parameters:
+                arg_parameters[parameter] = parameter['default']
+        if not ok_to_load:
+            logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} (required parameters shown below)")
+            logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters])))
+            exit()
+        arg_parameters['id'] = args.model
+        arg_parameters['model_path'] = args.path
+        arg_parameters['menu_path'] = ""
+        model_backends[args.model_backend].set_input_parameters(arg_parameters)
+        koboldai_vars.model = args.model
+        return args.model_backend
+    else:
+        return "Read Only"
+    
         
     
 def unload_model():
@@ -1633,13 +1657,13 @@ def load_model(model_backend, initial_load=False):
         else:
             logger.init_warn("GPU support", status="Not Found")
         
-        if koboldai_vars.hascuda:
-            if(koboldai_vars.bmsupported):
-                koboldai_vars.usegpu = False
-                koboldai_vars.breakmodel = True
-            else:
-                koboldai_vars.breakmodel = False
-                koboldai_vars.usegpu = use_gpu
+        #if koboldai_vars.hascuda:
+        #    if(koboldai_vars.bmsupported):
+        #        koboldai_vars.usegpu = False
+        #        koboldai_vars.breakmodel = True
+        #    else:
+        #        koboldai_vars.breakmodel = False
+        #        koboldai_vars.usegpu = use_gpu
     else:
         koboldai_vars.default_preset = koboldai_settings.default_preset
 
@@ -10665,10 +10689,8 @@ for schema in config_endpoint_schemas:
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
-def startup():
-    if koboldai_vars.model == "" or koboldai_vars.model is None:
-        koboldai_vars.model = "ReadOnly"
-        socketio.start_background_task(load_model, *('Read Only',), **{'initial_load':True})
+def startup(command_line_backend):
+    socketio.start_background_task(load_model, *(command_line_backend,), **{'initial_load':True})
             
 print("", end="", flush=True)
 
@@ -10677,7 +10699,7 @@ def run():
     global app
     global tpu_mtj_backend
 
-    general_startup()
+    command_line_backend = general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
     if koboldai_vars.host:
@@ -10725,7 +10747,7 @@ def run():
            cloudflare = _run_cloudflared(port)
            koboldai_vars.cloudflare_link = cloudflare
            
-        startup()
+        startup(command_line_backend)
        
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
@@ -10745,7 +10767,7 @@ def run():
         else:
             socketio.run(app, port=port)
     else:
-        startup()
+        startup(command_line_backend)
         if args.unblock:
             if not args.no_ui:
                 try:
@@ -10773,13 +10795,13 @@ def run():
 if __name__ == "__main__":
     run()
 else:
-    general_startup()
+    command_line_backend = general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
     Session(app)
     logger.init_ok("Flask", status="OK")
     patch_transformers()
-    startup()
+    startup(command_line_backend)
     koboldai_settings.port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
     

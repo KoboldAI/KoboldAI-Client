@@ -133,10 +133,14 @@ class HFInferenceModel(InferenceModel):
                 gpu_count = torch.cuda.device_count()
                 layers = []
                 for i in range(gpu_count):
-                    layers.append(int(parameters["{}_Layers".format(i)]) if parameters["{}_Layers".format(i)].isnumeric() else None)
+                    layers.append(int(parameters["{}_Layers".format(i)]) if isinstance(parameters["{}_Layers".format(i)], str) and parameters["{}_Layers".format(i)].isnumeric() else None)
                 self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
+                if isinstance(self.cpu_layers, str):
+                    self.cpu_layers = int(self.cpu_layers) if self.cpu_layers.isnumeric() else 0
                 self.layers = layers
-                self.disk_layers = int(parameters['Disk_Layers']) if 'Disk_Layers' in parameters and parameters['Disk_Layers'].isnumeric() else 0    
+                self.disk_layers = parameters['Disk_Layers'] if 'Disk_Layers' in parameters else 0    
+                if isinstance(self.disk_layers, str):
+                    self.disk_layers = int(self.disk_layers) if self.disk_layers.isnumeric() else 0
                 breakmodel.gpu_blocks = layers
                 breakmodel.disk_blocks = self.disk_layers
             self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None

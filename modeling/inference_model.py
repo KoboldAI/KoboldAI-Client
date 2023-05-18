@@ -178,6 +178,8 @@ class InferenceModel:
         return {}
         
     def set_input_parameters(self, parameters):
+        for parameter in parameters:
+            setattr(self, parameter, parameters[parameter])
         return
 
     def load(self, save_model: bool = False, initial_load: bool = False) -> None:

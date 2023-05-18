@@ -86,7 +86,6 @@ class model_backend(InferenceModel):
         
     def get_cluster_models(self):
         # Get list of models from public cluster
-        logger.info("<purple>Retrieving engine list...</purple>")
         try:
             req = requests.get(f"{self.url}/api/v2/status/models?type=text")
         except:
