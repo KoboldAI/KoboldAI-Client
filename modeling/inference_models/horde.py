@@ -70,6 +70,7 @@ class model_backend(InferenceModel):
                                         "id": "model",
                                         "default": model_name,
                                         "check": {"value": "", 'check': "!="},
+                                        'multiple': True,
                                         "tooltip": "Which model to use when running OpenAI/GooseAI.",
                                         "menu_path": "",
                                         "refresh_model_inputs": False,
@@ -102,7 +103,7 @@ class model_backend(InferenceModel):
 
         engines = req.json()
         try:
-            engines = [{"text": en["name"], "value": en["name"]} for en in engines]
+            engines = [{"text": "all", "value": "all"}] + [{"text": en["name"], "value": en["name"]} for en in engines]
         except:
             logger.error(engines)
             raise

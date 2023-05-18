@@ -1695,12 +1695,20 @@ function model_settings_checker() {
 				for (const temp of this.check_data['sum']) {
 					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
 						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.add('input_error');
-						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+						if (this.check_data['check_message']) {
+							document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+						} else {
+							document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
+						}
 					}
 				}
 			} else {
 				this.closest(".setting_container_model").classList.add('input_error');
-				this.closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+				if (this.check_data['check_message']) {
+					this.closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+				} else {
+					this.closest(".setting_container_model").removeAttribute("tooltip");
+				}
 			}
 		}
 	}
@@ -1841,6 +1849,10 @@ function selected_model_info(sent_data) {
 				select_element.setAttribute("data_type", item['unit']);
 				select_element.onchange = onchange_event;
 				select_element.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if (('multiple' in item) && (item['multiple'])) {
+					select_element.multiple = true;
+					select_element.size = 10;
+				}
 				if ('check' in item) {
 					select_element.check_data = item['check'];
 				} else {
