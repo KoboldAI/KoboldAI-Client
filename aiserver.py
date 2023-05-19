@@ -1365,7 +1365,7 @@ def general_startup(override_args=None):
     parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
-    parser.add_argument("--model_backend", help="Specify the model backend you want to use")
+    parser.add_argument("--model_backend", default="Huggingface", help="Specify the model backend you want to use")
     parser.add_argument("--model_parameters", action="store", default="", help="json of id values to use for the input to the model loading process (leave blank to get required parameters)")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
@@ -1558,10 +1558,6 @@ def general_startup(override_args=None):
     
     if args.model:
         # At this point we have to try to load the model through the selected backend
-        if not args.model_backend:
-            logger.error("Didn't select a model backend. Please enter one through the --model_backend or remove the --model from the run command")
-            logger.error("Possible model backends are: {}".format(", ".join([x for x in model_backends])))
-            exit()
         if args.model_backend not in model_backends:
             logger.error("Your selected model backend ({}) isn't in the model backends we know about ({})".format(args.model_backend, ", ".join([x for x in model_backends])))
             exit()
@@ -1576,11 +1572,11 @@ def general_startup(override_args=None):
             arg_parameters['use_gpu'] = True
         
         for parameter in parameters:
-            if parameter['default'] == "" or parameter['id'] not in arg_parameters:
+            if parameter['default'] == "" and parameter['id'] not in arg_parameters:
                 mising_parameters.append(parameter['id'])
                 ok_to_load = False
             elif parameter['id'] not in arg_parameters:
-                arg_parameters[parameter] = parameter['default']
+                arg_parameters[parameter['id']] = parameter['default']
         if not ok_to_load:
             logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
             logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters])))
