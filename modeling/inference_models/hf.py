@@ -3,6 +3,7 @@ from typing import Optional
 from transformers import AutoConfig
 import warnings
 import utils
+import json
 import koboldai_settings
 from logger import logger
 from modeling.inference_model import InferenceModel
@@ -44,16 +45,15 @@ class HFInferenceModel(InferenceModel):
             self.model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
         layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
         if layer_count is not None and layer_count >= 0 and not self.nobreakmodel:
-            if os.path.exists("settings/{}.breakmodel".format(model_name.replace("/", "_"))):
-                with open("settings/{}.breakmodel".format(model_name.replace("/", "_")), "r") as file:
-                    data = [x for x in file.read().split("\n")[:2] if x != '']
-                    if len(data) < 2:
-                        data.append("0")
-                    break_values, disk_blocks = data
-                    break_values = break_values.split(",")
+            if os.path.exists("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
+                with open("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
+                    temp = json.load(f)
+                    break_values = temp['layers'] if 'layers' in temp else [layer_count]
+                    disk_blocks = temp['disk_layers'] if 'disk_layers' in temp else 0
             else:
                 break_values = [layer_count]
                 disk_blocks = 0
+            
             break_values = [int(x) for x in break_values if x != '' and x is not None]
             gpu_count = torch.cuda.device_count()
             break_values += [0] * (gpu_count - len(break_values))
@@ -132,8 +132,15 @@ class HFInferenceModel(InferenceModel):
             if layer_count is not None and layer_count >= 0 and not self.nobreakmodel:
                 gpu_count = torch.cuda.device_count()
                 layers = []
+                logger.info(parameters)
                 for i in range(gpu_count):
-                    layers.append(int(parameters["{}_Layers".format(i)]) if isinstance(parameters["{}_Layers".format(i)], str) and parameters["{}_Layers".format(i)].isnumeric() else None)
+                    logger.info(parameters["{}_Layers".format(i)])
+                    if isinstance(parameters["{}_Layers".format(i)], str) and parameters["{}_Layers".format(i)].isnumeric():
+                        layers.append(int(parameters["{}_Layers".format(i)]))
+                    elif isinstance(parameters["{}_Layers".format(i)], str):
+                         layers.append(None)
+                    else:
+                        layers.append(parameters["{}_Layers".format(i)])
                 self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
                 if isinstance(self.cpu_layers, str):
                     self.cpu_layers = int(self.cpu_layers) if self.cpu_layers.isnumeric() else 0

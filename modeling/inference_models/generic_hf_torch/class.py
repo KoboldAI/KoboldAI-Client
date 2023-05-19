@@ -20,7 +20,7 @@ except ModuleNotFoundError as e:
     if not utils.koboldai_vars.use_colab_tpu:
         raise e
 
-from modeling.inference_models.parents.hf_torch import HFTorchInferenceModel
+from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
 model_backend_name = "Huggingface"
 
@@ -270,3 +270,7 @@ class model_backend(HFTorchInferenceModel):
 
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
+
+    def _save_settings(self):
+        with open("settings/{}.generic_hf_torch.model_backend.settings".format(self.model_name.replace("/", "_")), "w") as f:
+            json.dump({"layers": self.layers if 'layers' in vars(self) else [], "disk_layers": self.disk_layers if 'disk_layers' in vars(self) else 0}, f, indent="")

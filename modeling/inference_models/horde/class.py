@@ -38,6 +38,11 @@ class model_backend(InferenceModel):
         return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
     
     def get_requested_parameters(self, model_name, model_path, menu_path):
+        if os.path.exists("settings/api.model_backend.settings") and 'base_url' not in vars(self):
+            with open("settings/horde.model_backend.settings", "r") as f:
+                temp = json.load(f)
+                self.base_url = temp['url']
+                self.key = temp['key']
         requested_parameters = []
         requested_parameters.extend([{
                                         "uitype": "text",
@@ -121,6 +126,10 @@ class model_backend(InferenceModel):
             #if len(self.model) > 0
             #else "gpt2",
         )
+
+    def _save_settings(self):
+        with open("settings/horde.model_backend.settings", "w") as f:
+            json.dump({"key": self.key, "url": self.url}, f, indent="")
 
     def _raw_generate(
         self,

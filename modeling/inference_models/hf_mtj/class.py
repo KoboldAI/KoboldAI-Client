@@ -16,7 +16,7 @@ from modeling.inference_model import (
     GenerationSettings,
     ModelCapabilities,
 )
-from modeling.inference_models.parents.hf import HFInferenceModel
+from modeling.inference_models.hf import HFInferenceModel
 from modeling.tokenizer import GenericTokenizer
 
 model_backend_name = "Huggingface MTJ"

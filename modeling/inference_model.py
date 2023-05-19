@@ -188,6 +188,7 @@ class InferenceModel:
         self._pre_load()
         self._load(save_model=save_model, initial_load=initial_load)
         self._post_load()
+        self._save_settings()
 
     def unload(self):
         return
@@ -197,6 +198,9 @@ class InferenceModel:
 
     def _post_load(self) -> None:
         """Post load hook. Called after `_load()`."""
+    
+    def _save_settings(self) -> None:
+        """Save settings hook. Called after `_post_load()`."""
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         """Main load method. All logic related to loading the model onto the

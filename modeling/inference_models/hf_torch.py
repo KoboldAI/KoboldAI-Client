@@ -31,7 +31,7 @@ from modeling import warpers
 from modeling.warpers import Warper
 from modeling.stoppers import Stoppers
 from modeling.post_token_hooks import PostTokenHooks
-from modeling.inference_models.parents.hf import HFInferenceModel
+from modeling.inference_models.hf import HFInferenceModel
 from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
@@ -823,135 +823,10 @@ class HFTorchInferenceModel(HFInferenceModel):
             breakmodel.gpu_blocks = [0] * n_layers
             return
 
-        elif (
-            utils.args.breakmodel_gpulayers is not None
-            or utils.args.breakmodel_disklayers is not None
-            or breakmodel.gpu_blocks != []
-        ):
-            try:
-                if breakmodel.gpu_blocks == []:
-                    if utils.args.breakmodel_gpulayers:
-                        breakmodel.gpu_blocks = list(
-                            map(int, utils.args.breakmodel_gpulayers.split(","))
-                        )
-                assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
-                s = n_layers
-                for i in range(len(breakmodel.gpu_blocks)):
-                    if breakmodel.gpu_blocks[i] <= -1:
-                        breakmodel.gpu_blocks[i] = s
-                        break
-                    else:
-                        s -= breakmodel.gpu_blocks[i]
-                assert sum(breakmodel.gpu_blocks) <= n_layers
-                n_layers -= sum(breakmodel.gpu_blocks)
-                n_layers -= breakmodel.disk_blocks
-            except:
-                logger.warning(
-                    "--breakmodel_gpulayers is malformatted. Please use the --help option to see correct usage of --breakmodel_gpulayers. Defaulting to all layers on device 0."
-                )
-                breakmodel.gpu_blocks = [n_layers]
-                n_layers = 0
-        elif utils.args.breakmodel_layers is not None:
-            breakmodel.gpu_blocks = [
-                n_layers - max(0, min(n_layers, utils.args.breakmodel_layers))
-            ]
-            n_layers -= sum(breakmodel.gpu_blocks)
-        elif utils.args.model is not None:
+        elif breakmodel.gpu_blocks != []:
             logger.info("Breakmodel not specified, assuming GPU 0")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
-        else:
-            device_count = torch.cuda.device_count()
-            if device_count > 1:
-                print(
-                    Colors.CYAN
-                    + "\nPlease select one of your GPUs to be your primary GPU."
-                )
-                print(
-                    "VRAM usage in your primary GPU will be higher than for your other ones."
-                )
-                print("It is recommended you make your fastest GPU your primary GPU.")
-                self.breakmodel_device_list(n_layers)
-                while True:
-                    primaryselect = input("device ID> ")
-                    if (
-                        primaryselect.isnumeric()
-                        and 0 <= int(primaryselect) < device_count
-                    ):
-                        breakmodel.primary_device = int(primaryselect)
-                        break
-                    else:
-                        print(
-                            f"{Colors.RED}Please enter an integer between 0 and {device_count-1}.{Colors.END}"
-                        )
-            else:
-                breakmodel.primary_device = 0
-
-            print(
-                Colors.PURPLE
-                + "\nIf you don't have enough VRAM to run the model on a single GPU"
-            )
-            print(
-                "you can split the model between your CPU and your GPU(s), or between"
-            )
-            print("multiple GPUs if you have more than one.")
-            print("By putting more 'layers' on a GPU or CPU, more computations will be")
-            print(
-                "done on that device and more VRAM or RAM will be required on that device"
-            )
-            print("(roughly proportional to number of layers).")
-            print(
-                "It should be noted that GPUs are orders of magnitude faster than the CPU."
-            )
-            print(
-                f"This model has{Colors.YELLOW} {n_layers} {Colors.PURPLE}layers.{Colors.END}\n"
-            )
-
-            for i in range(device_count):
-                self.breakmodel_device_list(
-                    n_layers, primary=breakmodel.primary_device, selected=i
-                )
-                print(
-                    f"{Colors.CYAN}\nHow many of the remaining{Colors.YELLOW} {n_layers} {Colors.CYAN}layers would you like to put into device {i}?\nYou can also enter -1 to allocate all remaining layers to this device.{Colors.END}\n"
-                )
-                while True:
-                    layerselect = input("# of layers> ")
-                    if (
-                        layerselect.isnumeric() or layerselect.strip() == "-1"
-                    ) and -1 <= int(layerselect) <= n_layers:
-                        layerselect = int(layerselect)
-                        layerselect = n_layers if layerselect == -1 else layerselect
-                        breakmodel.gpu_blocks.append(layerselect)
-                        n_layers -= layerselect
-                        break
-                    else:
-                        print(
-                            f"{Colors.RED}Please enter an integer between -1 and {n_layers}.{Colors.END}"
-                        )
-                if n_layers == 0:
-                    break
-
-            if n_layers > 0:
-                self.breakmodel_device_list(
-                    n_layers, primary=breakmodel.primary_device, selected=-1
-                )
-                print(
-                    f"{Colors.CYAN}\nHow many of the remaining{Colors.YELLOW} {n_layers} {Colors.CYAN}layers would you like to put into the disk cache?\nYou can also enter -1 to allocate all remaining layers to this device.{Colors.END}\n"
-                )
-                while True:
-                    layerselect = input("# of layers> ")
-                    if (
-                        layerselect.isnumeric() or layerselect.strip() == "-1"
-                    ) and -1 <= int(layerselect) <= n_layers:
-                        layerselect = int(layerselect)
-                        layerselect = n_layers if layerselect == -1 else layerselect
-                        breakmodel.disk_blocks = layerselect
-                        n_layers -= layerselect
-                        break
-                    else:
-                        print(
-                            f"{Colors.RED}Please enter an integer between -1 and {n_layers}.{Colors.END}"
-                        )
 
         logger.init_ok("Final device configuration:", status="Info")
         self.breakmodel_device_list(n_layers, primary=breakmodel.primary_device)

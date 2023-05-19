@@ -626,9 +626,9 @@ import importlib
 model_backend_code = {}
 model_backends = {}
 for module in os.listdir("./modeling/inference_models"):
-    if os.path.isfile(os.path.join("./modeling/inference_models",module)) and module[-3:] == '.py':
-        model_backend_code[module[:-3]] = importlib.import_module('modeling.inference_models.{}'.format(module[:-3]))
-        model_backends[model_backend_code[module[:-3]].model_backend_name] = model_backend_code[module[:-3]].model_backend()
+    if not os.path.isfile(os.path.join("./modeling/inference_models",module)) and module != '__pycache__':
+        model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
+        model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
         
 
 old_socketio_on = socketio.on

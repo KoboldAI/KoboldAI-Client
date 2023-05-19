@@ -25,15 +25,14 @@ class model_backend(InferenceModel):
         super().__init__()
         self.key = ""
         self.url = "https://api.goose.ai/v1/engines"
-        #if self.source == 'OAI':
-        #    url = "https://api.openai.com/v1/engines"
-        #elif self.source == 'GooseAI':
-        #    url = "https://api.goose.ai/v1/engines"
     
     def is_valid(self, model_name, model_path, menu_path):
         return model_name == "OAI" or model_name == "GooseAI"
     
     def get_requested_parameters(self, model_name, model_path, menu_path):
+        if os.path.exists("settings/{}.model_backend.settings".format(self.source)) and 'colaburl' not in vars(self):
+            with open("settings/{}.model_backend.settings".format(self.source), "r") as f:
+                self.key = json.load(f)['key']
         self.source = model_name
         requested_parameters = []
         requested_parameters.extend([{
@@ -41,7 +40,7 @@ class model_backend(InferenceModel):
                                         "unit": "text",
                                         "label": "Key",
                                         "id": "key",
-                                        "default": "",
+                                        "default": self.key,
                                         "check": {"value": "", 'check': "!="},
                                         "tooltip": "User Key to use when connecting to OpenAI/GooseAI.",
                                         "menu_path": "",
@@ -105,6 +104,10 @@ class model_backend(InferenceModel):
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("gpt2")
+
+    def _save_settings(self):
+        with open("settings/{}.model_backend.settings".format(self.source), "w") as f:
+            json.dump({"key": self.key}, f, indent="")
 
     def _raw_generate(
         self,

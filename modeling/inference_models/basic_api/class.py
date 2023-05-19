@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import time
-import json
 import torch
 import requests
 import numpy as np
@@ -9,7 +7,6 @@ from typing import List, Optional, Union
 
 import utils
 from logger import logger
-
 from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
@@ -17,30 +14,37 @@ from modeling.inference_model import (
     ModelCapabilities,
 )
 
-model_backend_name = "KoboldAI API"
 
-class APIException(Exception):
-    """To be used for errors when using the Kobold API as an interface."""
+model_backend_name = "KoboldAI Old Colab Method"
+
+class BasicAPIException(Exception):
+    """To be used for errors when using the Basic API as an interface."""
 
 
 class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
-        #self.base_url = ""
+        self.colaburl = ""
 
+        # Do not allow API to be served over the API
+        self.capabilties = ModelCapabilities(api_host=False)
+    
     def is_valid(self, model_name, model_path, menu_path):
-        return model_name == "API"
+        return model_name == "Colab"
     
     def get_requested_parameters(self, model_name, model_path, menu_path):
+        if os.path.exists("settings/api.model_backend.settings") and 'colaburl' not in vars(self):
+            with open("settings/api.model_backend.settings", "r") as f:
+                self.colaburl = json.load(f)['base_url']
         requested_parameters = []
         requested_parameters.append({
                                         "uitype": "text",
                                         "unit": "text",
                                         "label": "URL",
-                                        "id": "base_url",
-                                        "default": False,
+                                        "id": "colaburl",
+                                        "default": self.colaburl,
                                         "check": {"value": "", 'check': "!="},
-                                        "tooltip": "The URL of the KoboldAI API to connect to.",
+                                        "tooltip": "The URL of the Colab KoboldAI API to connect to.",
                                         "menu_path": "",
                                         "extra_classes": "",
                                         "refresh_model_inputs": False
@@ -48,15 +52,17 @@ class model_backend(InferenceModel):
         return requested_parameters
         
     def set_input_parameters(self, parameters):
-        self.base_url = parameters['base_url'].rstrip("/")
+        self.colaburl = parameters['colaburl']
+
+    def _initialize_model(self):
+        return
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
-        tokenizer_id = requests.get(f"{self.base_url}/api/v1/model").json()["result"]
-
-        self.tokenizer = self._get_tokenizer(tokenizer_id)
-
-        # Do not allow API to be served over the API
-        self.capabilties = ModelCapabilities(api_host=False)
+        self.tokenizer = self._get_tokenizer("EleutherAI/gpt-neo-2.7B")
+    
+    def _save_settings(self):
+        with open("settings/basic_api.model_backend.settings", "w") as f:
+            json.dump({"colaburl": self.colaburl}, f, indent="")
 
     def _raw_generate(
         self,
@@ -68,7 +74,6 @@ class model_backend(InferenceModel):
         seed: Optional[int] = None,
         **kwargs,
     ):
-
         if seed is not None:
             logger.warning(
                 "Seed is unsupported on the APIInferenceModel. Seed will be ignored."
@@ -81,40 +86,41 @@ class model_backend(InferenceModel):
 
         # Build request JSON data
         reqdata = {
-            "prompt": decoded_prompt,
-            "max_length": max_new,
-            "max_context_length": utils.koboldai_vars.max_length,
+            "text": decoded_prompt,
+            "min": 0,
+            "max": max_new,
             "rep_pen": gen_settings.rep_pen,
             "rep_pen_slope": gen_settings.rep_pen_slope,
             "rep_pen_range": gen_settings.rep_pen_range,
             "temperature": gen_settings.temp,
             "top_p": gen_settings.top_p,
             "top_k": gen_settings.top_k,
-            "top_a": gen_settings.top_a,
             "tfs": gen_settings.tfs,
             "typical": gen_settings.typical,
-            "n": batch_count,
+            "topa": gen_settings.top_a,
+            "numseqs": batch_count,
+            "retfultxt": False,
         }
 
         # Create request
-        while True:
-            req = requests.post(f"{self.base_url}/api/v1/generate", json=reqdata)
+        req = requests.post(self.colaburl, json=reqdata)
 
-            if req.status_code == 503:
-                # Server is currently generating something else so poll until it's our turn
-                time.sleep(1)
-                continue
+        if req.status_code != 200:
+            raise BasicAPIException(f"Bad status code {req.status_code}")
 
-            js = req.json()
-            if req.status_code != 200:
-                logger.error(json.dumps(js, indent=4))
-                raise APIException(f"Bad API status code {req.status_code}")
+        # Deal with the response
+        js = req.json()["data"]
 
-            genout = [obj["text"] for obj in js["results"]]
-            return GenerationResult(
-                model=self,
-                out_batches=np.array([self.tokenizer.encode(x) for x in genout]),
-                prompt=prompt_tokens,
-                is_whole_generation=True,
-                single_line=single_line,
-            )
+        # Try to be backwards compatible with outdated colab
+        if "text" in js:
+            genout = [utils.getnewcontent(js["text"], self.tokenizer)]
+        else:
+            genout = js["seqs"]
+
+        return GenerationResult(
+            model=self,
+            out_batches=np.array([self.tokenizer.encode(x) for x in genout]),
+            prompt=prompt_tokens,
+            is_whole_generation=True,
+            single_line=single_line,
+        )
