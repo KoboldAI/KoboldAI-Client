@@ -1587,6 +1587,12 @@ function show_model_menu(data) {
 			selected_model_data = obj;
 			//send the data to the server so it can figure out what data we need from the user for the model
 			socket.emit('select_model', obj); 
+			
+			//clear out the selected item and select this one visually
+			for (const element of document.getElementsByClassName("model_menu_selected")) {
+				element.classList.remove("model_menu_selected");
+			}
+			this.closest(".model_item").classList.add("model_menu_selected");
 		}
 		
 		//name text
