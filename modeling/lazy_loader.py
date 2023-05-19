@@ -196,6 +196,8 @@ class RestrictedUnpickler(pickle.Unpickler):
             return collections.OrderedDict
         elif module == "torch._utils" and name == "_rebuild_tensor_v2":
             return torch._utils._rebuild_tensor_v2
+        elif module == "torch._tensor" and name == "_rebuild_from_type_v2":
+            return torch._tensor._rebuild_from_type_v2
         elif module == "torch" and name in (
             "DoubleStorage",
             "FloatStorage",
@@ -207,6 +209,7 @@ class RestrictedUnpickler(pickle.Unpickler):
             "ByteStorage",
             "BoolStorage",
             "BFloat16Storage",
+            "Tensor",
         ):
             return getattr(torch, name)
         elif module == "numpy.core.multiarray" and name == "scalar":
@@ -219,7 +222,7 @@ class RestrictedUnpickler(pickle.Unpickler):
             # Forbid everything else.
             qualified_name = name if module == "__builtin__" else f"{module}.{name}"
             raise pickle.UnpicklingError(
-                f"`{qualified_name}` is forbidden; the model you are loading probably contains malicious code"
+                f"`{qualified_name}` is forbidden; the model you are loading probably contains malicious code. If you think this is incorrect ask the developer to unban the ability for {module} to execute {name}"
             )
 
     def load(self, *args, **kwargs):
