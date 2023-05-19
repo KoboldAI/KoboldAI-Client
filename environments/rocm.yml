@@ -30,7 +30,7 @@ dependencies:
     - flask-ngrok
     - flask-cors
     - lupa==1.10
-    - transformers==4.29.*
+    - transformers==4.28.*
     - huggingface_hub==0.12.1
     - safetensors==0.3.1
     - accelerate==0.18.0
