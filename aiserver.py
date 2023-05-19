@@ -627,8 +627,11 @@ model_backend_code = {}
 model_backends = {}
 for module in os.listdir("./modeling/inference_models"):
     if not os.path.isfile(os.path.join("./modeling/inference_models",module)) and module != '__pycache__':
-        model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
-        model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
+        try:
+            model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
+            model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
+        except:
+            logger.error("Model Backend {} failed to load".format(module))
         
 
 old_socketio_on = socketio.on
@@ -1572,7 +1575,7 @@ def general_startup(override_args=None):
             elif parameter['id'] not in arg_parameters:
                 arg_parameters[parameter] = parameter['default']
         if not ok_to_load:
-            logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} (required parameters shown below)")
+            logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
             logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters])))
             logger.error("Missing: {}".format(", ".join(mising_parameters)))
             exit()
