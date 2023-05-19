@@ -6152,7 +6152,8 @@ def UI_2_select_model(data):
                 #Here we have a model that's not in our menu structure (either a custom model or a custom path
                 #so we'll just go through all the possible loaders
                 for model_backend in model_backends:
-                    valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
+                    if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
+                        valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
                 emit("selected_model_info", {"model_backends": valid_loaders})
         else:
             #Get directories
