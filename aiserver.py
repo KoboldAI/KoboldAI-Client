@@ -56,6 +56,7 @@ import html
 import argparse
 import sys
 import gc
+import traceback
 
 import lupa
 
@@ -630,8 +631,10 @@ for module in os.listdir("./modeling/inference_models"):
         try:
             model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
             model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
-        except:
+        except Exception:
             logger.error("Model Backend {} failed to load".format(module))
+            logger.error(traceback.format_exc())
+            
         
 
 old_socketio_on = socketio.on
