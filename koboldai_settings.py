@@ -1202,7 +1202,6 @@ class undefined_settings(settings):
         super().__setattr__(name, value)
         logger.error("{} just set {} to {} in koboldai_vars. That variable isn't defined!".format(inspect.stack()[1].function, name, value))
         
-
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
@@ -1210,7 +1209,7 @@ class system_settings(settings):
                             'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui', 'trust_remote_code']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
-                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
+                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'on_colab'
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
                          'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch', 'trust_remote_code']
     settings_name = "system"

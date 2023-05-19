@@ -1558,15 +1558,25 @@ def general_startup(override_args=None):
         #OK, we've been given a model to load and a backend to load it through. Now we need to get a list of parameters and make sure we get what we need to actually load it
         parameters = model_backends[args.model_backend].get_requested_parameters(args.model, args.path, "")
         ok_to_load = True
+        mising_parameters = []
         arg_parameters = json.loads(args.model_parameters.replace("'", "\"")) if args.model_parameters != "" else {}
+        
+        #If we're on colab we'll set everything to GPU0
+        logger.info("colab: {} model_backend: {} on_colab: {}".format(args.colab, args.model_backend, koboldai_vars.on_colab))
+        if args.colab and args.model_backend == 'Huggingface' and koboldai_vars.on_colab:
+            logger.info("Using Colab Special path")
+            arg_parameters['use_gpu'] = True
+        
         for parameter in parameters:
             if parameter['default'] == "" or parameter['id'] not in arg_parameters:
+                mising_parameters.append(parameter['id'])
                 ok_to_load = False
             elif parameter['id'] not in arg_parameters:
                 arg_parameters[parameter] = parameter['default']
         if not ok_to_load:
             logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} (required parameters shown below)")
             logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters])))
+            logger.error("Missing: {}".format(", ".join(mising_parameters)))
             exit()
         arg_parameters['id'] = args.model
         arg_parameters['model_path'] = args.path

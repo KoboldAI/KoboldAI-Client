@@ -116,7 +116,7 @@ class HFInferenceModel(InferenceModel):
                                             "label": "Use GPU",
                                             "id": "use_gpu",
                                             "default": False,
-                                            "tooltip": "The number of layers to put on the disk. This will use your hard drive. The is VERY slow in comparison to GPU or CPU. Use as a last resort.",
+                                            "tooltip": "Whether or not to use the GPU",
                                             "menu_path": "Layers",
                                             "extra_classes": "",
                                             "refresh_model_inputs": False
