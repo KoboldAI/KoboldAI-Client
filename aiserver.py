@@ -233,7 +233,7 @@ model_menu = {
     "mainmenu": [
         MenuPath("Load a model from its directory", "NeoCustom"),
         MenuPath("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
-        MenuFolder("Load custom model from Hugging Face", "customhuggingface"),
+        MenuModel("Load custom model from Hugging Face", "customhuggingface", ""),
         MenuFolder("Adventure Models", "adventurelist"),
         MenuFolder("Novel Models", "novellist"),
         MenuFolder("Chat Models", "chatlist"),
@@ -6135,7 +6135,7 @@ def UI_2_select_model(data):
             valid_loaders = {}
             for model_backend in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
                 valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
-            emit("selected_model_info", {"model_backends": valid_loaders, "preselected": "Huggingface"})
+            emit("selected_model_info", {"model_backends": valid_loaders})
         else:
             #Get directories
             paths, breadcrumbs = get_folder_path_info(data['path'])
@@ -6149,24 +6149,20 @@ def UI_2_select_model(data):
                 output.append({'label': path[1], 'name': path[0], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
             emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})            
     return
-    
-    
-    #We've selected a menu
-    if data['model'] in model_menu:
-        sendModelSelection(menu=data['model'])
-    #We've selected a custom line
-    elif data['menu'] in ("NeoCustom", "GPT2Custom"):
-        get_model_info(data['menu'], directory=data['display_name'])
-    #We've selected a custom menu folder
-    elif data['model'] in ("NeoCustom", "GPT2Custom") and 'path' in data:
-        sendModelSelection(menu=data['model'], folder=data['path'])
-    #We've selected a custom menu
-    elif data['model'] in ("NeoCustom", "GPT2Custom", "customhuggingface"):
-        sendModelSelection(menu=data['model'], folder="./models")
-    else:
-        #We now have some model we want to potentially load.
-        #First we need to send the client the model parameters (layers, etc)
-        get_model_info(data['model'])
+
+
+
+
+#==================================================================#
+# Event triggered when user changes a model parameter and it's set to resubmit
+#==================================================================#
+@socketio.on('resubmit_model_info')
+@logger.catch
+def UI_2_resubmit_model_info(data):
+    valid_loaders = {}
+    for model_backend in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
+        valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"], parameters=data)
+    emit("selected_model_info", {"model_backends": valid_loaders})
 
 #==================================================================#
 # Event triggered when user loads a model

@@ -33,95 +33,111 @@ class HFInferenceModel(InferenceModel):
         except:
             return False
         
-    def get_requested_parameters(self, model_name, model_path, menu_path):
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         requested_parameters = []
         if not self.hf_torch:
             return []
-        if model_path is not None and os.path.exists(model_path):
-            self.model_config = AutoConfig.from_pretrained(model_path)
-        elif(os.path.exists("models/{}".format(model_name.replace('/', '_')))):
-            self.model_config = AutoConfig.from_pretrained("models/{}".format(model_name.replace('/', '_')), revision=utils.koboldai_vars.revision, cache_dir="cache")
-        else:
-            self.model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
-        layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
-        if layer_count is not None and layer_count >= 0 and not self.nobreakmodel:
-            if os.path.exists("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
-                with open("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
-                    temp = json.load(f)
-                    break_values = temp['layers'] if 'layers' in temp else [layer_count]
-                    disk_blocks = temp['disk_layers'] if 'disk_layers' in temp else 0
+        if model_name == 'customhuggingface':
+            requested_parameters.append({
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "Huggingface Model Name",
+                                        "id": "custom_model_name",
+                                        "default": parameters["custom_model_name"] if "custom_model_name" in parameters and parameters["custom_model_name"] != "" else "",
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "Model name from https://huggingface.co/",
+                                        "menu_path": "",
+                                        "refresh_model_inputs": True,
+                                        "extra_classes": ""
+                                    })
+        
+        if model_name != 'customhuggingface' or "custom_model_name" in parameters:
+            model_name = parameters["custom_model_name"] if "custom_model_name" in parameters and parameters["custom_model_name"] != "" else model_name
+            if model_path is not None and os.path.exists(model_path):
+                self.model_config = AutoConfig.from_pretrained(model_path)
+            elif(os.path.exists("models/{}".format(model_name.replace('/', '_')))):
+                self.model_config = AutoConfig.from_pretrained("models/{}".format(model_name.replace('/', '_')), revision=utils.koboldai_vars.revision, cache_dir="cache")
             else:
-                break_values = [layer_count]
-                disk_blocks = 0
-            
-            break_values = [int(x) for x in break_values if x != '' and x is not None]
-            gpu_count = torch.cuda.device_count()
-            break_values += [0] * (gpu_count - len(break_values))
-            if disk_blocks is not None:
-                break_values += [int(disk_blocks)]
-            for i in range(gpu_count):
+                self.model_config = AutoConfig.from_pretrained(model_name, revision=utils.koboldai_vars.revision, cache_dir="cache")
+            layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
+            if layer_count is not None and layer_count >= 0 and not self.nobreakmodel:
+                if os.path.exists("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
+                    with open("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
+                        temp = json.load(f)
+                        break_values = temp['layers'] if 'layers' in temp else [layer_count]
+                        disk_blocks = temp['disk_layers'] if 'disk_layers' in temp else 0
+                else:
+                    break_values = [layer_count]
+                    disk_blocks = 0
+                
+                break_values = [int(x) for x in break_values if x != '' and x is not None]
+                gpu_count = torch.cuda.device_count()
+                break_values += [0] * (gpu_count - len(break_values))
+                if disk_blocks is not None:
+                    break_values += [int(disk_blocks)]
+                for i in range(gpu_count):
+                    requested_parameters.append({
+                                                    "uitype": "slider",
+                                                    "unit": "int",
+                                                    "label": "{} Layers".format(torch.cuda.get_device_name(i)),
+                                                    "id": "{}_Layers".format(i),
+                                                    "min": 0,
+                                                    "max": layer_count,
+                                                    "step": 1,
+                                                    "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
+                                                    "check_message": "The sum of assigned layers must equal {}".format(layer_count),
+                                                    "default": break_values[i],
+                                                    "tooltip": "The number of layers to put on {}.".format(torch.cuda.get_device_name(i)),
+                                                    "menu_path": "Layers",
+                                                    "extra_classes": "",
+                                                    "refresh_model_inputs": False
+                                                })
                 requested_parameters.append({
                                                 "uitype": "slider",
                                                 "unit": "int",
-                                                "label": "{} Layers".format(torch.cuda.get_device_name(i)),
-                                                "id": "{}_Layers".format(i),
+                                                "label": "CPU Layers",
+                                                "id": "CPU_Layers",
                                                 "min": 0,
                                                 "max": layer_count,
                                                 "step": 1,
                                                 "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
                                                 "check_message": "The sum of assigned layers must equal {}".format(layer_count),
-                                                "default": break_values[i],
-                                                "tooltip": "The number of layers to put on {}.".format(torch.cuda.get_device_name(i)),
+                                                "default": layer_count - sum(break_values),
+                                                "tooltip": "The number of layers to put on the CPU. This will use your system RAM. It will also do inference partially on CPU. Use if you must.",
                                                 "menu_path": "Layers",
                                                 "extra_classes": "",
                                                 "refresh_model_inputs": False
                                             })
-            requested_parameters.append({
-                                            "uitype": "slider",
-                                            "unit": "int",
-                                            "label": "CPU Layers",
-                                            "id": "CPU_Layers",
-                                            "min": 0,
-                                            "max": layer_count,
-                                            "step": 1,
-                                            "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
-                                            "check_message": "The sum of assigned layers must equal {}".format(layer_count),
-                                            "default": layer_count - sum(break_values),
-                                            "tooltip": "The number of layers to put on the CPU. This will use your system RAM. It will also do inference partially on CPU. Use if you must.",
-                                            "menu_path": "Layers",
-                                            "extra_classes": "",
-                                            "refresh_model_inputs": False
-                                        })
-            if disk_blocks is not None:
+                if disk_blocks is not None:
+                    requested_parameters.append({
+                                                    "uitype": "slider",
+                                                    "unit": "int",
+                                                    "label": "Disk Layers",
+                                                    "id": "Disk_Layers",
+                                                    "min": 0,
+                                                    "max": layer_count,
+                                                    "step": 1,
+                                                    "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
+                                                    "check_message": "The sum of assigned layers must equal {}".format(layer_count),
+                                                    "default": disk_blocks,
+                                                    "tooltip": "The number of layers to put on the disk. This will use your hard drive. The is VERY slow in comparison to GPU or CPU. Use as a last resort.",
+                                                    "menu_path": "Layers",
+                                                    "extra_classes": "",
+                                                    "refresh_model_inputs": False
+                                                })
+            else:
                 requested_parameters.append({
-                                                "uitype": "slider",
-                                                "unit": "int",
-                                                "label": "Disk Layers",
-                                                "id": "Disk_Layers",
-                                                "min": 0,
-                                                "max": layer_count,
-                                                "step": 1,
-                                                "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
-                                                "check_message": "The sum of assigned layers must equal {}".format(layer_count),
-                                                "default": disk_blocks,
-                                                "tooltip": "The number of layers to put on the disk. This will use your hard drive. The is VERY slow in comparison to GPU or CPU. Use as a last resort.",
+                                                "uitype": "toggle",
+                                                "unit": "bool",
+                                                "label": "Use GPU",
+                                                "id": "use_gpu",
+                                                "default": False,
+                                                "tooltip": "Whether or not to use the GPU",
                                                 "menu_path": "Layers",
                                                 "extra_classes": "",
                                                 "refresh_model_inputs": False
                                             })
-        else:
-            requested_parameters.append({
-                                            "uitype": "toggle",
-                                            "unit": "bool",
-                                            "label": "Use GPU",
-                                            "id": "use_gpu",
-                                            "default": False,
-                                            "tooltip": "Whether or not to use the GPU",
-                                            "menu_path": "Layers",
-                                            "extra_classes": "",
-                                            "refresh_model_inputs": False
-                                        })
-                                        
+                                            
         
         return requested_parameters
         
@@ -153,7 +169,7 @@ class HFInferenceModel(InferenceModel):
             self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
             self.model_type = self.get_model_type()
             self.breakmodel = ((self.model_type != 'gpt2') or self.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not self.nobreakmodel
-        self.model_name = parameters['id']
+        self.model_name = parameters['custom_model_name'] if 'custom_model_name' in parameters else parameters['id']
         self.path = parameters['path'] if 'path' in parameters else None
 
     def unload(self):

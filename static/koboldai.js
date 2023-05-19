@@ -1683,7 +1683,25 @@ function model_settings_checker() {
 		if (valid || missing_element) {
 			//if we are supposed to refresh when this value changes we'll resubmit
 			if ((this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
-				console.log("resubmit");
+				//get an object of all the input settings from the user
+				data = {}
+				settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
+				for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+					var element_data = element.value;
+					if (element.getAttribute("data_type") == "int") {
+						element_data = parseInt(element_data);
+					} else if (element.getAttribute("data_type") == "float") {
+						element_data = parseFloat(element_data);
+					} else if (element.getAttribute("data_type") == "bool") {
+						element_data = (element_data == 'on');
+					}
+					data[element.id.split("|")[1].replace("_value", "")] = element_data;
+				}
+				data = {...data, ...selected_model_data};
+				
+				data['plugin'] = document.getElementById("modelplugin").value;
+				
+				socket.emit("resubmit_model_info", data);
 			}
 			if ('sum' in this.check_data) {
 				for (const temp of this.check_data['sum']) {
@@ -1773,9 +1791,6 @@ function selected_model_info(sent_data) {
 		modelpluginoption.innerText = loader;
 		modelpluginoption.value = loader;
 		modelplugin.append(modelpluginoption);
-		if (loader == sent_data['preselected']) {
-			modelplugin.value = sent_data['preselected'];
-		}
 		
 		//create the user input for each requested input
 		for (item of items) {
