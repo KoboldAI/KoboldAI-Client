@@ -401,8 +401,6 @@ class HFTorchInferenceModel(HFInferenceModel):
         if not self.lazy_load:
             return
 
-        if utils.args.breakmodel_disklayers is not None:
-            breakmodel.disk_blocks = utils.args.breakmodel_disklayers
 
         disk_blocks = breakmodel.disk_blocks
         gpu_blocks = breakmodel.gpu_blocks

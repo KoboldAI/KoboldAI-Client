@@ -1363,10 +1363,6 @@ def general_startup(override_args=None):
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
-    parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
-    parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --breakmodel_gpulayers 8,9,11")
-    parser.add_argument("--breakmodel_disklayers", type=int, help="If using a model that supports hybrid generation, this is the number of layers to put in disk cache.")
     parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
     parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
     parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
@@ -1644,15 +1640,6 @@ def load_model(model_backend, initial_load=False):
         # loadsettings()
         logger.init("GPU support", status="Searching")
         koboldai_vars.bmsupported = ((koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
-        if(args.breakmodel is not None and args.breakmodel):
-            logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
-        if(args.breakmodel_layers is not None):
-            logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
-        if(args.model and koboldai_vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not args.breakmodel_disklayers)):
-            logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
-            koboldai_vars.bmsupported = False
-        if(not koboldai_vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
-            logger.warning("This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
         if(koboldai_vars.hascuda):
             logger.init_ok("GPU support", status="Found")
         else:
