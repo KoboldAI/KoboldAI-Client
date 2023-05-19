@@ -631,10 +631,14 @@ for module in os.listdir("./modeling/inference_models"):
         try:
             model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
             model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
+            if 'disable' in vars(model_backends[model_backend_code[module].model_backend_name]):
+                if model_backends[model_backend_code[module].model_backend_name].disable:
+                    del model_backends[model_backend_code[module].model_backend_name]
         except Exception:
             logger.error("Model Backend {} failed to load".format(module))
             logger.error(traceback.format_exc())
-            
+
+logger.info("We loaded the following model backends: \n{}".format("\n".join([x for x in model_backends])))
         
 
 old_socketio_on = socketio.on
