@@ -1562,9 +1562,7 @@ def general_startup(override_args=None):
         arg_parameters = json.loads(args.model_parameters.replace("'", "\"")) if args.model_parameters != "" else {}
         
         #If we're on colab we'll set everything to GPU0
-        logger.info("colab: {} model_backend: {} on_colab: {}".format(args.colab, args.model_backend, koboldai_vars.on_colab))
         if args.colab and args.model_backend == 'Huggingface' and koboldai_vars.on_colab:
-            logger.info("Using Colab Special path")
             arg_parameters['use_gpu'] = True
         
         for parameter in parameters:
