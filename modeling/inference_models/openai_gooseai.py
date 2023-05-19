@@ -2,6 +2,7 @@ import torch
 import requests
 import numpy as np
 from typing import List, Optional, Union
+import os
 
 import utils
 from logger import logger
@@ -30,6 +31,11 @@ class model_backend(InferenceModel):
         return model_name == "OAI" or model_name == "GooseAI"
     
     def get_requested_parameters(self, model_name, model_path, menu_path):
+        try:
+            print(self.source)
+        except:
+            print(vars(self))
+            raise
         if os.path.exists("settings/{}.model_backend.settings".format(self.source)) and 'colaburl' not in vars(self):
             with open("settings/{}.model_backend.settings".format(self.source), "r") as f:
                 self.key = json.load(f)['key']
