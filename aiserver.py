@@ -6165,7 +6165,7 @@ def UI_2_select_model(data):
                     else:
                         logger.debug("{} says invalid".format(model_backend))
                     
-                output.append({'label': path[1], 'name': path[0], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
+                output.append({'label': path[1], 'name': path[1], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
             emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})            
     return
 

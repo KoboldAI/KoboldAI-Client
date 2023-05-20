@@ -8,6 +8,7 @@ import koboldai_settings
 from logger import logger
 from modeling.inference_model import InferenceModel
 import torch
+import gc
 
 
 class HFInferenceModel(InferenceModel):
