@@ -197,6 +197,7 @@ class HFInferenceModel(InferenceModel):
             pass
         if self.hf_torch:
             if 'breakmodel' in sys.modules:
+                import breakmodel
                 breakmodel.breakmodel = True
                 breakmodel.gpu_blocks = []
                 breakmodel.disk_blocks = 0
