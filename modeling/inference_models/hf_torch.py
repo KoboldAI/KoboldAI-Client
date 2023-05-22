@@ -820,7 +820,7 @@ class HFTorchInferenceModel(HFInferenceModel):
             breakmodel.gpu_blocks = [0] * n_layers
             return
 
-        elif breakmodel.gpu_blocks != []:
+        elif breakmodel.gpu_blocks == []:
             logger.info("Breakmodel not specified, assuming GPU 0")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
