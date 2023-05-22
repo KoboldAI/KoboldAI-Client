@@ -1,4 +1,4 @@
-import os
+import os, sys
 from typing import Optional
 from transformers import AutoConfig
 import warnings
@@ -196,9 +196,10 @@ class HFInferenceModel(InferenceModel):
         except:
             pass
         if self.hf_torch:
-            breakmodel.breakmodel = True
-            breakmodel.gpu_blocks = []
-            breakmodel.disk_blocks = 0
+            if 'breakmodel' in sys.modules:
+                breakmodel.breakmodel = True
+                breakmodel.gpu_blocks = []
+                breakmodel.disk_blocks = 0
 
     def _post_load(self) -> None:
         # These are model specific tokenizer overrides if a model has bad defaults
