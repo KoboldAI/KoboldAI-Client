@@ -824,6 +824,20 @@ class HFTorchInferenceModel(HFInferenceModel):
             logger.info("Breakmodel not specified, assuming GPU 0")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
+        
+        else:
+            s = n_layers
+            for i in range(len(breakmodel.gpu_blocks)):
+                if breakmodel.gpu_blocks[i] <= -1:
+                    breakmodel.gpu_blocks[i] = s
+                    break
+                else:
+                    s -= breakmodel.gpu_blocks[i]
+            assert sum(breakmodel.gpu_blocks) <= n_layers
+            n_layers -= sum(breakmodel.gpu_blocks)
+            if breakmodel.disk_blocks is not None:
+                assert breakmodel.disk_blocks <= n_layers
+                n_layers -= breakmodel.disk_blocks
 
         logger.init_ok("Final device configuration:", status="Info")
         self.breakmodel_device_list(n_layers, primary=breakmodel.primary_device)
