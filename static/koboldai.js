@@ -1933,6 +1933,8 @@ function selected_model_info(sent_data) {
 		document.getElementById(document.getElementById("modelplugin").value + "_settings_area").classList.remove("hidden");
 	}
 	
+	model_settings_checker()
+	
 }
 
 function update_gpu_layers() {
