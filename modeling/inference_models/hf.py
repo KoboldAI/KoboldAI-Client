@@ -197,12 +197,6 @@ class HFInferenceModel(InferenceModel):
                 torch.cuda.empty_cache()
         except:
             pass
-        if self.hf_torch:
-            if 'breakmodel' in sys.modules:
-                import breakmodel
-                breakmodel.breakmodel = True
-                breakmodel.gpu_blocks = []
-                breakmodel.disk_blocks = 0
 
     def _post_load(self) -> None:
         # These are model specific tokenizer overrides if a model has bad defaults

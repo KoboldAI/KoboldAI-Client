@@ -788,6 +788,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         if device_count < 2:
             primary = None
         logger.debug("n_layers: {}".format(n_layers))
+        logger.debug("gpu blocks: {}".format(breakmodel.gpu_blocks))
         gpu_blocks = breakmodel.gpu_blocks + (
             device_count - len(breakmodel.gpu_blocks)
         ) * [0]
@@ -817,6 +818,8 @@ class HFTorchInferenceModel(HFInferenceModel):
         import breakmodel
 
         n_layers = utils.num_layers(config)
+
+        logger.debug("gpu blocks before modification: {}".format(breakmodel.gpu_blocks))
 
         if utils.args.cpu:
             breakmodel.gpu_blocks = [0] * n_layers
