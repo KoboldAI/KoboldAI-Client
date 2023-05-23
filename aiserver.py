@@ -3693,7 +3693,8 @@ def calcsubmit(txt):
                         bias += [1] * (i - top_index)
                     bias[i] = b["multiplier"]
 
-            device = utils.get_auxilary_device()
+            
+            device = model.get_auxilary_device()
             attention_bias.attention_bias = torch.Tensor(bias).to(device)
             logger.info(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
         logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
