@@ -35,6 +35,7 @@ from gptq.gptj import load_quant as gptj_load_quant
 from gptq.gptneox import load_quant as gptneox_load_quant
 from gptq.llama import load_quant as llama_load_quant
 from gptq.opt import load_quant as opt_load_quant
+from gptq.bigcode import load_quant as bigcode_load_quant
 from gptq.mpt import load_quant as mpt_load_quant
 from gptq.offload import load_quant_offload
 
@@ -220,6 +221,8 @@ class model_backend(HFTorchInferenceModel):
             model = load_quant_offload(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list)
         elif model_type == "mpt":
             model = load_quant_offload(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list)
+        elif model_type == "gpt_bigcode":
+            model = load_quant_offload(bigcode_load_quant, location, path_4bit, utils.koboldai_vars.gptq_bits, groupsize, self.gpu_layers_list).half()
         elif autogptq_support:
             # Monkey patch in hf_bleeding_edge to avoid having to trust remote code
             auto_gptq.modeling._utils.AutoConfig = hf_bleeding_edge.AutoConfig
