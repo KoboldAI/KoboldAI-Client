@@ -125,6 +125,17 @@ class HFTorchInferenceModel(HFInferenceModel):
         else:
             return "Unknown"
 
+    def get_auxilary_device(self):
+        """Get device auxilary tensors like inputs should be stored on."""
+
+        # NOTE: TPU isn't a torch device, so TPU stuff gets sent to CPU.
+        if utils.koboldai_vars.hascuda and self.usegpu:
+            return utils.koboldai_vars.gpu_device
+        elif utils.koboldai_vars.hascuda and self.breakmodel:
+            import breakmodel
+            return breakmodel.primary_device
+        return "cpu"
+
     def _post_load(m_self) -> None:
 
         if not utils.koboldai_vars.model_type:
@@ -226,7 +237,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         else:
             gen_in = prompt_tokens
 
-        device = utils.get_auxilary_device()
+        device = self.get_auxilary_device()
         gen_in = gen_in.to(device)
 
         additional_bad_words_ids = [self.tokenizer.encode("\n")] if single_line else []

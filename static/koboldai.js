@@ -1686,16 +1686,18 @@ function model_settings_checker() {
 				//get an object of all the input settings from the user
 				data = {}
 				settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
-				for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
-					var element_data = element.value;
-					if (element.getAttribute("data_type") == "int") {
-						element_data = parseInt(element_data);
-					} else if (element.getAttribute("data_type") == "float") {
-						element_data = parseFloat(element_data);
-					} else if (element.getAttribute("data_type") == "bool") {
-						element_data = (element_data == 'on');
+				if (settings_area) {
+					for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+						var element_data = element.value;
+						if (element.getAttribute("data_type") == "int") {
+							element_data = parseInt(element_data);
+						} else if (element.getAttribute("data_type") == "float") {
+							element_data = parseFloat(element_data);
+						} else if (element.getAttribute("data_type") == "bool") {
+							element_data = (element_data == 'on');
+						}
+						data[element.id.split("|")[1].replace("_value", "")] = element_data;
 					}
-					data[element.id.split("|")[1].replace("_value", "")] = element_data;
 				}
 				data = {...data, ...selected_model_data};
 				
@@ -1965,16 +1967,18 @@ function load_model() {
 	
 	//get an object of all the input settings from the user
 	data = {}
-	for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
-		var element_data = element.value;
-		if (element.getAttribute("data_type") == "int") {
-			element_data = parseInt(element_data);
-		} else if (element.getAttribute("data_type") == "float") {
-			element_data = parseFloat(element_data);
-		} else if (element.getAttribute("data_type") == "bool") {
-			element_data = (element_data == 'on');
+	if (settings_area) {
+		for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+			var element_data = element.value;
+			if (element.getAttribute("data_type") == "int") {
+				element_data = parseInt(element_data);
+			} else if (element.getAttribute("data_type") == "float") {
+				element_data = parseFloat(element_data);
+			} else if (element.getAttribute("data_type") == "bool") {
+				element_data = (element_data == 'on');
+			}
+			data[element.id.split("|")[1].replace("_value", "")] = element_data;
 		}
-		data[element.id.split("|")[1].replace("_value", "")] = element_data;
 	}
 	data = {...data, ...selected_model_data};
 	
