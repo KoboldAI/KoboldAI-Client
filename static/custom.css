@@ -2405,3 +2405,8 @@ body.connected .popupfooter, .popupfooter.always-available {
 	padding-right: 0px;
 	padding-top: 0px;
 }
+
+.input_error {
+	border: 5px solid red !important;
+	box-sizing: border-box !important;
+}

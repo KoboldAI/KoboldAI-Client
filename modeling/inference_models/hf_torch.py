@@ -126,6 +126,7 @@ class HFTorchInferenceModel(HFInferenceModel):
             return "Unknown"
 
     def _post_load(m_self) -> None:
+
         if not utils.koboldai_vars.model_type:
             utils.koboldai_vars.model_type = m_self.get_model_type()
 
@@ -562,6 +563,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                                 )
                             )
                             # print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
+                            #logger.debug(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ")
                             model_dict[key] = model_dict[key].materialize(
                                 f, map_location="cpu"
                             )
@@ -786,6 +788,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         if device_count < 2:
             primary = None
         logger.debug("n_layers: {}".format(n_layers))
+        logger.debug("gpu blocks: {}".format(breakmodel.gpu_blocks))
         gpu_blocks = breakmodel.gpu_blocks + (
             device_count - len(breakmodel.gpu_blocks)
         ) * [0]
@@ -815,6 +818,8 @@ class HFTorchInferenceModel(HFInferenceModel):
         import breakmodel
 
         n_layers = utils.num_layers(config)
+
+        logger.debug("gpu blocks before modification: {}".format(breakmodel.gpu_blocks))
 
         if utils.args.cpu:
             breakmodel.gpu_blocks = [0] * n_layers
@@ -847,6 +852,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         # If all layers are on the same device, use the old GPU generation mode
         while len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0:
             breakmodel.gpu_blocks.pop()
+        self.breakmodel = True
         if len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (
             -1,
             utils.num_layers(config),
