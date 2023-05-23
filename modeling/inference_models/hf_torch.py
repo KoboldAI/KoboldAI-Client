@@ -126,6 +126,7 @@ class HFTorchInferenceModel(HFInferenceModel):
             return "Unknown"
 
     def _post_load(m_self) -> None:
+
         if not utils.koboldai_vars.model_type:
             utils.koboldai_vars.model_type = m_self.get_model_type()
 
@@ -562,6 +563,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                                 )
                             )
                             # print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
+                            #logger.debug(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ")
                             model_dict[key] = model_dict[key].materialize(
                                 f, map_location="cpu"
                             )
@@ -847,6 +849,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         # If all layers are on the same device, use the old GPU generation mode
         while len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0:
             breakmodel.gpu_blocks.pop()
+        self.breakmodel = True
         if len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (
             -1,
             utils.num_layers(config),

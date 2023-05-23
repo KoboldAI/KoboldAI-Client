@@ -158,7 +158,7 @@ class HFInferenceModel(InferenceModel):
                          layers.append(None)
                     else:
                         layers.append(parameters["{}_Layers".format(i)])
-                self.cpu_layers = parameters['CPU_Layers'] if 'CPU_Layers' in parameters else None
+                self.cpu_layers = int(parameters['CPU_Layers']) if 'CPU_Layers' in parameters else None
                 if isinstance(self.cpu_layers, str):
                     self.cpu_layers = int(self.cpu_layers) if self.cpu_layers.isnumeric() else 0
                 self.layers = layers
@@ -167,9 +167,11 @@ class HFInferenceModel(InferenceModel):
                     self.disk_layers = int(self.disk_layers) if self.disk_layers.isnumeric() else 0
                 breakmodel.gpu_blocks = layers
                 breakmodel.disk_blocks = self.disk_layers
-            self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
+                self.usegpu = self.cpu_layers == 0 and breakmodel.disk_blocks == 0 and sum(self.layers)-self.layers[0] == 0
             self.model_type = self.get_model_type()
             self.breakmodel = ((self.model_type != 'gpt2') or self.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not self.nobreakmodel
+        else:
+            self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
         self.model_name = parameters['custom_model_name'] if 'custom_model_name' in parameters else parameters['id']
         self.path = parameters['path'] if 'path' in parameters else None
 

@@ -248,11 +248,12 @@ class model_backend(HFTorchInferenceModel):
 
         self.patch_embedding()
 
+        
         if utils.koboldai_vars.hascuda:
-            if utils.koboldai_vars.usegpu:
+            if self.usegpu:
                 # Use just VRAM
                 self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
-            elif utils.koboldai_vars.breakmodel:
+            elif self.breakmodel:
                 # Use both RAM and VRAM (breakmodel)
                 if not self.lazy_load:
                     self.breakmodel_device_config(self.model.config)
@@ -267,7 +268,8 @@ class model_backend(HFTorchInferenceModel):
             self._move_to_devices()
         else:
             self.model = self.model.to("cpu").float()
-
+        
+        
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
 
