@@ -186,6 +186,7 @@ class model_backend(HFInferenceModel):
 
         tpu_mtj_backend.load_model(
             utils.koboldai_vars.model,
+            self.model_type,
             hf_checkpoint=utils.koboldai_vars.model
             not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
             and utils.koboldai_vars.use_colab_tpu,
@@ -202,7 +203,7 @@ class model_backend(HFInferenceModel):
 
         if (
             utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
-            and utils.koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")
+            and self.model_type not in ("gpt2", "gpt_neo", "gptj")
         ):
             utils.koboldai_vars.badwordsids = [
                 [v]

@@ -941,7 +941,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
     koboldai_vars.status_message = ""
 
-def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
+def load_model(path: str, model_type: str, driver_version="tpu_driver_20221109", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params, pad_token_id
 
     if kwargs.get("pad_token_id"):
@@ -989,9 +989,9 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
 
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
-        spec_path = os.path.join("maps", koboldai_vars.model_type + ".json")
+        spec_path = os.path.join("maps", model_type + ".json")
         if not os.path.isfile(spec_path):
-            raise NotImplementedError(f"Unsupported model type {repr(koboldai_vars.model_type)}")
+            raise NotImplementedError(f"Unsupported model type {repr(model_type)}")
         with open(spec_path) as f:
             lazy_load_spec = json.load(f)
 
