@@ -1643,7 +1643,7 @@ def load_model(model_backend, initial_load=False):
     koboldai_vars.noai = False
     set_aibusy(True)
     if koboldai_vars.model != 'ReadOnly':
-        emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
+        emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(model_backends[model_backend].model_name if "model_name" in vars(model_backends[model_backend]) else model_backends[model_backend].id)}, broadcast=True)
         #Have to add a sleep so the server will send the emit for some reason
         time.sleep(0.1)
 
