@@ -1405,6 +1405,7 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(override_args))
     elif(os.environ.get("KOBOLDAI_ARGS") is not None):
         import shlex
+        logger.info("Using environmental variables instead of command arguments: {}".format(os.environ["KOBOLDAI_ARGS"]))
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
