@@ -1561,6 +1561,7 @@ def general_startup(override_args=None):
     
     if koboldai_vars.use_colab_tpu and args.model_backend == "Huggingface":
          args.model_backend = "Huggingface MTJ"
+         
     
     if args.model:
         # At this point we have to try to load the model through the selected backend
@@ -1589,6 +1590,7 @@ def general_startup(override_args=None):
             logger.error("Missing: {}".format(", ".join(mising_parameters)))
             exit()
         arg_parameters['id'] = args.model
+        arg_parameters['model'] = args.model
         arg_parameters['model_path'] = args.path
         arg_parameters['menu_path'] = ""
         model_backends[args.model_backend].set_input_parameters(arg_parameters)
