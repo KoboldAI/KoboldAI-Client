@@ -1428,9 +1428,11 @@ def general_startup(override_args=None):
     for arg in temp:
         if arg == "path":
             if "model_path" in os.environ:
+                logger.info("Setting model path based on enviornmental variable: {}".format(os.environ["model_path"]))
                 setattr(args, arg, os.environ["model_path"])
         else:
             if arg in os.environ:
+                logger.info("Setting {} based on enviornmental variable: {}".format(arg, os.environ[arg]))
                 if isinstance(getattr(args, arg), bool):
                     if os.environ[arg].lower() == "true":
                         setattr(args, arg, True)
