@@ -187,7 +187,6 @@ class model_backend(HFInferenceModel):
         logger.info(self.model_type)
         tpu_mtj_backend.load_model(
             self.model,
-            self.model_type,
             hf_checkpoint=self.model
             not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
             and utils.koboldai_vars.use_colab_tpu,

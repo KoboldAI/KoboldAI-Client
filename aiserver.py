@@ -1548,7 +1548,7 @@ def general_startup(override_args=None):
             koboldai_vars.custmodpth = modpath
     elif args.model:
         logger.message(f"Welcome to KoboldAI!")
-        logger.message(f"You have selected the following Model: {koboldai_vars.model}")
+        logger.message(f"You have selected the following Model: {args.model}")
         if args.path:
             logger.message(f"You have selected the following path for your Model: {args.path}")
             koboldai_vars.custmodpth = args.path;
