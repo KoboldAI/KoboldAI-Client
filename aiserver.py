@@ -1594,7 +1594,6 @@ def general_startup(override_args=None):
         arg_parameters['model_path'] = args.path
         arg_parameters['menu_path'] = ""
         model_backends[args.model_backend].set_input_parameters(arg_parameters)
-        logger.info(vars(model_backends[args.model_backend]))
         koboldai_vars.model = args.model
         return args.model_backend
     else:

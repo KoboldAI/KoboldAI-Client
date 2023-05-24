@@ -150,7 +150,7 @@ class model_backend(HFInferenceModel):
 
         tpu_mtj_backend.socketio = utils.socketio
 
-        if utils.koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
+        if self.model_name == "TPUMeshTransformerGPTNeoX":
             utils.koboldai_vars.badwordsids = utils.koboldai_vars.badwordsids_neox
 
         print(
@@ -158,7 +158,7 @@ class model_backend(HFInferenceModel):
                 Colors.PURPLE, Colors.END
             )
         )
-        if utils.koboldai_vars.model in (
+        if self.model_name in (
             "TPUMeshTransformerGPTJ",
             "TPUMeshTransformerGPTNeoX",
         ) and (
@@ -168,7 +168,7 @@ class model_backend(HFInferenceModel):
             raise FileNotFoundError(
                 f"The specified model path {repr(utils.koboldai_vars.custmodpth)} is not the path to a valid folder"
             )
-        if utils.koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
+        if self.model_name == "TPUMeshTransformerGPTNeoX":
             tpu_mtj_backend.pad_token_id = 2
 
         tpu_mtj_backend.koboldai_vars = utils.koboldai_vars
@@ -184,10 +184,10 @@ class model_backend(HFInferenceModel):
         self.init_model_config()
         utils.koboldai_vars.allowsp = True
 
-        logger.info(self.model)
+        logger.info(self.model_name)
         tpu_mtj_backend.load_model(
-            self.model,
-            hf_checkpoint=self.model
+            self.model_name,
+            hf_checkpoint=self.model_name
             not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
             and utils.koboldai_vars.use_colab_tpu,
             socketio_queue=koboldai_settings.queue,
