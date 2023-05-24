@@ -1559,6 +1559,9 @@ def general_startup(override_args=None):
     
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
     
+    if koboldai_vars.use_colab_tpu and args.model_backend == "Huggingface":
+         args.model_backend = "Huggingface MTJ"
+    
     if args.model:
         # At this point we have to try to load the model through the selected backend
         if args.model_backend not in model_backends:
@@ -1593,6 +1596,7 @@ def general_startup(override_args=None):
         return args.model_backend
     else:
         return "Read Only"
+        
     
         
     
