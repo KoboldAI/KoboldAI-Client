@@ -59,7 +59,7 @@ class model_backend(HFTorchInferenceModel):
             "low_cpu_mem_usage": True,
         }
 
-        if utils.koboldai_vars.model_type == "gpt2":
+        if self.model_type == "gpt2":
             # We must disable low_cpu_mem_usage and if using a GPT-2 model
             # because GPT-2 is not compatible with this feature yet.
             tf_kwargs.pop("low_cpu_mem_usage", None)
