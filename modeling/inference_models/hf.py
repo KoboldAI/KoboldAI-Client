@@ -133,7 +133,7 @@ class HFInferenceModel(InferenceModel):
                                                 "unit": "bool",
                                                 "label": "Use GPU",
                                                 "id": "use_gpu",
-                                                "default": False,
+                                                "default": True,
                                                 "tooltip": "Whether or not to use the GPU",
                                                 "menu_path": "Layers",
                                                 "extra_classes": "",
