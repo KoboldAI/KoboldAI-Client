@@ -647,7 +647,7 @@ class settings(object):
                     raise
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', 'default_preset']
+    local_only_variables = ['apikey', 'default_preset']
     no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
