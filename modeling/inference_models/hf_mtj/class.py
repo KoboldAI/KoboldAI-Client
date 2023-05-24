@@ -184,7 +184,8 @@ class model_backend(HFInferenceModel):
         self.init_model_config()
         utils.koboldai_vars.allowsp = True
 
-        logger.info(self.model_type)
+        logger.info(self.model)
+        logger.info(self.id)
         tpu_mtj_backend.load_model(
             self.model,
             hf_checkpoint=self.model
