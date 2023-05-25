@@ -29,6 +29,7 @@ class model_backend(InferenceModel):
         self.url = "https://horde.koboldai.net"
         self.key = "0000000000"
         self.models = self.get_cluster_models()
+        self.model_name = "Horde"
         
 
         # Do not allow API to be served over the API
