@@ -943,7 +943,7 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
 import koboldai_settings
 
-def load_model(path: str, model_type: str, badwordsids=koboldai_settings.badwordsids_default driver_version="tpu_driver_20221109", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
+def load_model(path: str, model_type: str, badwordsids=koboldai_settings.badwordsids_default, driver_version="tpu_driver_20221109", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params, pad_token_id
 
     if kwargs.get("pad_token_id"):
