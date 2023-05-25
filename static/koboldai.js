@@ -1970,12 +1970,21 @@ function load_model() {
 	if (settings_area) {
 		for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
 			var element_data = element.value;
-			if (element.getAttribute("data_type") == "int") {
-				element_data = parseInt(element_data);
-			} else if (element.getAttribute("data_type") == "float") {
-				element_data = parseFloat(element_data);
-			} else if (element.getAttribute("data_type") == "bool") {
-				element_data = (element_data == 'on');
+			if ((element.tagName == "SELECT") && (element.multiple)) {
+				element_data = [];
+				for (var i=0, iLen=element.options.length; i<iLen; i++) {
+					if (element.options[i].selected) {
+						element_data.push(element.options[i].value);
+					}
+				}
+			} else {
+				if (element.getAttribute("data_type") == "int") {
+					element_data = parseInt(element_data);
+				} else if (element.getAttribute("data_type") == "float") {
+					element_data = parseFloat(element_data);
+				} else if (element.getAttribute("data_type") == "bool") {
+					element_data = (element_data == 'on');
+				}
 			}
 			data[element.id.split("|")[1].replace("_value", "")] = element_data;
 		}

@@ -6199,6 +6199,7 @@ def UI_2_resubmit_model_info(data):
 @socketio.on('load_model')
 @logger.catch
 def UI_2_load_model(data):
+    logger.debug("Loading model with user input of: {}".format(data))
     model_backends[data['plugin']].set_input_parameters(data)
     load_model(data['plugin'])
     #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
