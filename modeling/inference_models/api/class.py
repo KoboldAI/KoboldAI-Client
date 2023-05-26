@@ -28,6 +28,7 @@ class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
         self.base_url = ""
+        self.model_name = "KoboldAI API"
 
     def is_valid(self, model_name, model_path, menu_path):
         return model_name == "API"
