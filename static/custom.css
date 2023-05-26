@@ -2395,6 +2395,7 @@ body.connected .popupfooter, .popupfooter.always-available {
 	padding-top: 0px;
 	text-align: right;
 	font-size: calc(0.8em + var(--font_size_adjustment));
+	text-align: left;
 }
 
 .setting_label {

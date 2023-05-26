@@ -77,6 +77,18 @@ class HFInferenceModel(InferenceModel):
                 break_values += [0] * (gpu_count - len(break_values))
                 if disk_blocks is not None:
                     break_values += [int(disk_blocks)]
+                requested_parameters.append({
+                                                "uitype": "Valid Display",
+                                                "unit": "text",
+                                                "label": "Current Allocated Layers: %1/{}".format(layer_count), #%1 will be the validation value
+                                                "id": "valid_layers",
+                                                "max": layer_count,
+                                                "step": 1,
+                                                "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)]+['CPU_Layers']+(['Disk_Layers'] if disk_blocks is not None else []), "value": layer_count, 'check': "="},
+                                                "menu_path": "Layers",
+                                                "extra_classes": "",
+                                                "refresh_model_inputs": False
+                                            })
                 for i in range(gpu_count):
                     requested_parameters.append({
                                                     "uitype": "slider",

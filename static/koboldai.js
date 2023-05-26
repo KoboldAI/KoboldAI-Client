@@ -1754,6 +1754,25 @@ function model_settings_checker() {
 		accept.classList.add("disabled");
 		accept.disabled = true;
 	}
+	
+	
+	//We now have valid display boxes potentially. We'll go through them and update the display
+	for (const item of document.querySelectorAll(".model_settings_valid_display:not(#blank_model_settings_valid_display)")) {
+		check_value = 0
+		missing_element = false;
+		for (const temp of item.check_data['sum']) {
+			if (document.getElementById(item.id.split("|")[0] +"|"  + temp + "_value")) {
+				check_value += parseInt(document.getElementById(item.id.split("|")[0] +"|"  + temp + "_value").value);
+			} else {
+				missing_element = true;
+			}
+		}
+		if (!missing_element) {
+			item.innerText = item.original_text.replace("%1", check_value);
+		}
+		
+		
+	}
 }
 
 function selected_model_info(sent_data) {
@@ -1924,13 +1943,21 @@ function selected_model_info(sent_data) {
 				new_setting.querySelector('#blank_model_settings_text').remove();
 			}
 			
+			if (item['uitype'] == "Valid Display") {
+				new_setting = document.createElement("DIV");
+				new_setting.classList.add("model_settings_valid_display");
+				new_setting.id = loader + "|" + item['id'] + "_value";
+				new_setting.innerText = item['label'];
+				new_setting.check_data = item['check'];
+				new_setting.original_text = item['label'];
+			}
+			
 			model_area.append(new_setting);
 			loadmodelsettings.append(model_area);
 		}
 	}
 	
 	//unhide the first plugin settings
-	console.log(document.getElementById("modelplugin").value + "_settings_area");
 	if (document.getElementById(document.getElementById("modelplugin").value + "_settings_area")) {
 		document.getElementById(document.getElementById("modelplugin").value + "_settings_area").classList.remove("hidden");
 	}
