@@ -39,19 +39,23 @@ class model_backend(InferenceModel):
         logger.debug("Horde Models: {}".format(self.models))
         return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
     
-    def get_requested_parameters(self, model_name, model_path, menu_path):
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         if os.path.exists("settings/api.model_backend.settings") and 'base_url' not in vars(self):
             with open("settings/horde.model_backend.settings", "r") as f:
                 temp = json.load(f)
                 self.base_url = temp['url']
                 self.key = temp['key']
+        if 'key' in parameters:
+            self.key = parameters['key']
+        if 'url' in parameters:
+            self.url = parameters['url']
         requested_parameters = []
         requested_parameters.extend([{
                                         "uitype": "text",
                                         "unit": "text",
                                         "label": "URL",
                                         "id": "url",
-                                        "default": self.url,
+                                        "default": self.url if 'url' not in parameters else parameters['url'],
                                         "tooltip": "URL to the horde.",
                                         "menu_path": "",
                                         "check": {"value": "", 'check': "!="},
@@ -63,7 +67,7 @@ class model_backend(InferenceModel):
                                         "unit": "text",
                                         "label": "Key",
                                         "id": "key",
-                                        "default": self.key,
+                                        "default": self.key if 'key' not in parameters else parameters['key'],
                                         "check": {"value": "", 'check': "!="},
                                         "tooltip": "User Key to use when connecting to Horde (0000000000 is anonymous).",
                                         "menu_path": "",

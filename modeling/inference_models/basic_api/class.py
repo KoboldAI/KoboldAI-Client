@@ -33,7 +33,7 @@ class model_backend(InferenceModel):
     def is_valid(self, model_name, model_path, menu_path):
         return model_name == "Colab"
     
-    def get_requested_parameters(self, model_name, model_path, menu_path):
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         if os.path.exists("settings/api.model_backend.settings") and 'colaburl' not in vars(self):
             with open("settings/api.model_backend.settings", "r") as f:
                 self.colaburl = json.load(f)['base_url']

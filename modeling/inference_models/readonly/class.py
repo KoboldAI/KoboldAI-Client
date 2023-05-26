@@ -33,7 +33,7 @@ class model_backend(InferenceModel):
     def is_valid(self, model_name, model_path, menu_path):
         return model_name == "ReadOnly"
     
-    def get_requested_parameters(self, model_name, model_path, menu_path):
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         requested_parameters = []
         return requested_parameters
         
