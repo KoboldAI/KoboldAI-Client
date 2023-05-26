@@ -2411,3 +2411,8 @@ body.connected .popupfooter, .popupfooter.always-available {
 	border: 5px solid red !important;
 	box-sizing: border-box !important;
 }
+
+.popup .model_item.model_menu_selected {
+	color: var(--popup_selected_color);
+	background-color: var(--popup_selected_color_text);
+}
