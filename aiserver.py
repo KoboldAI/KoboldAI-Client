@@ -1579,11 +1579,12 @@ def general_startup(override_args=None):
             arg_parameters['use_gpu'] = True
         
         for parameter in parameters:
-            if parameter['default'] == "" and parameter['id'] not in arg_parameters:
-                mising_parameters.append(parameter['id'])
-                ok_to_load = False
-            elif parameter['id'] not in arg_parameters:
-                arg_parameters[parameter['id']] = parameter['default']
+            if parameter['uitype'] != "Valid Display":
+                if parameter['default'] == "" and parameter['id'] not in arg_parameters:
+                    mising_parameters.append(parameter['id'])
+                    ok_to_load = False
+                elif parameter['id'] not in arg_parameters:
+                    arg_parameters[parameter['id']] = parameter['default']
         if not ok_to_load:
             logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
             logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters])))
