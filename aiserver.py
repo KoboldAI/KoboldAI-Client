@@ -6147,7 +6147,7 @@ def UI_2_select_model(data):
         emit("open_model_load_menu", {"items": [{**item.to_json(), **{"menu":data["name"]}} for item in model_menu[data["name"]] if item.should_show()]})
     else:
         #Get load methods
-        if data['ismenu'] == 'false':
+        if 'ismenu' in data and data['ismenu'] == 'false':
             valid_loaders = {}
             if data['id'] in [item.name for sublist in model_menu for item in model_menu[sublist]]:
                 #Here if we have a model id that's in our menu, we explicitly use that backend
