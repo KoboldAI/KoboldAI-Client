@@ -1366,7 +1366,7 @@ def general_startup(override_args=None):
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--model_backend", default="Huggingface", help="Specify the model backend you want to use")
-    parser.add_argument("--model_parameters", action="store", default="", help="json of id values to use for the input to the model loading process (leave blank to get required parameters)")
+    parser.add_argument("--model_parameters", action="store", default="", help="json of id values to use for the input to the model loading process (set to help to get required parameters)")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
     parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://horde.koboldai.net/register")
@@ -1571,11 +1571,12 @@ def general_startup(override_args=None):
         parameters = model_backends[args.model_backend].get_requested_parameters(args.model, args.path, "")
         ok_to_load = True
         mising_parameters = []
-        arg_parameters = json.loads(args.model_parameters.replace("'", "\"")) if args.model_parameters != "" else {}
+        arg_parameters = json.loads(args.model_parameters.replace("'", "\"")) if args.model_parameters != "" and args.model_parameters.lower() != "help" else {}
         
         #If we're on colab we'll set everything to GPU0
         if args.colab and args.model_backend == 'Huggingface' and koboldai_vars.on_colab:
             arg_parameters['use_gpu'] = True
+        
         
         for parameter in parameters:
             if parameter['uitype'] != "Valid Display":
@@ -1586,8 +1587,12 @@ def general_startup(override_args=None):
                     arg_parameters[parameter['id']] = parameter['default']
         if not ok_to_load:
             logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
-            logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters])))
+            logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters if x['uitype'] != "Valid Display"])))
             logger.error("Missing: {}".format(", ".join(mising_parameters)))
+            exit()
+        if args.model_parameters.lower() == "help":
+            logger.error("Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
+            logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters if x['uitype'] != "Valid Display"])))
             exit()
         arg_parameters['id'] = args.model
         arg_parameters['model'] = args.model
