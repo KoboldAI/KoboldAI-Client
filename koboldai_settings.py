@@ -647,7 +647,7 @@ class settings(object):
                     raise
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', 'default_preset']
+    local_only_variables = ['apikey', 'default_preset']
     no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
@@ -710,7 +710,6 @@ class model_settings(settings):
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
         self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
-        self.lazy_load   = True # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
         self.uid_presets = []
@@ -1203,7 +1202,6 @@ class undefined_settings(settings):
         super().__setattr__(name, value)
         logger.error("{} just set {} to {} in koboldai_vars. That variable isn't defined!".format(inspect.stack()[1].function, name, value))
         
-
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
@@ -1211,7 +1209,7 @@ class system_settings(settings):
                             'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui', 'trust_remote_code']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
-                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
+                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'on_colab'
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
                          'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch', 'trust_remote_code']
     settings_name = "system"
@@ -1237,7 +1235,7 @@ class system_settings(settings):
         self.corescript  = "default.lua"  # Filename of corescript to load
         self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
-        self.hascuda     = False  # Whether torch has detected CUDA on the system
+        self.hascuda     = torch.cuda.is_available()  # Whether torch has detected CUDA on the system
         self.usegpu      = False  # Whether to launch pipeline with GPU support
         self.splist      = []
         self.spselect    = ""     # Temporary storage for soft prompt filename to load

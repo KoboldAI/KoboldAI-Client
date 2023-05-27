@@ -4,6 +4,7 @@ import torch
 import requests
 import numpy as np
 from typing import List, Optional, Union
+import os
 
 import utils
 from logger import logger
@@ -15,19 +16,54 @@ from modeling.inference_model import (
 )
 
 
+model_backend_name = "KoboldAI Old Colab Method"
+
 class BasicAPIException(Exception):
     """To be used for errors when using the Basic API as an interface."""
 
 
-class BasicAPIInferenceModel(InferenceModel):
+class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
+        self.colaburl = ""
 
         # Do not allow API to be served over the API
         self.capabilties = ModelCapabilities(api_host=False)
+    
+    def is_valid(self, model_name, model_path, menu_path):
+        return model_name == "Colab"
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+        if os.path.exists("settings/api.model_backend.settings") and 'colaburl' not in vars(self):
+            with open("settings/api.model_backend.settings", "r") as f:
+                self.colaburl = json.load(f)['base_url']
+        requested_parameters = []
+        requested_parameters.append({
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "URL",
+                                        "id": "colaburl",
+                                        "default": self.colaburl,
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "The URL of the Colab KoboldAI API to connect to.",
+                                        "menu_path": "",
+                                        "extra_classes": "",
+                                        "refresh_model_inputs": False
+                                    })
+        return requested_parameters
+        
+    def set_input_parameters(self, parameters):
+        self.colaburl = parameters['colaburl']
+
+    def _initialize_model(self):
+        return
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("EleutherAI/gpt-neo-2.7B")
+    
+    def _save_settings(self):
+        with open("settings/basic_api.model_backend.settings", "w") as f:
+            json.dump({"colaburl": self.colaburl}, f, indent="")
 
     def _raw_generate(
         self,
@@ -68,7 +104,7 @@ class BasicAPIInferenceModel(InferenceModel):
         }
 
         # Create request
-        req = requests.post(utils.koboldai_vars.colaburl, json=reqdata)
+        req = requests.post(self.colaburl, json=reqdata)
 
         if req.status_code != 200:
             raise BasicAPIException(f"Bad status code {req.status_code}")

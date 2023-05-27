@@ -56,6 +56,7 @@ import html
 import argparse
 import sys
 import gc
+import traceback
 
 import lupa
 
@@ -167,6 +168,7 @@ class MenuFolder(MenuItem):
             "size": "",
             "isMenu": True,
             "isDownloaded": False,
+            "isDirectory":  False
         }
 
 class MenuModel(MenuItem):
@@ -177,11 +179,13 @@ class MenuModel(MenuItem):
         vram_requirements: str = "",
         model_type: MenuModelType = MenuModelType.HUGGINGFACE,
         experimental: bool = False,
+        model_backend: str = "Huggingface",
     ) -> None:
         super().__init__(label, name, experimental)
         self.model_type = model_type
         self.vram_requirements = vram_requirements
         self.is_downloaded = is_model_downloaded(self.name)
+        self.model_backend = model_backend
     
     def to_ui1(self) -> list:
         return [
@@ -199,8 +203,28 @@ class MenuModel(MenuItem):
             "size": self.vram_requirements,
             "isMenu": False,
             "isDownloaded": self.is_downloaded,
+            "isDirectory": False,
         }
 
+class MenuPath(MenuItem):
+    def to_ui1(self) -> list:
+        return [
+            self.label,
+            self.name,
+            "",
+            True,
+        ]
+    
+    def to_json(self) -> dict:
+        return {
+            "label": self.label,
+            "name": self.name,
+            "size": "",
+            "isMenu": True,
+            "isDownloaded": False,
+            "isDirectory": True,
+            "path": "./models"
+        }
 
 # AI models Menu
 # This is a dict of lists where they key is the menu name, and the list is the menu items.
@@ -208,9 +232,9 @@ class MenuModel(MenuItem):
 # 3: the memory requirement for the model, 4: if the item is a menu or not (True/False)
 model_menu = {
     "mainmenu": [
-        MenuModel("Load a model from its directory", "NeoCustom"),
-        MenuModel("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
-        MenuFolder("Load custom model from Hugging Face", "customhuggingface"),
+        MenuPath("Load a model from its directory", "NeoCustom"),
+        MenuPath("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
+        MenuModel("Load custom model from Hugging Face", "customhuggingface", ""),
         MenuFolder("Adventure Models", "adventurelist"),
         MenuFolder("Novel Models", "novellist"),
         MenuFolder("Chat Models", "chatlist"),
@@ -224,7 +248,7 @@ model_menu = {
         MenuFolder("Official RWKV-4", "rwkvlist"),
         MenuFolder("Untuned GPT2", "gpt2list"),
         MenuFolder("Online Services", "apilist"),
-        MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER),
+        MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER, model_backend="Read Only"),
     ],
     'adventurelist': [
         MenuModel("Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "64GB"),
@@ -361,12 +385,11 @@ model_menu = {
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'apilist': [
-        MenuModel("GooseAI API (requires API key)", "GooseAI", model_type=MenuModelType.ONLINE_API),
-        MenuModel("OpenAI API (requires API key)", "OAI", model_type=MenuModelType.ONLINE_API),
-        MenuModel("InferKit API (requires API key)", "InferKit", model_type=MenuModelType.ONLINE_API),
-        MenuModel("KoboldAI API", "API", model_type=MenuModelType.ONLINE_API),
-        MenuModel("Basic Model API", "Colab", model_type=MenuModelType.ONLINE_API),
-        MenuModel("KoboldAI Horde", "CLUSTER", model_type=MenuModelType.ONLINE_API),
+        MenuModel("GooseAI API (requires API key)", "GooseAI", model_type=MenuModelType.ONLINE_API, model_backend="GooseAI"),
+        MenuModel("OpenAI API (requires API key)", "OAI", model_type=MenuModelType.ONLINE_API, model_backend="OpenAI"),
+        MenuModel("KoboldAI API", "API", model_type=MenuModelType.ONLINE_API, model_backend="KoboldAI API"),
+        MenuModel("Basic Model API", "Colab", model_type=MenuModelType.ONLINE_API, model_backend="KoboldAI Old Colab Method"),
+        MenuModel("KoboldAI Horde", "CLUSTER", model_type=MenuModelType.ONLINE_API, model_backend="Horde"),
         MenuFolder("Return to Main Menu", "mainmenu"),
     ]
 }
@@ -599,6 +622,24 @@ utils.socketio = socketio
 # Weird import position to steal koboldai_vars from utils
 from modeling.patches import patch_transformers
 
+#Load all of the model importers
+import importlib
+model_backend_code = {}
+model_backends = {}
+for module in os.listdir("./modeling/inference_models"):
+    if not os.path.isfile(os.path.join("./modeling/inference_models",module)) and module != '__pycache__':
+        try:
+            model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
+            model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
+            if 'disable' in vars(model_backends[model_backend_code[module].model_backend_name]):
+                if model_backends[model_backend_code[module].model_backend_name].disable:
+                    del model_backends[model_backend_code[module].model_backend_name]
+        except Exception:
+            logger.error("Model Backend {} failed to load".format(module))
+            logger.error(traceback.format_exc())
+
+logger.info("We loaded the following model backends: \n{}".format("\n".join([x for x in model_backends])))
+        
 
 old_socketio_on = socketio.on
 def new_socketio_on(*a, **k):
@@ -614,10 +655,14 @@ def new_socketio_on(*a, **k):
 socketio.on = new_socketio_on
 
 def emit(*args, **kwargs):
-    try:
-        return _emit(*args, **kwargs)
-    except AttributeError:
-        return socketio.emit(*args, **kwargs)
+    if has_request_context():
+        try:
+            return _emit(*args, **kwargs)
+        except AttributeError:
+            return socketio.emit(*args, **kwargs)
+    else: #We're trying to send data outside of the http context. This won't work. Try the relay
+        if koboldai_settings.queue is not None:
+            koboldai_settings.queue.put([args[0], args[1], kwargs])
 utils.emit = emit
 
 #replacement for tpool.execute to maintain request contexts
@@ -905,6 +950,8 @@ def sendModelSelection(menu="mainmenu", folder="./models"):
         )
 
 def get_folder_path_info(base):
+    if base is None:
+        return [], []
     if base == 'This PC':
         breadcrumbs = [['This PC', 'This PC']]
         paths = [["{}:\\".format(chr(i)), "{}:\\".format(chr(i))] for i in range(65, 91) if os.path.exists("{}:".format(chr(i)))]
@@ -987,7 +1034,7 @@ def getmodelname():
     if(koboldai_vars.online_model != ''):
         return(f"{koboldai_vars.model}/{koboldai_vars.online_model}")
     if(koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
-        modelname = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
+        modelname = os.path.basename(os.path.normpath(model.path))
         return modelname
     else:
         modelname = koboldai_vars.model if koboldai_vars.model is not None else "Read Only"
@@ -1318,16 +1365,14 @@ def general_startup(override_args=None):
     parser.add_argument("--port", type=int, help="Specify the port on which the application will be joinable")
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
+    parser.add_argument("--model_backend", default="Huggingface", help="Specify the model backend you want to use")
+    parser.add_argument("--model_parameters", action="store", default="", help="json of id values to use for the input to the model loading process (set to help to get required parameters)")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
     parser.add_argument("--sh_apikey", help="Specify the API key to use for txt2img from the Stable Horde. Get a key from https://horde.koboldai.net/register")
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
-    parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
-    parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --breakmodel_gpulayers 8,9,11")
-    parser.add_argument("--breakmodel_disklayers", type=int, help="If using a model that supports hybrid generation, this is the number of layers to put in disk cache.")
     parser.add_argument("--override_delete", action='store_true', help="Deleting stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow deleting stories if using --remote and prevent deleting stories otherwise.")
     parser.add_argument("--override_rename", action='store_true', help="Renaming stories from inside the browser is disabled if you are using --remote and enabled otherwise. Using this option will instead allow renaming stories if using --remote and prevent renaming stories otherwise.")
     parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
@@ -1360,6 +1405,7 @@ def general_startup(override_args=None):
         args = parser.parse_args(shlex.split(override_args))
     elif(os.environ.get("KOBOLDAI_ARGS") is not None):
         import shlex
+        logger.info("Using environmental variables instead of command arguments: {}".format(os.environ["KOBOLDAI_ARGS"]))
         args = parser.parse_args(shlex.split(os.environ["KOBOLDAI_ARGS"]))
     else:
         args = parser.parse_args()
@@ -1382,9 +1428,11 @@ def general_startup(override_args=None):
     for arg in temp:
         if arg == "path":
             if "model_path" in os.environ:
+                logger.info("Setting model path based on enviornmental variable: {}".format(os.environ["model_path"]))
                 setattr(args, arg, os.environ["model_path"])
         else:
             if arg in os.environ:
+                logger.info("Setting {} based on enviornmental variable: {}".format(arg, os.environ[arg]))
                 if isinstance(getattr(args, arg), bool):
                     if os.environ[arg].lower() == "true":
                         setattr(args, arg, True)
@@ -1410,8 +1458,6 @@ def general_startup(override_args=None):
 
     args.max_summary_length = int(args.max_summary_length)
 
-    if args.model:
-        koboldai_vars.model = args.model;
     koboldai_vars.revision = args.revision
     koboldai_settings.multi_story = args.multi_story
 
@@ -1436,7 +1482,7 @@ def general_startup(override_args=None):
         koboldai_vars.quiet = True
 
     if args.nobreakmodel:
-        koboldai_vars.nobreakmodel = True
+        model_backends['Huggingface'].nobreakmodel = True
 
     if args.remote:
         koboldai_vars.host = True;
@@ -1446,6 +1492,9 @@ def general_startup(override_args=None):
 
     if args.localtunnel:
         koboldai_vars.host = True;
+
+    if args.lowmem:
+        model_backends['Huggingface'].low_mem = True
 
     if args.host != "Disabled":
             # This means --host option was submitted without an argument
@@ -1479,6 +1528,9 @@ def general_startup(override_args=None):
         koboldai_vars.trust_remote_code = True
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
+        koboldai_vars.hascuda = False
+        koboldai_vars.usegpu = False
+        model_backends['Huggingface'].nobreakmodel = True
 
     koboldai_vars.smandelete = koboldai_vars.host == args.override_delete
     koboldai_vars.smanrename = koboldai_vars.host == args.override_rename
@@ -1493,262 +1545,67 @@ def general_startup(override_args=None):
         if(modpath):
             # Save directory to koboldai_vars
             koboldai_vars.model = "NeoCustom"
-            koboldai_vars.custmodpth = modpath
+            args.path = modpath
     elif args.model:
         logger.message(f"Welcome to KoboldAI!")
-        logger.message(f"You have selected the following Model: {koboldai_vars.model}")
+        logger.message(f"You have selected the following Model: {args.model}")
         if args.path:
             logger.message(f"You have selected the following path for your Model: {args.path}")
-            koboldai_vars.custmodpth = args.path;
-            koboldai_vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
+            model_backends["KoboldAI Old Colab Method"].colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
             
     #setup socketio relay queue
     koboldai_settings.queue = multiprocessing.Queue()
     
     socketio.start_background_task(socket_io_relay, koboldai_settings.queue, socketio)
     
-        
-#==================================================================#
-# Load Model
-#==================================================================# 
-
-@socketio.on("get_model_info")
-def get_model_info(model, directory=""):
-    logger.info("Selected: {}, {}".format(model, directory))
-    # if the model is in the api list
-    disk_blocks = 0
-    key = False
-    breakmodel = False
-    gpu = False
-    layer_count = None
-    key_value = ""
-    break_values = []
-    url = False
-    default_url = None
-    models_on_url = False
-    multi_online_models = False
-    show_online_model_select=False
-    gpu_count = torch.cuda.device_count()
-    gpu_names = []
-    send_horde_models = False
-    show_custom_model_box = False
-    for i in range(gpu_count):
-        gpu_names.append(torch.cuda.get_device_name(i))
-    if model in ['Colab', 'API']:
-        url = True
-    elif model == 'CLUSTER':
-        models_on_url = True
-        show_online_model_select=True
-        url = True
-        key = True
-        default_url = koboldai_vars.horde_url
-        multi_online_models = True
-        key_value = koboldai_vars.horde_api_key
-        url = koboldai_vars.horde_url
-        if key_value:
-            send_horde_models = True
-    elif model in [x.name for x in model_menu['apilist']]:
-        show_online_model_select=True
-        if path.exists("settings/{}.v2_settings".format(model)):
-            with open("settings/{}.v2_settings".format(model), "r") as file:
-                # Check if API key exists
-                try:
-                    js = json.load(file)
-
-                    if("apikey" in js and js["apikey"] != ""):
-                        # API key exists, grab it and close the file
-                        key_value = js["apikey"]
-                    elif 'oaiapikey' in js and js['oaiapikey'] != "":
-                        key_value = js["oaiapikey"]
-                    if model in ('GooseAI', 'OAI'): 
-                        get_oai_models({'model': model, 'key': key_value})
-                except json.decoder.JSONDecodeError:
-                    print(":(")
-                    pass
-        key = True
-    elif model == 'ReadOnly':
-        pass
-    #elif model == 'customhuggingface':
-    #    show_custom_model_box = True
-    elif args.cpu:
-        pass
-    else:
-        layer_count = get_layer_count(model, directory=directory)
-        if layer_count is None:
-            breakmodel = False
-            gpu = True
-        else:
-            breakmodel = True
-            if model in ["NeoCustom", "GPT2Custom", "customhuggingface"]:
-                filename = "settings/{}.breakmodel".format(os.path.basename(os.path.normpath(directory)))
-            else:
-                filename = "settings/{}.breakmodel".format(model.replace("/", "_"))
-            if path.exists(filename):
-                with open(filename, "r") as file:
-                    data = [x for x in file.read().split("\n")[:2] if x != '']
-                    if len(data) < 2:
-                        data.append("0")
-                    break_values, disk_blocks = data
-                    break_values = break_values.split(",")
-            else:
-                break_values = [layer_count]
-            break_values = [int(x) for x in break_values if x != '']
-            break_values += [0] * (gpu_count - len(break_values))
-    emit('from_server', {'cmd': 'selected_model_info', 'key_value': key_value, 'key':key, 'multi_online_models': multi_online_models, 'default_url': default_url, 
-                         'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 
-                         'disk_break_value': disk_blocks, 'accelerate': True,
-                         'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url,
-                         'show_custom_model_box': show_custom_model_box}, broadcast=True, room="UI_1")
-    emit('selected_model_info', {'key_value': key_value, 'key':key, 
-                         'gpu':gpu, 'layer_count':layer_count, 'breakmodel':breakmodel, 'multi_online_models': multi_online_models, 'default_url': default_url, 
-                         'disk_break_value': disk_blocks, 'disk_break': True,
-                         'break_values': break_values, 'gpu_count': gpu_count,
-                         'url': url, 'gpu_names': gpu_names, 'models_on_url': models_on_url, 'show_online_model_select': show_online_model_select,
-                         'bit_8_available': koboldai_vars.bit_8_available if koboldai_vars.experimental_features else False,
-                         'show_custom_model_box': show_custom_model_box})
-    if send_horde_models:
-        get_cluster_models({'key': key_value, 'url': default_url})
-    elif key_value != "" and model in [x.name for x in model_menu['apilist']] and model != 'CLUSTER':
-        get_oai_models(key_value)
+    if koboldai_vars.use_colab_tpu and args.model_backend == "Huggingface":
+         args.model_backend = "Huggingface MTJ"
+         
     
-    
-
-def get_layer_count(model, directory=""):
-    if(model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
-        if(model == "GPT2Custom"):
-            with open(os.path.join(directory, "config.json"), "r") as f:
-                model_config = json.load(f)
-        # Get the model_type from the config or assume a model type if it isn't present
-        else:
-            if(directory):
-                model = directory
-            from transformers import AutoConfig
-            if(os.path.isdir(model.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(model.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
-            elif(is_model_downloaded(model)):
-                model_config = AutoConfig.from_pretrained("models/{}".format(model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
-            elif(os.path.isdir(directory)):
-                model_config = AutoConfig.from_pretrained(directory, revision=koboldai_vars.revision, cache_dir="cache")
-            elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
-                model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
-            else:
-                model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
-        try:
-            if (model_config.model_type != 'gpt2' or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
-                return utils.num_layers(model_config)
-            else:
-                return None
-        except:
-            return None
-    else:
-        return None
-
-@socketio.on('OAI_Key_Update')
-def get_oai_models(data):
-    key = data['key']
-    model = data['model']
-    koboldai_vars.oaiapikey = key
-    if model == 'OAI':
-        url = "https://api.openai.com/v1/engines"
-    elif model == 'GooseAI':
-        url = "https://api.goose.ai/v1/engines"
-    else:
-        return
+    if args.model:
+        # At this point we have to try to load the model through the selected backend
+        if args.model_backend not in model_backends:
+            logger.error("Your selected model backend ({}) isn't in the model backends we know about ({})".format(args.model_backend, ", ".join([x for x in model_backends])))
+            exit()
+        #OK, we've been given a model to load and a backend to load it through. Now we need to get a list of parameters and make sure we get what we need to actually load it
+        parameters = model_backends[args.model_backend].get_requested_parameters(args.model, args.path, "")
+        ok_to_load = True
+        mising_parameters = []
+        arg_parameters = json.loads(args.model_parameters.replace("'", "\"")) if args.model_parameters != "" and args.model_parameters.lower() != "help" else {}
         
-    # Get list of models from OAI
-    logger.init("OAI Engines", status="Retrieving")
-    req = requests.get(
-        url, 
-        headers = {
-            'Authorization': 'Bearer '+key
-            }
-        )
-    if(req.status_code == 200):
-        r = req.json()
-        engines = r["data"]
-        try:
-            engines = [[en["id"], "{} ({})".format(en['id'], "Ready" if en["ready"] == True else "Not Ready")] for en in engines]
-        except:
-            logger.error(engines)
-            raise
+        #If we're on colab we'll set everything to GPU0
+        if args.colab and args.model_backend == 'Huggingface' and koboldai_vars.on_colab:
+            arg_parameters['use_gpu'] = True
         
-        online_model = ""
-        changed=False
         
-        #Save the key
-        if not path.exists("settings"):
-            # If the client settings file doesn't exist, create it
-            # Write API key to file
-            os.makedirs('settings', exist_ok=True)
-        if path.exists("settings/{}.v2_settings".format(model)):
-            with open("settings/{}.v2_settings".format(model), "r") as file:
-                js = json.load(file)
-                if 'online_model' in js:
-                    online_model = js['online_model']
-                if "apikey" in js:
-                    if js['apikey'] != key:
-                        changed=True
-        else:
-            js = {}
-            changed=True
-
-        if changed:
-            with open("settings/{}.v2_settings".format(model), "w") as file:
-                js["apikey"] = key
-                file.write(json.dumps(js, indent=3))
-            
-        logger.init_ok("OAI Engines", status="OK")
-        emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
-        emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
+        for parameter in parameters:
+            if parameter['uitype'] != "Valid Display":
+                if parameter['default'] == "" and parameter['id'] not in arg_parameters:
+                    mising_parameters.append(parameter['id'])
+                    ok_to_load = False
+                elif parameter['id'] not in arg_parameters:
+                    arg_parameters[parameter['id']] = parameter['default']
+        if not ok_to_load:
+            logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
+            logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters if x['uitype'] != "Valid Display"])))
+            logger.error("Missing: {}".format(", ".join(mising_parameters)))
+            exit()
+        if args.model_parameters.lower() == "help":
+            logger.error("Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
+            logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters if x['uitype'] != "Valid Display"])))
+            exit()
+        arg_parameters['id'] = args.model
+        arg_parameters['model'] = args.model
+        arg_parameters['path'] = args.path
+        arg_parameters['menu_path'] = ""
+        model_backends[args.model_backend].set_input_parameters(arg_parameters)
+        koboldai_vars.model = args.model
+        return args.model_backend
     else:
-        # Something went wrong, print the message and quit since we can't initialize an engine
-        logger.init_err("OAI Engines", status="Failed")
-        logger.error(req.json())
-        emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
-
-@socketio.on("get_cluster_models")
-def get_cluster_models(msg):
-    koboldai_vars.horde_api_key = msg['key'] or koboldai_vars.horde_api_key
-    url = msg['url'] or koboldai_vars.horde_url
-    koboldai_vars.horde_url = url
-    # Get list of models from public cluster
-    print("{0}Retrieving engine list...{1}".format(colors.PURPLE, colors.END), end="")
-    try:
-        req = requests.get(f"{url}/api/v2/status/models?type=text")
-    except:
-        logger.init_err("KAI Horde Models", status="Failed")
-        logger.error("Provided KoboldAI Horde URL unreachable")
-        emit('from_server', {'cmd': 'errmsg', 'data': "Provided KoboldAI Horde URL unreachable"})
-        return
-    if not req.ok:
-        # Something went wrong, print the message and quit since we can't initialize an engine
-        logger.init_err("KAI Horde Models", status="Failed")
-        logger.error(req.json())
-        emit('from_server', {'cmd': 'errmsg', 'data': req.json()}, room="UI_1")
-        return
-
-    engines = req.json()
-    logger.debug(engines)
-    try:
-        engines = [[en["name"], en["name"]] for en in engines]
-    except:
-        logger.error(engines)
-        raise
-    logger.debug(engines)
+        return "Read Only"
+        
     
-    online_model = ""
-    savesettings()
-
-    logger.init_ok("KAI Horde Models", status="OK")
-
-    emit('from_server', {'cmd': 'oai_engines', 'data': engines, 'online_model': online_model}, broadcast=True, room="UI_1")
-    emit('oai_engines', {'data': engines, 'online_model': online_model}, broadcast=False, room="UI_2")
-
-
-def reset_model_settings():
-    koboldai_vars.reset_for_model_load()
-    
+        
     
 def unload_model():
     global model
@@ -1781,7 +1638,7 @@ def unload_model():
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
     
     
-def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model="", use_breakmodel_args=False, breakmodel_args_default_to_cpu=False, url=None, use_8_bit=False):
+def load_model(model_backend, initial_load=False):
     global model
     global tokenizer
     global model_config
@@ -1792,188 +1649,48 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
     if initial_load:
         use_breakmodel_args = True
 
-    reset_model_settings()
     koboldai_vars.reset_model()
 
-    koboldai_vars.cluster_requested_models = [online_model] if isinstance(online_model, str) else online_model
-    if koboldai_vars.cluster_requested_models == [""]:
-        koboldai_vars.cluster_requested_models = []
-
     koboldai_vars.noai = False
-    if not use_breakmodel_args:
-        set_aibusy(True)
-        if koboldai_vars.model != 'ReadOnly':
-            emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(koboldai_vars.model)}, broadcast=True)
-            #Have to add a sleep so the server will send the emit for some reason
-            time.sleep(0.1)
+    set_aibusy(True)
+    if koboldai_vars.model != 'ReadOnly':
+        emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(model_backends[model_backend].model_name if "model_name" in vars(model_backends[model_backend]) else model_backends[model_backend].id)}, broadcast=True)
+        #Have to add a sleep so the server will send the emit for some reason
+        time.sleep(0.1)
 
-    if gpu_layers is not None:
-        args.breakmodel_gpulayers = gpu_layers
-    elif use_breakmodel_args:
-        gpu_layers = args.breakmodel_gpulayers
-    if breakmodel_args_default_to_cpu and gpu_layers is None:
-        gpu_layers = args.breakmodel_gpulayers = []
-    if disk_layers is not None:
-        args.breakmodel_disklayers = int(disk_layers)
-    elif use_breakmodel_args:
-        disk_layers = args.breakmodel_disklayers
-    if breakmodel_args_default_to_cpu and disk_layers is None:
-        disk_layers = args.breakmodel_disklayers = 0
+    if 'model' in globals():
+        model.unload()
     
-    unload_model()
-    
-    if online_model == "":
-        koboldai_vars.configname = getmodelname()
-    #Let's set the GooseAI or OpenAI server URLs if that's applicable
-    else:
-        koboldai_vars.online_model = online_model
-        # Swap OAI Server if GooseAI was selected
-        if koboldai_vars.model == "GooseAI":
-            koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
-            koboldai_vars.model = "OAI"
-            koboldai_vars.configname = f"GooseAI_{online_model.replace('/', '_')}"
-        elif koboldai_vars.model == "CLUSTER" and isinstance(online_model, list):
-                if len(online_model) != 1:
-                    koboldai_vars.configname = koboldai_vars.model
-                else:
-                    koboldai_vars.configname = f"{koboldai_vars.model}_{online_model[0].replace('/', '_')}"
-        else:
-            koboldai_vars.configname = f"{koboldai_vars.model}_{online_model.replace('/', '_')}"
-
-        if path.exists(get_config_filename()):
-            changed=False
-            with open(get_config_filename(), "r") as file:
-                # Check if API key exists
-                js = json.load(file)
-                if 'online_model' in js:
-                    if js['online_model'] != online_model:
-                        changed=True
-                        js['online_model'] = online_model
-                else:
-                    changed=True
-                    js['online_model'] = online_model
-
-            if changed:
-                with open("settings/{}.v2_settings".format(koboldai_vars.model), "w") as file:
-                    file.write(json.dumps(js, indent=3))
-
-        # Swap OAI Server if GooseAI was selected
-        if koboldai_vars.model == "GooseAI":
-            koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
-            koboldai_vars.model = "OAI"
-            args.configname = "GooseAI" + "/" + online_model
-        elif koboldai_vars.model != "CLUSTER":
-            args.configname = koboldai_vars.model + "/" + online_model
-        koboldai_vars.oaiurl = koboldai_vars.oaiengines + "/{0}/completions".format(online_model)
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         # loadmodelsettings()
         # loadsettings()
         logger.init("GPU support", status="Searching")
-        koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
         koboldai_vars.bmsupported = ((koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
-        if(args.breakmodel is not None and args.breakmodel):
-            logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
-        if(args.breakmodel_layers is not None):
-            logger.warning("--breakmodel_layers is deprecated. Use --breakmodel_gpulayers instead (see --help for details).")
-        if(args.model and koboldai_vars.bmsupported and not args.breakmodel_gpulayers and not args.breakmodel_layers and (not args.breakmodel_disklayers)):
-            logger.warning("Model launched without the --breakmodel_gpulayers argument, defaulting to GPU only mode.")
-            koboldai_vars.bmsupported = False
-        if(not koboldai_vars.bmsupported and (args.breakmodel_gpulayers is not None or args.breakmodel_layers is not None or args.breakmodel_disklayers is not None)):
-            logger.warning("This model does not support hybrid generation. --breakmodel_gpulayers will be ignored.")
         if(koboldai_vars.hascuda):
             logger.init_ok("GPU support", status="Found")
         else:
             logger.init_warn("GPU support", status="Not Found")
         
-        if args.cpu:
-            koboldai_vars.usegpu = False
-            gpu_layers = None
-            disk_layers = None
-            koboldai_vars.breakmodel = False
-        elif koboldai_vars.hascuda:
-            if(koboldai_vars.bmsupported):
-                koboldai_vars.usegpu = False
-                koboldai_vars.breakmodel = True
-            else:
-                koboldai_vars.breakmodel = False
-                koboldai_vars.usegpu = use_gpu
+        #if koboldai_vars.hascuda:
+        #    if(koboldai_vars.bmsupported):
+        #        koboldai_vars.usegpu = False
+        #        koboldai_vars.breakmodel = True
+        #    else:
+        #        koboldai_vars.breakmodel = False
+        #        koboldai_vars.usegpu = use_gpu
     else:
         koboldai_vars.default_preset = koboldai_settings.default_preset
 
-
-    # Ask for API key if InferKit was selected
-    if koboldai_vars.model == "InferKit":
-        koboldai_vars.apikey = koboldai_vars.oaiapikey
                     
-    # Swap OAI Server if GooseAI was selected
-    if koboldai_vars.model == "GooseAI":
-        koboldai_vars.oaiengines = "https://api.goose.ai/v1/engines"
-        koboldai_vars.model = "OAI"
-        koboldai_vars.configname = "GooseAI"
-
-    # Ask for API key if OpenAI was selected
-    if koboldai_vars.model == "OAI" and not koboldai_vars.configname:
-        koboldai_vars.configname = "OAI"
-        
-    if koboldai_vars.model == "ReadOnly":
-        koboldai_vars.noai = True
-
-    # TODO: InferKit
-    if koboldai_vars.model == "ReadOnly" or koboldai_vars.noai:
-        pass
-    elif koboldai_vars.model in ["Colab", "API", "CLUSTER", "OAI"]:
-        koboldai_vars.colaburl = url or koboldai_vars.colaburl
-        koboldai_vars.usegpu = False
-        koboldai_vars.breakmodel = False
-
-        if koboldai_vars.model == "Colab":
-            from modeling.inference_models.basic_api import BasicAPIInferenceModel
-            model = BasicAPIInferenceModel()
-        elif koboldai_vars.model == "API":
-            from modeling.inference_models.api import APIInferenceModel
-            model = APIInferenceModel(koboldai_vars.colaburl.replace("/request", ""))
-        elif koboldai_vars.model == "CLUSTER":
-            from modeling.inference_models.horde import HordeInferenceModel
-            model = HordeInferenceModel()
-        elif koboldai_vars.model == "OAI":
-            from modeling.inference_models.openai import OpenAIAPIInferenceModel
-            model = OpenAIAPIInferenceModel()
-
-        model.load(initial_load=initial_load)
-    # TODO: This check sucks, make a model object or somethign
-    elif not koboldai_vars.use_colab_tpu and not koboldai_vars.noai:
-        # HF Torch
-        logger.init("Transformers", status='Starting')
-        for m in ("GPTJModel", "XGLMModel"):
-            try:
-                globals()[m] = getattr(__import__("transformers"), m)
-            except:
-                pass
-
-        from modeling.inference_models.generic_hf_torch import GenericHFTorchInferenceModel
-        model = GenericHFTorchInferenceModel(
-            koboldai_vars.model,
-            lazy_load=koboldai_vars.lazy_load,
-            low_mem=args.lowmem
-        )
-
-        model.load(
-            save_model=not (args.colab or args.cacheonly) or args.savemodel,
-            initial_load=initial_load,
-        )
-        logger.info(f"Pipeline created: {koboldai_vars.model}")
-    else:
-        # TPU
-        from modeling.inference_models.hf_mtj import HFMTJInferenceModel
-        model = HFMTJInferenceModel(
-            koboldai_vars.model
-        )
-        model.load(
-            save_model=not (args.colab or args.cacheonly) or args.savemodel,
-            initial_load=initial_load,
-        )
+    model = model_backends[model_backend]
+    model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
+    koboldai_vars.model = model.model_name if "model_name" in vars(model) else model.id #Should have model_name, but it could be set to id depending on how it's setup
+    if koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
+        koboldai_vars.model = os.path.basename(os.path.normpath(model.path))
+        logger.info(koboldai_vars.model)
+    logger.debug("Model Type: {}".format(koboldai_vars.model_type))
     
     # TODO: Convert everywhere to use model.tokenizer
     if model:
@@ -3993,7 +3710,8 @@ def calcsubmit(txt):
                         bias += [1] * (i - top_index)
                     bias[i] = b["multiplier"]
 
-            device = utils.get_auxilary_device()
+            
+            device = model.get_auxilary_device()
             attention_bias.attention_bias = torch.Tensor(bias).to(device)
             logger.info(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
         logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
@@ -6422,7 +6140,9 @@ def UI_2_retry(data):
 @socketio.on('load_model_button')
 @logger.catch
 def UI_2_load_model_button(data):
-    sendModelSelection()
+    emit("open_model_load_menu", {"items": [{**item.to_json(), **{"menu":"mainmenu"}} for item in model_menu['mainmenu'] if item.should_show()]})
+    
+
     
 #==================================================================#
 # Event triggered when user clicks the a model
@@ -6430,23 +6150,56 @@ def UI_2_load_model_button(data):
 @socketio.on('select_model')
 @logger.catch
 def UI_2_select_model(data):
-    
-    #We've selected a menu
-    if data['model'] in model_menu:
-        sendModelSelection(menu=data['model'])
-    #We've selected a custom line
-    elif data['menu'] in ("NeoCustom", "GPT2Custom"):
-        get_model_info(data['menu'], directory=data['display_name'])
-    #We've selected a custom menu folder
-    elif data['model'] in ("NeoCustom", "GPT2Custom") and 'path' in data:
-        sendModelSelection(menu=data['model'], folder=data['path'])
-    #We've selected a custom menu
-    elif data['model'] in ("NeoCustom", "GPT2Custom", "customhuggingface"):
-        sendModelSelection(menu=data['model'], folder="./models")
+    logger.debug("Clicked on model entry: {}".format(data))
+    if data["name"] in model_menu and data['ismenu'] == "true":
+        emit("open_model_load_menu", {"items": [{**item.to_json(), **{"menu":data["name"]}} for item in model_menu[data["name"]] if item.should_show()]})
     else:
-        #We now have some model we want to potentially load.
-        #First we need to send the client the model parameters (layers, etc)
-        get_model_info(data['model'])
+        #Get load methods
+        if 'ismenu' in data and data['ismenu'] == 'false':
+            valid_loaders = {}
+            if data['id'] in [item.name for sublist in model_menu for item in model_menu[sublist]]:
+                #Here if we have a model id that's in our menu, we explicitly use that backend
+                for model_backend in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
+                    valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
+                emit("selected_model_info", {"model_backends": valid_loaders})
+            else:
+                #Here we have a model that's not in our menu structure (either a custom model or a custom path
+                #so we'll just go through all the possible loaders
+                for model_backend in model_backends:
+                    if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
+                        valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
+                emit("selected_model_info", {"model_backends": valid_loaders})
+        else:
+            #Get directories
+            paths, breadcrumbs = get_folder_path_info(data['path'])
+            output = []
+            for path in paths:
+                valid=False
+                for model_backend in model_backends:
+                    if model_backends[model_backend].is_valid(path[1], path[0], "Custom"):
+                        logger.debug("{} says valid".format(model_backend))
+                        valid=True
+                        break
+                    else:
+                        logger.debug("{} says invalid".format(model_backend))
+                    
+                output.append({'label': path[1], 'name': path[1], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
+            emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})            
+    return
+
+
+
+
+#==================================================================#
+# Event triggered when user changes a model parameter and it's set to resubmit
+#==================================================================#
+@socketio.on('resubmit_model_info')
+@logger.catch
+def UI_2_resubmit_model_info(data):
+    valid_loaders = {}
+    for model_backend in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
+        valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"], parameters=data)
+    emit("selected_model_info", {"model_backends": valid_loaders})
 
 #==================================================================#
 # Event triggered when user loads a model
@@ -6454,26 +6207,10 @@ def UI_2_select_model(data):
 @socketio.on('load_model')
 @logger.catch
 def UI_2_load_model(data):
-    if not os.path.exists("settings/"):
-        os.mkdir("settings")
-    changed = True
-    if os.path.exists("settings/" + data['model'].replace('/', '_') + ".breakmodel"):
-        with open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "r") as file:
-            file_data = file.read().split('\n')[:2]
-            if len(file_data) < 2:
-                file_data.append("0")
-            gpu_layers, disk_layers = file_data
-            if gpu_layers == data['gpu_layers'] and disk_layers == data['disk_layers']:
-                changed = False
-    if changed:
-        f = open("settings/" + data['model'].replace('/', '_') + ".breakmodel", "w")
-        f.write("{}\n{}".format(data['gpu_layers'], data['disk_layers']))
-        f.close()
-    koboldai_vars.colaburl = data['url'] + "/request"
-    koboldai_vars.model = data['model']
-    koboldai_vars.custmodpth = data['path']
-    print("loading Model")
-    load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
+    logger.debug("Loading model with user input of: {}".format(data))
+    model_backends[data['plugin']].set_input_parameters(data)
+    load_model(data['plugin'])
+    #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
 
 #==================================================================#
 # Event triggered when load story is clicked
@@ -8095,7 +7832,8 @@ def send_one_time_messages(data, wait_time=0):
 # Test
 #==================================================================#
 def model_info():
-    if model_config is not None:
+    global model_config
+    if 'model_config' in globals() and model_config is not None:
         if isinstance(model_config, dict):
             if 'model_type' in model_config:
                 model_type = str(model_config['model_type'])
@@ -10982,10 +10720,8 @@ for schema in config_endpoint_schemas:
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
-def startup():
-    if koboldai_vars.model == "" or koboldai_vars.model is None:
-        koboldai_vars.model = "ReadOnly"
-    socketio.start_background_task(load_model, **{'initial_load':True})
+def startup(command_line_backend):
+    socketio.start_background_task(load_model, *(command_line_backend,), **{'initial_load':True})
             
 print("", end="", flush=True)
 
@@ -10994,7 +10730,7 @@ def run():
     global app
     global tpu_mtj_backend
 
-    general_startup()
+    command_line_backend = general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
     if koboldai_vars.host:
@@ -11044,7 +10780,7 @@ def run():
            cloudflare = _run_cloudflared(port)
            koboldai_vars.cloudflare_link = cloudflare
            
-        startup()
+        startup(command_line_backend)
        
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
@@ -11064,7 +10800,7 @@ def run():
         else:
             socketio.run(app, port=port)
     else:
-        startup()
+        startup(command_line_backend)
         if args.unblock:
             if not args.no_ui:
                 try:
@@ -11092,13 +10828,13 @@ def run():
 if __name__ == "__main__":
     run()
 else:
-    general_startup()
+    command_line_backend = general_startup()
     # Start flask & SocketIO
     logger.init("Flask", status="Starting")
     Session(app)
     logger.init_ok("Flask", status="OK")
     patch_transformers()
-    startup()
+    startup(command_line_backend)
     koboldai_settings.port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
     

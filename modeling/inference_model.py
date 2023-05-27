@@ -169,6 +169,18 @@ class InferenceModel:
         ]
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
+        self.model_name = "Not Defined"
+    
+    def is_valid(self, model_name, model_path, menu_path, vram):
+        return True
+        
+    def requested_parameters(self, model_name, model_path, menu_path, vram):
+        return {}
+        
+    def set_input_parameters(self, parameters):
+        for parameter in parameters:
+            setattr(self, parameter, parameters[parameter])
+        return
 
     def load(self, save_model: bool = False, initial_load: bool = False) -> None:
         """User-facing load function. Do not override this; try `_load()` instead."""
@@ -176,12 +188,19 @@ class InferenceModel:
         self._pre_load()
         self._load(save_model=save_model, initial_load=initial_load)
         self._post_load()
+        self._save_settings()
+
+    def unload(self):
+        return
 
     def _pre_load(self) -> None:
         """Pre load hook. Called before `_load()`."""
 
     def _post_load(self) -> None:
         """Post load hook. Called after `_load()`."""
+    
+    def _save_settings(self) -> None:
+        """Save settings hook. Called after `_post_load()`."""
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         """Main load method. All logic related to loading the model onto the

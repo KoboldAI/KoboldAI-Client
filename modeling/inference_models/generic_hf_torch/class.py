@@ -22,8 +22,13 @@ except ModuleNotFoundError as e:
 
 from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
+model_backend_name = "Huggingface"
 
-class GenericHFTorchInferenceModel(HFTorchInferenceModel):
+class model_backend(HFTorchInferenceModel):
+    
+    def _initialize_model(self):
+        return
+    
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
 
@@ -36,9 +41,9 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
         if self.model_name == "NeoCustom":
             self.model_name = os.path.basename(
-                os.path.normpath(utils.koboldai_vars.custmodpth)
+                os.path.normpath(self.path)
             )
-            utils.koboldai_vars.model = self.model_name
+        utils.koboldai_vars.model = self.model_name
 
         # If we specify a model and it's in the root directory, we need to move
         # it to the models directory (legacy folder structure to new)
@@ -54,7 +59,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             "low_cpu_mem_usage": True,
         }
 
-        if utils.koboldai_vars.model_type == "gpt2":
+        if self.model_type == "gpt2":
             # We must disable low_cpu_mem_usage and if using a GPT-2 model
             # because GPT-2 is not compatible with this feature yet.
             tf_kwargs.pop("low_cpu_mem_usage", None)
@@ -64,12 +69,14 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
         # If we're using torch_lazy_loader, we need to get breakmodel config
         # early so that it knows where to load the individual model tensors
+        logger.debug("lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(self.lazy_load, utils.koboldai_vars.hascuda, self.breakmodel, self.nobreakmodel))
         if (
             self.lazy_load
             and utils.koboldai_vars.hascuda
-            and utils.koboldai_vars.breakmodel
-            and not utils.koboldai_vars.nobreakmodel
+            and self.breakmodel
+            and not self.nobreakmodel
         ):
+            logger.debug("loading breakmodel")
             self.breakmodel_device_config(self.model_config)
 
         if self.lazy_load:
@@ -241,11 +248,12 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
 
         self.patch_embedding()
 
+        
         if utils.koboldai_vars.hascuda:
-            if utils.koboldai_vars.usegpu:
+            if self.usegpu:
                 # Use just VRAM
                 self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
-            elif utils.koboldai_vars.breakmodel:
+            elif self.breakmodel:
                 # Use both RAM and VRAM (breakmodel)
                 if not self.lazy_load:
                     self.breakmodel_device_config(self.model.config)
@@ -260,6 +268,11 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
             self._move_to_devices()
         else:
             self.model = self.model.to("cpu").float()
-
+        
+        
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
+
+    def _save_settings(self):
+        with open("settings/{}.generic_hf_torch.model_backend.settings".format(self.model_name.replace("/", "_")), "w") as f:
+            json.dump({"layers": self.layers if 'layers' in vars(self) else [], "disk_layers": self.disk_layers if 'disk_layers' in vars(self) else 0}, f, indent="")

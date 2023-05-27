@@ -6,6 +6,7 @@ import torch
 import requests
 import numpy as np
 from typing import List, Optional, Union
+import os
 
 import utils
 from logger import logger
@@ -17,15 +18,42 @@ from modeling.inference_model import (
     ModelCapabilities,
 )
 
+model_backend_name = "KoboldAI API"
 
 class APIException(Exception):
     """To be used for errors when using the Kobold API as an interface."""
 
 
-class APIInferenceModel(InferenceModel):
-    def __init__(self, base_url: str) -> None:
+class model_backend(InferenceModel):
+    def __init__(self) -> None:
         super().__init__()
-        self.base_url = base_url.rstrip("/")
+        self.base_url = ""
+        self.model_name = "KoboldAI API"
+
+    def is_valid(self, model_name, model_path, menu_path):
+        return model_name == "API"
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+        if os.path.exists("settings/api.model_backend.settings") and 'base_url' not in vars(self):
+            with open("settings/api.model_backend.settings", "r") as f:
+                self.base_url = json.load(f)['base_url']
+        requested_parameters = []
+        requested_parameters.append({
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "URL",
+                                        "id": "base_url",
+                                        "default": self.base_url,
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "The URL of the KoboldAI API to connect to.",
+                                        "menu_path": "",
+                                        "extra_classes": "",
+                                        "refresh_model_inputs": False
+                                    })
+        return requested_parameters
+        
+    def set_input_parameters(self, parameters):
+        self.base_url = parameters['base_url'].rstrip("/")
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         tokenizer_id = requests.get(f"{self.base_url}/api/v1/model").json()["result"]
@@ -34,6 +62,10 @@ class APIInferenceModel(InferenceModel):
 
         # Do not allow API to be served over the API
         self.capabilties = ModelCapabilities(api_host=False)
+
+    def _save_settings(self):
+        with open("settings/api.model_backend.settings", "w") as f:
+            json.dump({"base_url": self.base_url}, f, indent="")
 
     def _raw_generate(
         self,

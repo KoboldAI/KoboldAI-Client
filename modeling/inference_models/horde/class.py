@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import time
+import time, json
 import torch
 import requests
 import numpy as np
 from typing import List, Optional, Union
+import os
 
 import utils
 from logger import logger
@@ -16,24 +17,130 @@ from modeling.inference_model import (
     ModelCapabilities,
 )
 
+model_backend_name = "Horde"
 
 class HordeException(Exception):
     """To be used for errors on server side of the Horde."""
 
 
-class HordeInferenceModel(InferenceModel):
+class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
+        self.url = "https://horde.koboldai.net"
+        self.key = "0000000000"
+        self.models = self.get_cluster_models()
+        self.model_name = "Horde"
+        self.model = []
+        
 
         # Do not allow API to be served over the API
         self.capabilties = ModelCapabilities(api_host=False)
 
+    def is_valid(self, model_name, model_path, menu_path):
+        logger.debug("Horde Models: {}".format(self.models))
+        return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
+    
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+        if os.path.exists("settings/api.model_backend.settings") and 'base_url' not in vars(self):
+            with open("settings/horde.model_backend.settings", "r") as f:
+                temp = json.load(f)
+                self.base_url = temp['url']
+                self.key = temp['key']
+        if 'key' in parameters:
+            self.key = parameters['key']
+        if 'url' in parameters:
+            self.url = parameters['url']
+        requested_parameters = []
+        requested_parameters.extend([{
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "URL",
+                                        "id": "url",
+                                        "default": self.url if 'url' not in parameters else parameters['url'],
+                                        "tooltip": "URL to the horde.",
+                                        "menu_path": "",
+                                        "check": {"value": "", 'check': "!="},
+                                        "refresh_model_inputs": True,
+                                        "extra_classes": ""
+                                    },
+                                    {
+                                        "uitype": "text",
+                                        "unit": "text",
+                                        "label": "Key",
+                                        "id": "key",
+                                        "default": self.key if 'key' not in parameters else parameters['key'],
+                                        "check": {"value": "", 'check': "!="},
+                                        "tooltip": "User Key to use when connecting to Horde (0000000000 is anonymous).",
+                                        "menu_path": "",
+                                        "refresh_model_inputs": True,
+                                        "extra_classes": ""
+                                    },
+                                    {
+                                        "uitype": "dropdown",
+                                        "unit": "text",
+                                        "label": "Model",
+                                        "id": "model",
+                                        "default": model_name,
+                                        "check": {"value": "", 'check': "!="},
+                                        'multiple': True,
+                                        "tooltip": "Which model to use when running OpenAI/GooseAI.",
+                                        "menu_path": "",
+                                        "refresh_model_inputs": False,
+                                        "extra_classes": "",
+                                        'children': self.models,
+
+                                    }])
+        return requested_parameters
+        
+    def set_input_parameters(self, parameters):
+        self.key = parameters['key'].strip()
+        self.model = parameters['model']
+        self.url = parameters['url']
+        
+    def get_cluster_models(self):
+        # Get list of models from public cluster
+        try:
+            req = requests.get(f"{self.url}/api/v2/status/models?type=text")
+        except:
+            logger.init_err("KAI Horde Models", status="Failed")
+            logger.error("Provided KoboldAI Horde URL unreachable")
+            emit('from_server', {'cmd': 'errmsg', 'data': "Provided KoboldAI Horde URL unreachable"})
+            return
+        if not req.ok:
+            # Something went wrong, print the message and quit since we can't initialize an engine
+            logger.init_err("KAI Horde Models", status="Failed")
+            logger.error(req.json())
+            emit('from_server', {'cmd': 'errmsg', 'data': req.json()}, room="UI_1")
+            return
+
+        engines = req.json()
+        try:
+            engines = [{"text": "All", "value": "all"}] + [{"text": en["name"], "value": en["name"]} for en in engines]
+        except:
+            logger.error(engines)
+            raise
+        logger.debug(engines)
+        
+        online_model = ""
+
+        logger.init_ok("KAI Horde Models", status="OK")
+
+        return engines
+
     def _load(self, save_model: bool, initial_load: bool) -> None:
+        tokenizer_name = "gpt2"
+        if len(self.model) > 0:
+            if self.model[0] == "all" and len(self.model) > 1:
+                tokenizer_name = self.model[1]
+            else:
+                tokenizer_name = self.model[0]
         self.tokenizer = self._get_tokenizer(
-            utils.koboldai_vars.cluster_requested_models[0]
-            if len(utils.koboldai_vars.cluster_requested_models) > 0
-            else "gpt2",
+            tokenizer_name
         )
+
+    def _save_settings(self):
+        with open("settings/horde.model_backend.settings", "w") as f:
+            json.dump({"key": self.key, "url": self.url}, f, indent="")
 
     def _raw_generate(
         self,
@@ -80,14 +187,14 @@ class HordeInferenceModel(InferenceModel):
 
         client_agent = "KoboldAI:2.0.0:koboldai.org"
         cluster_headers = {
-            "apikey": utils.koboldai_vars.horde_api_key,
+            "apikey": self.key,
             "Client-Agent": client_agent,
         }
 
         try:
             # Create request
             req = requests.post(
-                f"{utils.koboldai_vars.horde_url}/api/v2/generate/text/async",
+                f"{self.url}/api/v2/generate/text/async",
                 json=cluster_metadata,
                 headers=cluster_headers,
             )
@@ -125,7 +232,7 @@ class HordeInferenceModel(InferenceModel):
         while not finished:
             try:
                 req = requests.get(
-                    f"{utils.koboldai_vars.horde_url}/api/v2/generate/text/status/{request_id}",
+                    f"{self.url}/api/v2/generate/text/status/{request_id}",
                     headers=cluster_agent_headers,
                 )
             except requests.exceptions.ConnectionError:
