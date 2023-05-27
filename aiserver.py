@@ -1482,7 +1482,8 @@ def general_startup(override_args=None):
         koboldai_vars.quiet = True
 
     if args.nobreakmodel:
-        model_backends['Huggingface'].nobreakmodel = True
+        for model_backend in model_backends:
+            model_backends[model_backend].nobreakmodel = True
 
     if args.remote:
         koboldai_vars.host = True;
