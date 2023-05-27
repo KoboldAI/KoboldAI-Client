@@ -188,6 +188,7 @@ class HFInferenceModel(InferenceModel):
             self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else None
             self.breakmodel = False
             self.lazy_load = False
+        logger.info(parameters)
         self.model_name = parameters['custom_model_name'] if 'custom_model_name' in parameters else parameters['id']
         self.path = parameters['path'] if 'path' in parameters else None
 

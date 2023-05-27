@@ -1034,7 +1034,7 @@ def getmodelname():
     if(koboldai_vars.online_model != ''):
         return(f"{koboldai_vars.model}/{koboldai_vars.online_model}")
     if(koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
-        modelname = os.path.basename(os.path.normpath(koboldai_vars.custmodpth))
+        modelname = os.path.basename(os.path.normpath(model.path))
         return modelname
     else:
         modelname = koboldai_vars.model if koboldai_vars.model is not None else "Read Only"
@@ -1687,6 +1687,9 @@ def load_model(model_backend, initial_load=False):
     model = model_backends[model_backend]
     model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
     koboldai_vars.model = model.model_name if "model_name" in vars(model) else model.id #Should have model_name, but it could be set to id depending on how it's setup
+    if koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
+        koboldai_vars.model = os.path.basename(os.path.normpath(model.path))
+        logger.info(koboldai_vars.model)
     logger.debug("Model Type: {}".format(koboldai_vars.model_type))
     
     # TODO: Convert everywhere to use model.tokenizer

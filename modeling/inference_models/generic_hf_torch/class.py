@@ -41,7 +41,7 @@ class model_backend(HFTorchInferenceModel):
 
         if self.model_name == "NeoCustom":
             self.model_name = os.path.basename(
-                os.path.normpath(utils.koboldai_vars.custmodpth)
+                os.path.normpath(self.path)
             )
         utils.koboldai_vars.model = self.model_name
 
