@@ -10752,6 +10752,8 @@ def run():
     
     if(koboldai_vars.host):
         if(args.localtunnel):
+            public_ip = requests.get("https://ipv4.icanhazip.com/")
+            logger.message(f"The Public IP of this machine is : {public_ip.text}")
             import subprocess, shutil
             localtunnel = subprocess.Popen([shutil.which('lt'), '-p', str(port), 'http'], stdout=subprocess.PIPE)
             attempts = 0

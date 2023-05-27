@@ -38,7 +38,6 @@ dependencies:
     - accelerate==0.18.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - flask-session
-    - python-socketio[client]
     - ansi2html
     - flask_compress
     - ijson
