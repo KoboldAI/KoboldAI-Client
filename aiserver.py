@@ -1545,14 +1545,13 @@ def general_startup(override_args=None):
         if(modpath):
             # Save directory to koboldai_vars
             koboldai_vars.model = "NeoCustom"
-            koboldai_vars.custmodpth = modpath
+            args.path = modpath
     elif args.model:
         logger.message(f"Welcome to KoboldAI!")
         logger.message(f"You have selected the following Model: {args.model}")
         if args.path:
             logger.message(f"You have selected the following path for your Model: {args.path}")
-            koboldai_vars.custmodpth = args.path;
-            koboldai_vars.colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
+            model_backends["KoboldAI Old Colab Method"].colaburl = args.path + "/request"; # Lets just use the same parameter to keep it simple
             
     #setup socketio relay queue
     koboldai_settings.queue = multiprocessing.Queue()
@@ -1592,7 +1591,7 @@ def general_startup(override_args=None):
             exit()
         arg_parameters['id'] = args.model
         arg_parameters['model'] = args.model
-        arg_parameters['model_path'] = args.path
+        arg_parameters['path'] = args.path
         arg_parameters['menu_path'] = ""
         model_backends[args.model_backend].set_input_parameters(arg_parameters)
         koboldai_vars.model = args.model
