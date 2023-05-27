@@ -339,7 +339,8 @@ class HFInferenceModel(InferenceModel):
         Returns a string of the model's path locally, or None if it is not downloaded.
         If ignore_existance is true, it will always return a path.
         """
-        if os.path.exists(self.path):
+        if self.path is not None:
+            if os.path.exists(self.path):
                 return self.path
 
         if self.model_name in ["NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]:
