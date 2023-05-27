@@ -9,6 +9,7 @@ import functools
 import itertools
 import traceback
 import contextlib
+from accelerate.utils.modeling import infer_auto_device_map, load_checkpoint_in_model
 from tqdm.auto import tqdm
 from typing import Dict, List, Optional, Union
 
@@ -40,7 +41,6 @@ from modeling.inference_model import (
 )
 
 try:
-    import breakmodel
     import accelerate.utils
 except ModuleNotFoundError as e:
     if not utils.koboldai_vars.use_colab_tpu:
@@ -124,17 +124,6 @@ class HFTorchInferenceModel(HFInferenceModel):
             return "gpt2"
         else:
             return "Unknown"
-
-    def get_auxilary_device(self):
-        """Get device auxilary tensors like inputs should be stored on."""
-
-        # NOTE: TPU isn't a torch device, so TPU stuff gets sent to CPU.
-        if utils.koboldai_vars.hascuda and self.usegpu:
-            return utils.koboldai_vars.gpu_device
-        elif utils.koboldai_vars.hascuda and self.breakmodel:
-            import breakmodel
-            return breakmodel.primary_device
-        return "cpu"
 
     def _post_load(m_self) -> None:
 
@@ -237,7 +226,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         else:
             gen_in = prompt_tokens
 
-        device = self.get_auxilary_device()
+        device = utils.get_auxilary_device()
         gen_in = gen_in.to(device)
 
         additional_bad_words_ids = [self.tokenizer.encode("\n")] if single_line else []
@@ -254,8 +243,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                     len(prompt_tokens) + max_new, utils.koboldai_vars.max_length
                 ),
                 repetition_penalty=1.0,
-                bad_words_ids=self.badwordsids
-                + additional_bad_words_ids,
+                bad_words_ids=self.badwordsids + additional_bad_words_ids,
                 use_cache=True,
                 num_return_sequences=batch_count,
             )
@@ -286,7 +274,27 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
-            return AutoModelForCausalLM.from_pretrained(location, **tf_kwargs)
+            model = AutoModelForCausalLM.from_config(self.model_config)
+
+            # load_checkpoint_in_model(
+            #     model.model,
+            #     location,
+            #     device_map=device_map
+            #     offload_folder="accelerate-disk-cache",
+            #     dtype="float16",
+            #     offload_state_dict=True
+            # )
+            # model.tie_weights()
+
+            device_map = infer_auto_device_map(
+                model,
+                max_memory={0: "10GiB", 1: "7GiB", "cpu": "15GiB"},
+                no_split_module_classes=["GPTJBlock"],
+            )
+
+            return AutoModelForCausalLM.from_pretrained(
+                location, device_map=device_map
+            )  # , **tf_kwargs)
         except Exception as e:
             traceback_string = traceback.format_exc().lower()
 
@@ -324,49 +332,6 @@ class HFTorchInferenceModel(HFInferenceModel):
             return False
 
         return True
-
-    def _move_to_devices(self) -> None:
-        for key, value in self.model.state_dict().items():
-            target_dtype = (
-                torch.float32 if breakmodel.primary_device == "cpu" else torch.float16
-            )
-            if value.dtype is not target_dtype:
-                accelerate.utils.set_module_tensor_to_device(
-                    self.model,
-                    tensor_name=key,
-                    device=torch.device(value.device),
-                    value=value,
-                    dtype=target_dtype,
-                )
-
-        disk_blocks = breakmodel.disk_blocks
-        gpu_blocks = breakmodel.gpu_blocks
-        ram_blocks = len(utils.layers_module_names) - sum(gpu_blocks)
-        cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-        device_map = {}
-
-        for name in utils.layers_module_names:
-            layer = int(name.rsplit(".", 1)[1])
-            device = (
-                ("disk" if layer < disk_blocks else "cpu")
-                if layer < ram_blocks
-                else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
-            )
-            device_map[name] = device
-
-        for name in utils.get_missing_module_names(self.model, list(device_map.keys())):
-            device_map[name] = breakmodel.primary_device
-
-        breakmodel.dispatch_model_ex(
-            self.model,
-            device_map,
-            main_device=breakmodel.primary_device,
-            offload_buffers=True,
-            offload_dir="accelerate-disk-cache",
-        )
-
-        gc.collect()
-        return
 
     # Function to patch transformers to use our soft prompt
     def patch_embedding(self) -> None:
@@ -413,11 +378,10 @@ class HFTorchInferenceModel(HFInferenceModel):
         if not self.lazy_load:
             return
 
-
-        disk_blocks = breakmodel.disk_blocks
-        gpu_blocks = breakmodel.gpu_blocks
-        ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
-        cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
+        # disk_blocks = breakmodel.disk_blocks
+        # gpu_blocks = breakmodel.gpu_blocks
+        # ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
+        # cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
 
         def lazy_load_callback(
             model_dict: Dict[str, Union[lazy_loader.LazyTensor, torch.Tensor]],
@@ -428,6 +392,7 @@ class HFTorchInferenceModel(HFInferenceModel):
             if lazy_load_callback.nested:
                 return
             lazy_load_callback.nested = True
+            return
 
             device_map: Dict[str, Union[str, int]] = {}
 
@@ -458,8 +423,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         utils.koboldai_vars.gpu_device
                         if utils.koboldai_vars.hascuda and self.usegpu
                         else "cpu"
-                        if not utils.koboldai_vars.hascuda
-                        or not self.breakmodel
+                        if not utils.koboldai_vars.hascuda or not self.breakmodel
                         else breakmodel.primary_device
                     )
                 else:
@@ -479,8 +443,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         else "disk"
                         if layer < disk_blocks and layer < ram_blocks
                         else "cpu"
-                        if not utils.koboldai_vars.hascuda
-                        or not self.breakmodel
+                        if not utils.koboldai_vars.hascuda or not self.breakmodel
                         else "shared"
                         if layer < ram_blocks
                         else bisect.bisect_right(
@@ -519,7 +482,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                     total=num_tensors,
                     desc="Loading model tensors",
                     file=utils.UIProgressBarFile(),
-                    position=1
+                    position=1,
                 )
 
             if not is_safetensors:
@@ -550,7 +513,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                                     f.close()
                                 ziproot = z.namelist()[0].split("/")[0]
                                 f = z.open(f"{ziproot}/data/{storage_key}")
-                                
+
                                 current_offset = 0
                             if current_offset != model_dict[key].seek_offset:
                                 f.read(model_dict[key].seek_offset - current_offset)
@@ -574,7 +537,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                                 )
                             )
                             # print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
-                            #logger.debug(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ")
+                            # logger.debug(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ")
                             model_dict[key] = model_dict[key].materialize(
                                 f, map_location="cpu"
                             )
@@ -584,10 +547,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                                 convert_to_float16
                                 and breakmodel.primary_device != "cpu"
                                 and utils.koboldai_vars.hascuda
-                                and (
-                                    self.breakmodel
-                                    or self.usegpu
-                                )
+                                and (self.breakmodel or self.usegpu)
                                 and model_dict[key].dtype is torch.float32
                             ):
                                 model_dict[key] = model_dict[key].to(torch.float16)
@@ -630,15 +590,11 @@ class HFTorchInferenceModel(HFInferenceModel):
                                         convert_to_float16
                                         and breakmodel.primary_device != "cpu"
                                         and utils.koboldai_vars.hascuda
-                                        and (
-                                            self.breakmodel
-                                            or self.usegpu
-                                        )
+                                        and (self.breakmodel or self.usegpu)
                                     ):
                                         dtype = torch.float16
                                     if breakmodel.primary_device == "cpu" or (
-                                        not self.usegpu
-                                        and not self.breakmodel
+                                        not self.usegpu and not self.breakmodel
                                     ):
                                         dtype = torch.float32
                                     if (
@@ -693,10 +649,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                             convert_to_float16
                             and breakmodel.primary_device != "cpu"
                             and utils.koboldai_vars.hascuda
-                            and (
-                                self.breakmodel
-                                or self.usegpu
-                            )
+                            and (self.breakmodel or self.usegpu)
                             and model_dict[key].dtype is torch.float32
                         ):
                             model_dict[key] = model_dict[key].to(torch.float16)
@@ -741,15 +694,11 @@ class HFTorchInferenceModel(HFInferenceModel):
                                     convert_to_float16
                                     and breakmodel.primary_device != "cpu"
                                     and utils.koboldai_vars.hascuda
-                                    and (
-                                        self.breakmodel
-                                        or self.usegpu
-                                    )
+                                    and (self.breakmodel or self.usegpu)
                                 ):
                                     dtype = torch.float16
                                 if breakmodel.primary_device == "cpu" or (
-                                    not self.usegpu
-                                    and not self.breakmodel
+                                    not self.usegpu and not self.breakmodel
                                 ):
                                     dtype = torch.float32
                                 if (
@@ -793,6 +742,7 @@ class HFTorchInferenceModel(HFInferenceModel):
             yield False
 
     def breakmodel_device_list(self, n_layers, primary=None, selected=None):
+        return
         # TODO: Find a better place for this or rework this
 
         device_count = torch.cuda.device_count()
@@ -824,6 +774,7 @@ class HFTorchInferenceModel(HFInferenceModel):
 
     def breakmodel_device_config(self, config):
         # TODO: Find a better place for this or rework this
+        return
 
         global breakmodel, generator
         import breakmodel
@@ -840,7 +791,7 @@ class HFTorchInferenceModel(HFInferenceModel):
             logger.info("Breakmodel not specified, assuming GPU 0")
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
-        
+
         else:
             s = n_layers
             for i in range(len(breakmodel.gpu_blocks)):
@@ -857,8 +808,14 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         logger.init_ok("Final device configuration:", status="Info")
         self.breakmodel_device_list(n_layers, primary=breakmodel.primary_device)
-        with open("settings/{}.breakmodel".format(self.model_name.replace("/", "_")), "w") as file:
-            file.write("{}\n{}".format(",".join(map(str, breakmodel.gpu_blocks)), breakmodel.disk_blocks))
+        with open(
+            "settings/{}.breakmodel".format(self.model_name.replace("/", "_")), "w"
+        ) as file:
+            file.write(
+                "{}\n{}".format(
+                    ",".join(map(str, breakmodel.gpu_blocks)), breakmodel.disk_blocks
+                )
+            )
 
         # If all layers are on the same device, use the old GPU generation mode
         while len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] == 0:
@@ -876,9 +833,6 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         if not breakmodel.gpu_blocks:
             logger.warning("Nothing assigned to a GPU, reverting to CPU only mode")
-            import breakmodel
-
-            breakmodel.primary_device = "cpu"
             self.breakmodel = False
             self.usegpu = False
             return

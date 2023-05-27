@@ -13,12 +13,6 @@ import modeling.lazy_loader as lazy_loader
 import koboldai_settings
 from logger import logger
 
-try:
-    import breakmodel
-except ModuleNotFoundError as e:
-    # Breakmodel is only expected to work on GPU
-    if not utils.koboldai_vars.use_colab_tpu:
-        raise e
 
 from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
@@ -70,14 +64,6 @@ class model_backend(HFTorchInferenceModel):
         # If we're using torch_lazy_loader, we need to get breakmodel config
         # early so that it knows where to load the individual model tensors
         logger.debug("lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(self.lazy_load, utils.koboldai_vars.hascuda, self.breakmodel, self.nobreakmodel))
-        if (
-            self.lazy_load
-            and utils.koboldai_vars.hascuda
-            and self.breakmodel
-            and not self.nobreakmodel
-        ):
-            logger.debug("loading breakmodel")
-            self.breakmodel_device_config(self.model_config)
 
         if self.lazy_load:
             # If we're using lazy loader, we need to figure out what the model's hidden layers are called
@@ -141,7 +127,7 @@ class model_backend(HFTorchInferenceModel):
                         self.get_local_model_path(ignore_existance=True)
                     )
 
-                    if utils.koboldai_vars.fp32_model and not breakmodel.disk_blocks:
+                    if utils.koboldai_vars.fp32_model:
                         # Use save_pretrained to convert fp32 models to fp16,
                         # unless we are using disk cache because save_pretrained
                         # is not supported in that case
@@ -247,27 +233,6 @@ class model_backend(HFTorchInferenceModel):
                     shutil.rmtree("cache/")
 
         self.patch_embedding()
-
-        
-        if utils.koboldai_vars.hascuda:
-            if self.usegpu:
-                # Use just VRAM
-                self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
-            elif self.breakmodel:
-                # Use both RAM and VRAM (breakmodel)
-                if not self.lazy_load:
-                    self.breakmodel_device_config(self.model.config)
-                self._move_to_devices()
-            elif breakmodel.disk_blocks > 0:
-                # Use disk
-                self._move_to_devices()
-            else:
-                # Use CPU
-                self.model = self.model.to("cpu").float()
-        elif breakmodel.disk_blocks > 0:
-            self._move_to_devices()
-        else:
-            self.model = self.model.to("cpu").float()
         
         
         self.model.kai_model = self

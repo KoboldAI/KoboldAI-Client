@@ -30,6 +30,9 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 import attention_bias
 attention_bias.do_patches()
 
+from modeling import patches
+patches.patch_transformers_for_lazyload()
+
 from os import path, getcwd
 import time
 import re

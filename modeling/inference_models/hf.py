@@ -157,7 +157,6 @@ class HFInferenceModel(InferenceModel):
         
     def set_input_parameters(self, parameters):
         if self.hf_torch and hasattr(self, "get_model_type") and self.get_model_type() != "gpt2":
-            import breakmodel
             layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
             if layer_count is not None and layer_count >= 0 and not self.nobreakmodel:
                 gpu_count = torch.cuda.device_count()
@@ -176,9 +175,8 @@ class HFInferenceModel(InferenceModel):
                 self.disk_layers = parameters['Disk_Layers'] if 'Disk_Layers' in parameters else 0    
                 if isinstance(self.disk_layers, str):
                     self.disk_layers = int(self.disk_layers) if self.disk_layers.isnumeric() else 0
-                breakmodel.gpu_blocks = layers
-                breakmodel.disk_blocks = self.disk_layers
-                self.usegpu = self.cpu_layers == 0 and breakmodel.disk_blocks == 0 and sum(self.layers)-self.layers[0] == 0
+                print("TODO: Allow config")
+                # self.usegpu = self.cpu_layers == 0 and breakmodel.disk_blocks == 0 and sum(self.layers)-self.layers[0] == 0
             self.model_type = self.get_model_type()
             self.breakmodel = ((self.model_type != 'gpt2') or self.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not self.nobreakmodel
             self.lazy_load = True
