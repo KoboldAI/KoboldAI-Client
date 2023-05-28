@@ -30,10 +30,9 @@ dependencies:
     - flask-ngrok
     - flask-cors
     - lupa==1.10
-    - transformers==4.28.0
-    - datasets
+    - transformers==4.28.*
     - huggingface_hub==0.12.1
-    - safetensors
+    - safetensors==0.3.1
     - accelerate==0.18.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - ansi2html
@@ -44,3 +43,4 @@ dependencies:
     - diffusers
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - einops
+    - peft==0.3.0

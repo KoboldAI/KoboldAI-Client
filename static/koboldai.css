@@ -347,6 +347,28 @@ border-top-right-radius: var(--tabs_rounding);
 }
 
 
+.setting_container_model {
+	display: grid;
+	grid-template-areas: "label value"
+						 "item item"
+						 "minlabel maxlabel";
+	grid-template-rows: 20px auto 20px;
+	grid-template-columns: auto 30px;
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--setting_text);
+	border-radius: var(--radius_settings_background);
+	padding: 2px;
+	margin: 2px;
+	width: calc(100%);
+}
+
+.setting_container_model .setting_item{
+	font-size: calc(0.93em + var(--font_size_adjustment));
+	margin-left: 10px;
+}
+
+
 .setting_minlabel {
 	padding-top: 6px;
 	grid-area: minlabel;
@@ -364,6 +386,7 @@ border-top-right-radius: var(--tabs_rounding);
 	padding-top: 0px;
 	text-align: right;
 	font-size: calc(0.8em + var(--font_size_adjustment));
+	text-align: left;
 }
 
 .setting_label {
@@ -1990,6 +2013,11 @@ body {
 	grid-area: file;
 }
 
+.popup .model_item.model_menu_selected {
+	color: var(--popup_selected_color);
+	background-color: var(--popup_selected_color_text);
+}
+
 .popup .header {
 	width: 98%;
 	background-color: var(--popup_item_color);
@@ -2102,6 +2130,13 @@ body {
 	cursor: pointer;
 	background-color: #688f1f;
 }
+
+.loadmodelsettings {
+	overflow-y: auto;
+	max-height: 50%;
+}
+
+
 /*----------------------------- Model Load Popup ------------------------------------------*/
 
 #specspan, .popup_list_area .model_item .model {
@@ -3370,6 +3405,23 @@ textarea {
   }
 }
 
+@keyframes pulse-red {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+  }
+}
+
 @keyframes pulse-text {
   0% {
     filter: blur(3px);
@@ -3389,6 +3441,11 @@ textarea {
     filter: blur(0px);
 	-webkit-filter: blur(0px);
   }
+}
+
+.input_error {
+	border: 5px solid red !important;
+	box-sizing: border-box !important;
 }
 
 .single_pulse {
@@ -3495,7 +3552,7 @@ h2 .material-icons-outlined {
 }
 
 
-.horde_trigger[model_model="ReadOnly"],
+.horde_trigger[model_model="Read Only"],
 .horde_trigger[model_model="CLUSTER"] {
 	display: none;
 }

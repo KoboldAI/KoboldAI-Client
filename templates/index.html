@@ -18,7 +18,7 @@
 	<script src="static/bootstrap.min.js"></script>
 	<script src="static/bootstrap-toggle.min.js"></script>
 	<script src="static/rangy-core.min.js"></script>
-	<script src="static/application.js?ver=1.18.1f"></script>
+	<script defer src="static/application.js?ver=1.18.1f"></script>
 	<script src="static/favicon.js"></script>
 </head>
 <body>
@@ -283,59 +283,7 @@
 			</div>
 		</div>
 	</div>
-	<div class="popupcontainer hidden" id="loadmodelcontainer">
-		<div class="loadpopup">
-			<div class="popuptitlebar">
-				<div class="popuptitletext">Select A Model To Load</div>
-			</div>
-			<div id="loadmodellistbreadcrumbs">
-				
-			</div>
-			<div id="loadmodellistcontent" style="overflow: auto; height: 300px;">
-			</div>
-			<div class="popupfooter">
-				<input class="form-control hidden" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
-				<input class="form-control hidden" type="text" placeholder="key" id="modelkey" onblur="socket.send({'cmd': 'OAI_Key_Update', 'key': $('#modelkey')[0].value});">
-				<input class="form-control hidden" type="text" placeholder="Model Path or Hugging Face Name" id="custommodelname" menu="" onblur="socket.send({'cmd': 'selectmodel', 'data': $(this).attr('menu'), 'path_modelname': $('#custommodelname')[0].value});">
-			</div>
-			<div class="popupfooter">
-				<select class="form-control hidden" id="oaimodel"><option value="">Select Model(s)</option></select>
-			</div>
-			<div class="popupfooter hidden" id=modellayers>
-				<div class='settingitem' style="width:100%">
-					<div class='settinglabel'>
-						<div class="justifyleft">
-							GPU/Disk Layers
-							<span class="helpicon">?
-								<span class="helptext">Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.</span>
-							</span>
-						</div>
-						<div class="justifyright" id="gpu_layers_current">0</div>
-					</div>
-					<div id=model_layer_bars style="color: white">
-						
-					</div>
-					<input type=hidden id='gpu_count' value=0/>
-					<div class="settingminmax">
-						<div class="justifyleft">
-							0
-						</div>
-						<div class="justifyright" id="gpu_layers_max">
-							24
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="popupfooter">
-				<button type="button" class="btn btn-primary" id="btn_loadmodelaccept">Load</button>
-				<button type="button" class="btn btn-primary" id="btn_loadmodelclose">Cancel</button>
-				<div class="box flex-push-right hidden" id=use_gpu_div>
-					<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
-					<div class="box-label">Use GPU</div>
-				</div>
-			</div>
-		</div>
-	</div>
+	
 	<div class="popupcontainer hidden" id="spcontainer">
 		<div id="sppopup">
 			<div class="popuptitlebar">
@@ -513,6 +461,12 @@
 			</div>
 		</div>
 	</div>
+	<!------------- Pop-Ups ------------------------------->
+	{% include 'popups.html' %}
 	
+	<!------------- Templates ------------------------------->
+	<div class="hidden">
+		{% include 'templates.html' %}
+	</div>
 </body>
 </html>

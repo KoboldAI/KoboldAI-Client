@@ -1729,3 +1729,695 @@ body.connected .popupfooter, .popupfooter.always-available {
 .wientry > .input-token-usage {
 	bottom: 8px;
 }
+
+
+/*----------------------------------------------COPY FROM UI2-----------------------------------------------------------------------*/
+:root {
+	/*General*/
+	--background: #252e3b;
+	--gamescreen_background: #111820;
+    --input_background: #111820;
+
+    --text: #e0e0e0;
+    --text_to_ai_color: #e0e0e0;
+    --text_edit: #9cc3ee;
+	--action_mode_input: #33E978;
+
+	--statusbar_color: #eedcb880;
+	--statusbar_text_color: #e0e0e0;
+	--scrollbar-color: #2f3b4bdb;
+
+	/*Buttons*/
+		/*General*/
+	--enabled_button_text: #e0e0e0;
+    --enabled_button_background_color: #2d3d52;
+    --enabled_button_border_color: #253446;
+
+	--disabled_button_text: #303030;
+    --disabled_button_background_color: #495762;
+    --disabled_button_border_color: #686c68;
+
+		/*Home Tab*/
+	--button_text: #e0e0e0;
+	--button_background: #283445;
+		
+		/*Alternate Button*/
+	--alternate_button_text: #e0e0e0;
+	--alternate_button_background: #283445;
+
+	/*Buttons -> Icon Button*/
+	--icon_button_background:;
+	--icon_button_color:;
+	--icon_button_border_color:;
+
+	/*Context Menu*/
+	--context_menu_text:;
+	--context_menu_background:;
+	--context_menu_border:;
+	--context_menu_division:;
+	--context_menu_hover_text:;
+	--context_menu_hover_background:;
+
+	/*Sequence, AKA Gens Per Action*/
+	--sequence_area_background: #111820;
+    --sequence_background: #eedcb8;
+	--sequence_text: #e0e0e0;
+
+	/*Side Menus*/
+	--tab_color: #243047;
+
+	--flyout_background: #18222d;
+	--flyout_background_pinned: #18222d;
+
+	--setting_background: #273141;
+    --setting_text: #e0e0e0;
+
+	--sample_order_select_color: #1f2934;
+	--sample_order_select_color_text: #eedcb8;
+
+	--dropdown_text: #e0e0e0;
+	--dropdown_background: #212935;
+
+	--rangeslider_background_color: #1f2934;
+	--rangeslider_color: #1f2934;
+	--rangeslider_circle_color: #404d64;
+
+	--help_icon: #7c8389;
+	--tooltip_text: #e0e0e0;
+    --tooltip_background: #303c50;
+	--setting_category_help_text_color: #E0E0E0;
+	
+	--setting_footer_border_color: #334552;
+	--setting_footer_text_color: #e0e0e0;
+	--setting_footer_background_color: #18222d;
+
+	/*Substitution Card*/
+	--substitution_card_input_border:;
+	--substitution_card_input_background:;
+
+	/*Palette Card*/
+	--palette_card_background: #273141;
+	--palette_card_text: #e0e0e0;
+	--palette_table_border: #607c90;
+
+	/*World Info*/
+	--wi_card_border_color: #334552;
+    --wi_card_border_color_to_ai: #eedcb880;
+
+    --wi_card_bg_color: #223040;
+	--wi_card_text_color: #e0e0e0;
+
+    --wi_card_tag_bg_color: #1d2835;
+	--wi_card_tag_text_color: #e0e0e0;
+	
+    --wi_tag_color: #283445;
+	--wi_tag_text_color: #e0e0e0;
+	
+	/*Popup*/
+	--popup_background_color: #1a2530;
+    --popup_title_bar_color: #283445;
+	--popup_title_bar_color_text: #e0e0e0;
+
+    --popup_item_color: #1a2530;
+	--popup_item_color_text: #e0e0e0;
+
+	--popup_hover_color: #1e2733;
+	--popup_hover_color_text: #e0e0e0;
+	--popup_selected_color: #242d3c;
+	--popup_selected_color_text: #eedcb8;
+
+	--popup_button_color: #283445;
+	--popup_button_color_text: #e0e0e0;
+	--popup_cancel_button_color: #25364a;
+	--popup_cancel_button_color_text: #e0e0e0;
+
+	--error: #19242c;
+	--error_text: #e0e0e0;
+	--error_title: #25364a;
+	--error_title_text: #e0e0e0;
+	
+	/*Context Bar Colors*/
+	--context_colors_memory: #04325c;
+	--context_colors_authors_notes: #165a62;
+	--context_colors_world_info: #1864a3;
+	--context_colors_prompt: #868686;
+	--context_colors_game_text: #63710e;
+	--context_colors_submit: #ffffff00;
+	--context_colors_unused: #ffffff24;
+	--context_colors_soft_prompt: #141414;
+	--context_colors_genre: #2c5c88;
+
+    /*Parameters*/
+	--scrollbar-size: 6px;
+	--palette_card_shadow: 0;
+	--wi_card_shadow: 0;
+	--light_shadow_value: 0;
+	--left_menu_strong_shadow: 0;
+	--right_menu_light_shadow: 0;
+	--right_menu_strong_shadow: 0;
+	--context_menu_shadow: var(--wi_card_shadow);	
+	--radius_inputbox: 2px;
+	--radius_unpinned_menu: 2px;
+	--radius_sequence: 5px;
+	--radius_settings_background: 2px;
+	--radius_button: 2px;
+	--radius_alternate_button: 2px;
+	--radius_item_popup: 2px;
+	--radius_wi_card: 5px;
+	--radius_palette_card: 5px;
+	--radius_settings_button: 2px;
+	--tabs_rounding: 2px;
+	--radius_context_menu: 2px;
+	--radius_context_menu_hover: 2px;
+	--radius_genre_tag: 2px;
+	--radius_tooltip: 2px;
+
+
+
+
+
+/*----------------VARIABLES--------------------*/
+	--flyout_menu_closed_width: 0px;
+	--setting_menu_closed_width_no_pins_width:  0px;
+	--story_options_size: 30%;
+	--story_pinned_areas_left:"menuicon options gamescreen lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_areas_right:"menuicon gamescreen options lefticon"
+								 "menuicon theme theme lefticon"
+								 "menuicon inputrow inputrow lefticon";
+	--story_pinned_area_widths_left: 30pxvar(--story_options_size) auto 30px;
+	--story_pinned_area_widths_right: 30pxautovar(--story_options_size) 30px;
+	--story_pinned_areas:var(--story_pinned_areas_left);
+	--story_pinned_area_widths:var(--story_pinned_area_widths_left);
+	--font_size_adjustment: 0px;
+	--game_screen_font_size_adjustment: 1;}
+}
+
+/*---------------------------------- Popups -------------------------------------------------*/
+@media only screen and (max-aspect-ratio: 7/5) {
+	.popup {
+		position: absolute;
+		top: 10vh;
+		left: 10%;
+		z-index: 999;
+		width: 80%;
+		height: 80vh;
+		border-radius: 15px;
+		box-shadow: var(--popup_shadow);
+		background-color: var(--popup_background_color);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+}
+
+@media only screen and (min-aspect-ratio: 7/5) {
+	.popup {
+		position: absolute;
+		top: 10vh;
+		left: 25%;
+		z-index: 999;
+		width: 50%;
+		height: 80vh;
+		border-radius: 15px;
+		box-shadow: var(--popup_shadow);
+		background-color: var(--popup_background_color);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+}
+
+.popup .title {
+	width: 100%;
+	background-color: var(--popup_title_bar_color);
+	color: var(--popup_title_bar_color_text);
+	text-align: center;
+	font-size: calc(1.3em + var(--font_size_adjustment));
+}
+
+.popup .action_button {
+	background-color: var(--popup_button_color);
+	color: var(--popup_button_color_text);
+}
+
+.popup .popup_list_area {
+	overflow-x: hidden;
+	overflow-y: scroll;
+	flex-grow: 1;
+	flex-shrink: 1;
+	flex-basis: auto;
+	color: var(--popup_item_color_text);
+	
+}
+
+#modelspecifier, .popup .model_item {
+	width: 98%;
+	background-color: var(--popup_item_color);
+	color: var(--popup_item_color_text);
+	margin: 5px 0 5px 1%;
+	border-radius: var(--radius_item_popup);
+	padding: 2px;
+	display: grid;
+	grid-template-areas: "folder_icon delete_icon edit_icon rename_icon file gpu_size warning_icon downloaded_icon";
+	grid-template-columns: 30px 0px 0px 0px auto 50px 30px 30px;
+	
+}
+
+.popup .model_item .folder_icon {
+	grid-area: folder_icon;
+}
+
+.popup .model_item .edit_icon {
+	grid-area: edit_icon;
+}
+
+.popup .model_item .rename_icon {
+	grid-area: rename_icon;
+}
+
+.popup .model_item .delete_icon {
+	grid-area: delete_icon;
+}
+
+.popup .model_item .model {
+	cursor: pointer;
+	grid-area: file;
+}
+
+.popup .header {
+	width: 98%;
+	background-color: var(--popup_item_color);
+	color: var(--popup_item_color_text);
+	margin: 5px 0 5px 1%;
+	padding: 2px;
+}
+
+.popup .item {
+	width: 98%;
+	background-color: var(--popup_item_color);
+	color: var(--popup_item_color_text);
+	margin: 5px 0 5px 1%;
+	border-radius: var(--radius_item_popup);
+	padding: 2px;
+}
+
+.popup .item:hover {
+	background-color: var(--popup_hover_color);
+	color: var(--popup_hover_color_text);
+}
+
+.popup .item.selected {
+	background: var(--popup_selected_color);
+	color: var(--popup_selected_color_text);
+}
+
+.popup .popup_load_cancel {
+	text-align: center;
+	vertical-align: bottom;
+	color: var(--popup_title_bar_color_text);
+	background-color: var(--popup_title_bar_color);
+	padding: 0 10px 0 10px;
+}
+
+
+.popup_load_cancel_button {
+	color: var(--popup_cancel_button_color_text);
+	border-color: var(--popup_cancel_button_color_text);
+	background-color: var(--popup_cancel_button_color);
+	vertical-align: bottom;
+	display: inline;
+}
+
+.table-header-container {
+	display: flex;
+	justify-content: space-between;
+	cursor: pointer;
+}
+
+.table-header-sort-icon {
+	margin-right: 10px;
+	margin-top: 2px;
+}
+
+.table-header-label {
+	margin-top: 4px;
+}
+
+#error_message.popup {
+	background-color: var(--error);
+	color: var(--error_text);
+	overflow: hidden;
+}
+
+#error_message .title {
+	width: 100%;
+	background-color: var(--error_title);
+	color: var(--error_title_text);
+	text-align: center;
+	font-size: calc(1.3em + var(--font_size_adjustment));
+}
+
+#error_message.popup .btn-primary {
+	background-color: var(--error);
+	color: var(--error_text);
+	border-color: var(--error_text);
+}
+
+
+#error_message .popup_load_cancel {
+	background-color: var(--error_title);
+	color: var(--error_title_text);
+}
+
+
+#error_message.popup .popup_list_area {
+	overflow-x: hidden;
+	overflow-y: scroll;
+	flex-grow: 1;
+	flex-shrink: 1;
+	flex-basis: auto;
+	background-color: var(--error);
+	color: var(--error_text);
+}
+
+.breadcrumbitem {
+	padding: 5px 10px 5px 10px;
+	color: #ffffff;
+	background-color: transparent;
+	border: none;
+	
+	-moz-transition: background-color 0.25s ease-in;
+	-o-transition: background-color 0.25s ease-in;
+	-webkit-transition: background-color 0.25s ease-in;
+	transition: background-color 0.25s ease-in;
+}
+
+.breadcrumbitem:hover {
+	cursor: pointer;
+	background-color: #688f1f;
+}
+
+.loadmodelsettings {
+	overflow-y: auto;
+	max-height: 50%;
+}
+
+
+/*----------------------------- Model Load Popup ------------------------------------------*/
+
+#specspan, .popup_list_area .model_item .model {
+	grid-area: file;
+	display: grid;
+	grid-template-areas: "item gpu_size";
+	grid-template-columns: auto 95px;
+	cursor: pointer;
+}
+
+#specspan {
+	grid-template-columns: auto 100px !important;
+	cursor: auto !important;
+}
+
+#model-spec-usage {
+	position: relative;
+	left: -20px;
+}
+
+.popup .model_item:hover {
+	background-color: var(--popup_hover_color);
+	color: var(--popup_hover_color_text);
+}
+
+.popup .model_item .selected {
+	background: var(--popup_selected_color);
+	color: var(--popup_selected_color_text);
+}
+
+.model_setting_container {
+	display: grid;
+	grid-template-areas: "label label"
+						 "item item"
+						 "minlabel maxlabel";
+	grid-template-rows: 20px 16px 19px;
+	grid-template-columns: auto 40px;
+	row-gap: 0.2em;
+	border: 1px;
+	margin: 2px;
+}
+
+.model_setting_minlabel {
+	grid-area: minlabel;
+	padding-top: 3px;
+	color: var(--popup_title_bar_color_text);
+	overflow: hidden;
+	text-align: left;
+	font-size: calc(0.8em + var(--font_size_adjustment));
+}
+
+.model_setting_maxlabel {
+	color: var(--popup_title_bar_color_text);
+	padding-top: 3px;
+	grid-area: maxlabel;
+	overflow: hidden;
+	text-align: right;
+	font-size: calc(0.8em + var(--font_size_adjustment));
+}
+
+.model_setting_label {
+	color: var(--popup_title_bar_color_text);
+	grid-area: label;
+	overflow: hidden;
+	text-align: left;
+}
+
+.model_setting_value {
+	color: var(--popup_title_bar_color_text);
+	text-align: left;
+	grid-area: label;
+	background-color: inherit;
+	color: inherit;
+	border: none; 
+	outline: none;
+}
+
+.model_setting_value:focus {
+	color: var(--text_edit);
+}
+
+.model_setting_item {
+
+	grid-area: item;
+	overflow: hidden;
+}
+
+.model_setting_item_input {
+	width:95%;
+}
+
+@font-face {
+  font-family: 'Material Icons Outlined';
+  font-style: normal;
+  src: url(/static/MaterialIconsOutlined-Regular.otf) format('opentype');
+}
+
+.material-icons-outlined {
+  font-family: 'Material Icons Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: calc(24px + var(--font_size_adjustment));  /* Preferred icon size */
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+
+  /* Support for all WebKit browsers. */
+  -webkit-font-smoothing: antialiased;
+  /* Support for Safari and Chrome. */
+  text-rendering: optimizeLegibility;
+
+  /* Support for Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Support for IE. */
+  font-feature-settings: 'liga';
+}
+
+.material-icons-outlined.cursor:hover{
+	filter: brightness(85%);
+}
+
+.setting_label .helpicon {
+	color: var(--help_icon);
+	cursor: help;
+	font-size: calc(14px + var(--font_size_adjustment)) !important;
+	flex: auto;
+	width: 15px;
+	align-self: flex-end;
+
+	line-height: inherit;
+	border-radius: inherit;
+	margin-right: inherit;
+	padding: inherit;
+	background: inherit;
+	border: inherit;
+	text-decoration: inherit;
+	
+}
+
+#tooltip-text {
+	content: attr(tooltip);
+	position: fixed;
+	transition: opacity  0s linear 0.5s;
+	white-space: normal;
+	border-radius: var(--radius_tooltip);
+
+	opacity: 1;
+	
+	padding: 7px;
+	color: var(--tooltip_text);
+	background-color: var(--tooltip_background);
+
+	pointer-events: none;
+	z-index: 9999999;
+}
+
+.tooltip-standard {
+	border: 1px ridge grey;
+	font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+	width: min-context;
+	max-width: 25%;
+	/*margin-right: -3px;*/
+}
+
+.tooltip-context-token {
+	border: none;
+	font-family: monospace;
+	max-width: min-content;
+}
+
+
+/* Mobile tooltips */
+@media (pointer: coarse), (hover: none) {
+	[tooltip]:after {
+		opacity: 0;
+		content: "";
+	}
+
+	[tooltip]:hover::after {
+		content: attr(tooltip);
+		position: fixed;
+
+		top: calc(var(--mouse-y) * 100vh);
+		left: calc(var(--mouse-x) * 100vw);
+		transform: translate(var(--tooltip_x), var(--tooltip-y));
+		transition: opacity  0s linear 0.5s;
+		opacity: 1;
+		
+
+		padding: 0px 2px;
+		background-color: rgba(0, 0, 0, 0.6);
+
+		pointer-events: none;
+		z-index: 9999999;
+	}
+}
+
+.popup .model_item .model_menu_selected {
+	color: var(--popup_selected_color);
+	background-color: var(--popup_selected_color_text);
+}
+
+.settings_select {
+	color: var(--dropdown_text);
+	background: var(--dropdown_background);
+	margin-left: auto;
+	margin-right: 25px;
+}
+
+.setting_value {
+	text-align: right;
+	grid-area: value;
+	font-size: calc(12px + var(--font_size_adjustment));
+	padding: 2px;
+	padding-top: 0px;
+	background-color: inherit;
+	color: inherit;
+	border: none; 
+	outline: none;
+}
+
+.setting_value:focus {
+	color: var(--text_edit);
+}
+
+.setting_container_model {
+	display: grid;
+	grid-template-areas: "label value"
+						 "item item"
+						 "minlabel maxlabel";
+	grid-template-rows: 20px auto 20px;
+	grid-template-columns: auto 30px;
+	row-gap: 0.2em;
+	background-color: var(--setting_background);
+	color: var(--setting_text);
+	border-radius: var(--radius_settings_background);
+	padding: 2px;
+	margin: 2px;
+	width: calc(100%);
+}
+
+.setting_container_model .setting_item{
+	font-size: calc(0.93em + var(--font_size_adjustment));
+	margin-left: 10px;
+}
+
+
+.setting_minlabel {
+	padding-top: 6px;
+	grid-area: minlabel;
+	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
+	text-align: left;
+	font-size: calc(0.8em + var(--font_size_adjustment));
+}
+
+.setting_maxlabel {
+	padding-top: 6px;
+	grid-area: maxlabel;
+	overflow: hidden;
+	padding: 5px;
+	padding-top: 0px;
+	text-align: right;
+	font-size: calc(0.8em + var(--font_size_adjustment));
+	text-align: left;
+}
+
+.setting_label {
+	display: flex;
+	grid-area: label;
+	overflow: hidden;
+	padding: 5px;
+	padding-right: 0px;
+	padding-top: 0px;
+}
+
+.input_error {
+	border: 5px solid red !important;
+	box-sizing: border-box !important;
+}
+
+.popup .model_item.model_menu_selected {
+	color: var(--popup_selected_color);
+	background-color: var(--popup_selected_color_text);
+}
+
+.disabled {
+	opacity: 0.4;
+	pointer-events: none;
+}
