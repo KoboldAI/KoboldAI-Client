@@ -18,11 +18,11 @@ from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
 model_backend_name = "Huggingface"
 
+
 class model_backend(HFTorchInferenceModel):
-    
     def _initialize_model(self):
         return
-    
+
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
 
@@ -34,9 +34,7 @@ class model_backend(HFTorchInferenceModel):
         #     utils.koboldai_vars.custmodpth = utils.koboldai_vars.model
 
         if self.model_name == "NeoCustom":
-            self.model_name = os.path.basename(
-                os.path.normpath(self.path)
-            )
+            self.model_name = os.path.basename(os.path.normpath(self.path))
         utils.koboldai_vars.model = self.model_name
 
         # If we specify a model and it's in the root directory, we need to move
@@ -63,13 +61,18 @@ class model_backend(HFTorchInferenceModel):
 
         # If we're using torch_lazy_loader, we need to get breakmodel config
         # early so that it knows where to load the individual model tensors
-        logger.debug("lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(self.lazy_load, utils.koboldai_vars.hascuda, self.breakmodel, self.nobreakmodel))
+        logger.debug(
+            "lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(
+                self.lazy_load,
+                utils.koboldai_vars.hascuda,
+                self.breakmodel,
+                self.nobreakmodel,
+            )
+        )
 
         if self.lazy_load:
             # If we're using lazy loader, we need to figure out what the model's hidden layers are called
-            with lazy_loader.use_lazy_load(
-                dematerialized_modules=True, use_accelerate_init_empty_weights=True
-            ):
+            with lazy_loader.use_lazy_load(dematerialized_modules=True):
                 try:
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                     utils.layers_module_names = utils.get_layers_module_names(metamodel)
@@ -195,7 +198,9 @@ class model_backend(HFTorchInferenceModel):
                                     pass
 
                             if not any_success:
-                                raise RuntimeError(f"Couldn't find any of {possible_checkpoint_names} in cache for {self.model_name} @ '{utils.koboldai_vars.revisison}'")
+                                raise RuntimeError(
+                                    f"Couldn't find any of {possible_checkpoint_names} in cache for {self.model_name} @ '{utils.koboldai_vars.revisison}'"
+                                )
                         else:
                             # Handle saving sharded models
 
@@ -233,11 +238,24 @@ class model_backend(HFTorchInferenceModel):
                     shutil.rmtree("cache/")
 
         self.patch_embedding()
-        
-        
+
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
 
     def _save_settings(self):
-        with open("settings/{}.generic_hf_torch.model_backend.settings".format(self.model_name.replace("/", "_")), "w") as f:
-            json.dump({"layers": self.layers if 'layers' in vars(self) else [], "disk_layers": self.disk_layers if 'disk_layers' in vars(self) else 0}, f, indent="")
+        with open(
+            "settings/{}.generic_hf_torch.model_backend.settings".format(
+                self.model_name.replace("/", "_")
+            ),
+            "w",
+        ) as f:
+            json.dump(
+                {
+                    "layers": self.layers if "layers" in vars(self) else [],
+                    "disk_layers": self.disk_layers
+                    if "disk_layers" in vars(self)
+                    else 0,
+                },
+                f,
+                indent="",
+            )
