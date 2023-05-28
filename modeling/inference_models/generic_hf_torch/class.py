@@ -25,8 +25,12 @@ from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
 model_backend_name = "Huggingface"
 
-class GenericHFTorchInferenceModel(HFTorchInferenceModel):
-    def load_config(self) -> None:
+class model_backend(HFTorchInferenceModel):
+
+    def _initialize_model(self):
+        return
+
+    def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
 
         # Make model path the same as the model name to make this consistent
@@ -242,11 +246,6 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                                     ),
                                 )
                     shutil.rmtree("cache/")
-
-        if not self.lazy_load:
-            utils.layers_module_names = utils.get_layers_module_names(self.model)
-            utils.module_names = list(self.model.state_dict().keys())
-            utils.named_buffers = list(self.model.named_buffers(recurse=True))
 
         self.patch_embedding()
 

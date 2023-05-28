@@ -1,12 +1,8 @@
 import os, sys
 from typing import Optional
-<<<<<<< HEAD
 from hf_bleeding_edge import AutoConfig
 
-=======
-from transformers import AutoConfig
 import warnings
->>>>>>> ebolam/Model_Plugins
 import utils
 import json
 import koboldai_settings

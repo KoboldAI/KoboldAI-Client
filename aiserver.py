@@ -623,7 +623,6 @@ utils.socketio = socketio
 
 # Weird import position to steal koboldai_vars from utils
 from modeling.patches import patch_transformers
-from modeling.inference_models.hf_torch_4bit import load_model_gptq_settings
 
 #Load all of the model importers
 import importlib
