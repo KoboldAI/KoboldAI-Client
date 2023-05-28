@@ -289,7 +289,8 @@ class HFTorchInferenceModel(HFInferenceModel):
             device_map = infer_auto_device_map(
                 model,
                 max_memory={0: "10GiB", 1: "7GiB", "cpu": "15GiB"},
-                no_split_module_classes=["GPTJBlock"],
+                no_split_module_classes=["GPTJBlock", "OPTDecoderLayer"],
+                dtype="float16",
             )
 
             return AutoModelForCausalLM.from_pretrained(

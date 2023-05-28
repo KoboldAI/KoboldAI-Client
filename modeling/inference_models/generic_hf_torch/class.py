@@ -238,7 +238,7 @@ class model_backend(HFTorchInferenceModel):
                     shutil.rmtree("cache/")
 
         self.patch_embedding()
-        lazy_loader.post_load_cleanup()
+        self.model.tie_weights()
 
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
