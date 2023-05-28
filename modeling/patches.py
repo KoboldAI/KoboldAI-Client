@@ -196,7 +196,7 @@ def patch_transformers_for_lazyload() -> None:
         ):
 
             if isinstance(param, LazyTensor):
-                print(".", end="", flush=True)
+                # Should always be true
                 param = param.materialize()
 # END PATCH
 
