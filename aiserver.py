@@ -13,7 +13,7 @@ import shutil
 import eventlet
 
 eventlet.monkey_patch(all=True, thread=False, os=False)
-import os, inspect
+import os, inspect, contextlib, pickle
 os.system("")
 __file__ = os.path.dirname(os.path.realpath(__file__))
 os.chdir(__file__)
@@ -1482,7 +1482,8 @@ def general_startup(override_args=None):
         koboldai_vars.quiet = True
 
     if args.nobreakmodel:
-        model_backends['Huggingface'].nobreakmodel = True
+        for model_backend in model_backends:
+            model_backends[model_backend].nobreakmodel = True
 
     if args.remote:
         koboldai_vars.host = True;
@@ -1636,7 +1637,76 @@ def unload_model():
         
     #Reload our badwords
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
+
+class RestrictedUnpickler(pickle.Unpickler):
+    def original_persistent_load(self, saved_id):
+        return super().persistent_load(saved_id)
+
+    def forced_persistent_load(self, saved_id):
+        if saved_id[0] != "storage":
+            raise pickle.UnpicklingError("`saved_id[0]` must be 'storage'")
+        return self.original_persistent_load(saved_id)
+
+    def find_class(self, module, name):
+        if module == "collections" and name == "OrderedDict":
+            return collections.OrderedDict
+        elif module == "torch._utils" and name == "_rebuild_tensor_v2":
+            return torch._utils._rebuild_tensor_v2
+        elif module == "torch._tensor" and name == "_rebuild_from_type_v2":
+            return torch._tensor._rebuild_from_type_v2
+        elif module == "torch" and name in (
+            "DoubleStorage",
+            "FloatStorage",
+            "HalfStorage",
+            "LongStorage",
+            "IntStorage",
+            "ShortStorage",
+            "CharStorage",
+            "ByteStorage",
+            "BoolStorage",
+            "BFloat16Storage",
+            "Tensor",
+        ):
+            return getattr(torch, name)
+        elif module == "numpy.core.multiarray" and name == "scalar":
+            return np.core.multiarray.scalar
+        elif module == "numpy" and name == "dtype":
+            return np.dtype
+        elif module == "_codecs" and name == "encode":
+            return _codecs.encode
+        else:
+            # Forbid everything else.
+            qualified_name = name if module == "__builtin__" else f"{module}.{name}"
+            raise pickle.UnpicklingError(
+                f"`{qualified_name}` is forbidden; the model you are loading probably contains malicious code. If you think this is incorrect ask the developer to unban the ability for {module} to execute {name}"
+            )
+
+    def load(self, *args, **kwargs):
+        logger.info("Using safe unpickle")
+        self.original_persistent_load = getattr(
+            self, "persistent_load", pickle.Unpickler.persistent_load
+        )
+        self.persistent_load = self.forced_persistent_load
+        return super().load(*args, **kwargs)
     
+@contextlib.contextmanager
+def use_custom_unpickler(unpickler: Type[pickle.Unpickler] = RestrictedUnpickler):
+    try:
+        old_unpickler = pickle.Unpickler
+        pickle.Unpickler = unpickler
+
+        old_pickle_load = pickle.load
+
+        def new_pickle_load(*args, **kwargs):
+            return pickle.Unpickler(*args, **kwargs).load()
+
+        pickle.load = new_pickle_load
+
+        yield
+
+    finally:
+        pickle.Unpickler = old_unpickler
+        pickle.load = old_pickle_load
     
 def load_model(model_backend, initial_load=False):
     global model
@@ -1684,8 +1754,10 @@ def load_model(model_backend, initial_load=False):
         koboldai_vars.default_preset = koboldai_settings.default_preset
 
                     
-    model = model_backends[model_backend]
-    model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
+    
+    with use_custom_unpickler(RestrictedUnpickler):
+        model = model_backends[model_backend]
+        model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
     koboldai_vars.model = model.model_name if "model_name" in vars(model) else model.id #Should have model_name, but it could be set to id depending on how it's setup
     if koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
         koboldai_vars.model = os.path.basename(os.path.normpath(model.path))

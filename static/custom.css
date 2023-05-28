@@ -2416,3 +2416,8 @@ body.connected .popupfooter, .popupfooter.always-available {
 	color: var(--popup_selected_color);
 	background-color: var(--popup_selected_color_text);
 }
+
+.disabled {
+	opacity: 0.4;
+	pointer-events: none;
+}
