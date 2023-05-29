@@ -318,18 +318,6 @@ def patch_transformers_for_lazyload() -> None:
     # Patch AlignDevicesHook to hack around OPT lm_head
     HACK_ZERO_ON_FAIL_TENSORS = ["lm_head.weight"]
 
-    def _recursed_key_value(module, key):
-        """Gets a tensor from a recursive key (ie with .s)"""
-        if "." in key:
-            splits = key.split(".")
-            for split in splits[:-1]:
-                new_module = getattr(module, split)
-                if new_module is None:
-                    raise ValueError(f"{module} has no attribute {split}.")
-                module = new_module
-            key = splits[-1]
-        return getattr(module, key)
-
     def _init_hook(self, module):
         if not self.offload and self.execution_device is not None:
             # BEGIN PATCH
