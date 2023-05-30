@@ -920,13 +920,6 @@ class story_settings(settings):
         self.commentary_chance = 0
         self.commentary_enabled = False
 
-        # 4bit model vals
-        self.gptq_model = False
-        self.gptq_bits = -1
-        self.gptq_groupsize = -1
-        self.gptq_version = -1
-        self.gptq_file = None
-
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
 
         ################### must be at bottom #########################
