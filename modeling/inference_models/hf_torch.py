@@ -278,26 +278,57 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
-            model = AutoModelForCausalLM.from_config(self.model_config)
+            # with accelerate.init_empty_weights():
+            #     model = AutoModelForCausalLM.from_config(self.model_config)
 
-            print("[HUGE SKELETON] MAKING DEVICE MAP")
-            device_map = infer_auto_device_map(
-                model,
-                max_memory={0: "10GiB", 1: "7GiB", "cpu": "15GiB"},
-                no_split_module_classes=model._no_split_modules,
-                dtype="float16",
-            )
+            # print("[HUGE SKELETON] MAKING DEVICE MAP")
+            # device_map = infer_auto_device_map(
+            #     model,
+            #     no_split_module_classes=model._no_split_modules,
+            #     max_memory={0: "10GiB", 1: "7GiB", "cpu": "20GiB"},
+            #     dtype=torch.float16,
+            # )
 
-            # TODO: ??
+            # # TODO: ??
             # print("[HUGE SKELETON] TYING WEIGHTS")
-            model.tie_weights()
+            # model.tie_weights()
 
             print("[HUGE SKELETON] LOADING FROM PRETRAINED")
-            return AutoModelForCausalLM.from_pretrained(
-                location,
-                device_map=device_map,
-                **tf_kwargs,
-            )
+            # model = load_checkpoint_and_dispatch(
+            #     model,
+            #     location + "/pytorch_model.bin",
+            #     device_map=device_map,
+            #     no_split_module_classes=model._no_split_modules,
+            #     dtype=torch.float16,
+            # )
+            with lazy_loader.use_lazy_load(
+                enable=True,
+                # dematerialized_modules=True,
+                dematerialized_modules=False,
+            ):
+                model = AutoModelForCausalLM.from_pretrained(
+                    location,
+                    device_map="auto",
+                    max_memory={0: "10GiB", 1: "7GiB", "cpu": "20GiB"},
+                    offload_folder="accelerate-disk-cache",
+                    torch_dtype=torch.float16,
+                    **tf_kwargs,
+                )
+
+            for name, value in list(model.named_parameters()) + list(
+                model.named_buffers()
+            ):
+                if value.device != torch.device("meta"):
+                    continue
+                print(name, value, value.nelement())
+                # try:
+                #     value.cpu()
+                # except NotImplementedError:
+                #     # Can't be copied out of meta tensor, no data
+                #     print("Bad news at", name)
+                #     # setattr(model, name, torch.zeros(value.size()))
+
+            return model
         except Exception as e:
             traceback_string = traceback.format_exc().lower()
 
@@ -376,359 +407,6 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         Embedding.__call__ = new_embedding_call
         Embedding._koboldai_patch_causallm_model = self.model
-
-    def _get_lazy_load_callback(self, n_layers: int, convert_to_float16: bool = True):
-        if not self.lazy_load:
-            return
-
-        # disk_blocks = breakmodel.disk_blocks
-        # gpu_blocks = breakmodel.gpu_blocks
-        # ram_blocks = ram_blocks = n_layers - sum(gpu_blocks)
-        # cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-
-        def lazy_load_callback(
-            model_dict: Dict[str, Union[lazy_loader.LazyTensor, torch.Tensor]],
-            f,
-            is_safetensors: bool = False,
-            **_,
-        ):
-            if lazy_load_callback.nested:
-                return
-            lazy_load_callback.nested = True
-            return
-
-            device_map: Dict[str, Union[str, int]] = {}
-
-            @functools.lru_cache(maxsize=None)
-            def get_original_key(key) -> Optional[str]:
-                key_candidates = [
-                    original_key
-                    for original_key in utils.module_names
-                    if original_key.endswith(key)
-                ]
-
-                if not key_candidates:
-                    logger.debug(f"!!! No key candidates for {key}")
-                    return None
-
-                return max(key_candidates, key=len)
-
-            for key, value in model_dict.items():
-                original_key = get_original_key(key)
-
-                if not original_key:
-                    continue
-
-                if isinstance(value, lazy_loader.LazyTensor) and not any(
-                    original_key.startswith(n) for n in utils.layers_module_names
-                ):
-                    device_map[key] = (
-                        utils.koboldai_vars.gpu_device
-                        if utils.koboldai_vars.hascuda and self.usegpu
-                        else "cpu"
-                        if not utils.koboldai_vars.hascuda or not self.breakmodel
-                        else breakmodel.primary_device
-                    )
-                else:
-                    layer = int(
-                        max(
-                            (
-                                n
-                                for n in utils.layers_module_names
-                                if original_key.startswith(n)
-                            ),
-                            key=len,
-                        ).rsplit(".", 1)[1]
-                    )
-                    device = (
-                        utils.koboldai_vars.gpu_device
-                        if utils.koboldai_vars.hascuda and self.usegpu
-                        else "disk"
-                        if layer < disk_blocks and layer < ram_blocks
-                        else "cpu"
-                        if not utils.koboldai_vars.hascuda or not self.breakmodel
-                        else "shared"
-                        if layer < ram_blocks
-                        else bisect.bisect_right(
-                            cumulative_gpu_blocks, layer - ram_blocks
-                        )
-                    )
-                    device_map[key] = device
-
-            if utils.num_shards is None or utils.current_shard == 0:
-                utils.offload_index = {}
-                if os.path.isdir("accelerate-disk-cache"):
-                    # Delete all of the files in the disk cache folder without deleting the folder itself to allow people to create symbolic links for this folder
-                    # (the folder doesn't contain any subfolders so os.remove will do just fine)
-                    for filename in os.listdir("accelerate-disk-cache"):
-                        try:
-                            os.remove(os.path.join("accelerate-disk-cache", filename))
-                        except OSError:
-                            pass
-                os.makedirs("accelerate-disk-cache", exist_ok=True)
-                if utils.num_shards is not None:
-                    num_tensors = len(
-                        utils.get_sharded_checkpoint_num_tensors(
-                            utils.from_pretrained_model_name,
-                            utils.from_pretrained_index_filename,
-                            is_safetensors=is_safetensors,
-                            **utils.from_pretrained_kwargs,
-                        )
-                    )
-                else:
-                    num_tensors = len(device_map)
-                print(flush=True)
-                utils.koboldai_vars.status_message = "Loading model"
-                utils.koboldai_vars.total_layers = num_tensors
-                utils.koboldai_vars.loaded_layers = 0
-                utils.bar = tqdm(
-                    total=num_tensors,
-                    desc="Loading model tensors",
-                    file=utils.UIProgressBarFile(),
-                    position=1,
-                )
-
-            if not is_safetensors:
-                # Torch lazyload
-                with zipfile.ZipFile(f, "r") as z:
-                    try:
-                        last_storage_key = None
-                        zipfolder = os.path.basename(os.path.normpath(f)).split(".")[0]
-                        f = None
-                        current_offset = 0
-                        able_to_pin_layers = True
-                        if utils.num_shards is not None:
-                            utils.current_shard += 1
-                        for key in sorted(
-                            device_map.keys(),
-                            key=lambda k: (
-                                model_dict[k].key,
-                                model_dict[k].seek_offset,
-                            ),
-                        ):
-                            storage_key = model_dict[key].key
-                            if (
-                                storage_key != last_storage_key
-                                or model_dict[key].seek_offset < current_offset
-                            ):
-                                last_storage_key = storage_key
-                                if isinstance(f, zipfile.ZipExtFile):
-                                    f.close()
-                                ziproot = z.namelist()[0].split("/")[0]
-                                f = z.open(f"{ziproot}/data/{storage_key}")
-
-                                current_offset = 0
-                            if current_offset != model_dict[key].seek_offset:
-                                f.read(model_dict[key].seek_offset - current_offset)
-                                current_offset = model_dict[key].seek_offset
-                            device = device_map[key]
-                            size = functools.reduce(
-                                lambda x, y: x * y, model_dict[key].shape, 1
-                            )
-                            dtype = model_dict[key].dtype
-                            nbytes = (
-                                size
-                                if dtype is torch.bool
-                                else size
-                                * (
-                                    (
-                                        torch.finfo
-                                        if dtype.is_floating_point
-                                        else torch.iinfo
-                                    )(dtype).bits
-                                    >> 3
-                                )
-                            )
-                            # print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
-                            # logger.debug(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ")
-                            model_dict[key] = model_dict[key].materialize(
-                                f, map_location="cpu"
-                            )
-                            if model_dict[key].dtype is torch.float32:
-                                utils.koboldai_vars.fp32_model = True
-                            if (
-                                convert_to_float16
-                                and breakmodel.primary_device != "cpu"
-                                and utils.koboldai_vars.hascuda
-                                and (self.breakmodel or self.usegpu)
-                                and model_dict[key].dtype is torch.float32
-                            ):
-                                model_dict[key] = model_dict[key].to(torch.float16)
-                            if breakmodel.primary_device == "cpu" or (
-                                not self.usegpu
-                                and not self.breakmodel
-                                and model_dict[key].dtype is torch.float16
-                            ):
-                                model_dict[key] = model_dict[key].to(torch.float32)
-                            if device == "shared":
-                                model_dict[key] = model_dict[key].to("cpu").detach_()
-                                if able_to_pin_layers:
-                                    try:
-                                        model_dict[key] = model_dict[key].pin_memory()
-                                    except:
-                                        able_to_pin_layers = False
-                            elif device == "disk":
-                                accelerate.utils.offload_weight(
-                                    model_dict[key],
-                                    get_original_key(key),
-                                    "accelerate-disk-cache",
-                                    index=utils.offload_index,
-                                )
-                                model_dict[key] = model_dict[key].to("meta")
-                            else:
-                                model_dict[key] = model_dict[key].to(device)
-                            # print("OK", flush=True)
-                            current_offset += nbytes
-                            utils.bar.update(1)
-                            utils.koboldai_vars.loaded_layers += 1
-                    finally:
-                        if (
-                            utils.num_shards is None
-                            or utils.current_shard >= utils.num_shards
-                        ):
-                            if utils.offload_index:
-                                for name, tensor in utils.named_buffers:
-                                    dtype = tensor.dtype
-                                    if (
-                                        convert_to_float16
-                                        and breakmodel.primary_device != "cpu"
-                                        and utils.koboldai_vars.hascuda
-                                        and (self.breakmodel or self.usegpu)
-                                    ):
-                                        dtype = torch.float16
-                                    if breakmodel.primary_device == "cpu" or (
-                                        not self.usegpu and not self.breakmodel
-                                    ):
-                                        dtype = torch.float32
-                                    if (
-                                        name in model_dict
-                                        and model_dict[name].dtype is not dtype
-                                    ):
-                                        model_dict[name] = model_dict[name].to(dtype)
-                                    if tensor.dtype is not dtype:
-                                        tensor = tensor.to(dtype)
-                                    if name not in utils.offload_index:
-                                        accelerate.utils.offload_weight(
-                                            tensor,
-                                            name,
-                                            "accelerate-disk-cache",
-                                            index=utils.offload_index,
-                                        )
-                                accelerate.utils.save_offload_index(
-                                    utils.offload_index, "accelerate-disk-cache"
-                                )
-                            utils.bar.close()
-                            utils.bar = None
-                            utils.koboldai_vars.status_message = ""
-                        lazy_load_callback.nested = False
-                        if isinstance(f, zipfile.ZipExtFile):
-                            f.close()
-            else:
-                # Loading with safetensors
-                try:
-                    able_to_pin_layers = True
-
-                    if utils.num_shards is not None:
-                        utils.current_shard += 1
-
-                    for key in sorted(
-                        device_map.keys(),
-                        key=lambda k: model_dict[k].key,
-                    ):
-                        storage_key = model_dict[key].key
-
-                        device = device_map[key]
-
-                        # print(f"Transferring <{key}>  to  {f'({device.upper()})' if isinstance(device, str) else '[device ' + str(device) + ']'} ... ", end="", flush=True)
-
-                        model_dict[key] = model_dict[key].materialize(
-                            f, map_location="cpu"
-                        )
-
-                        if model_dict[key].dtype is torch.float32:
-                            utils.koboldai_vars.fp32_model = True
-
-                        if (
-                            convert_to_float16
-                            and breakmodel.primary_device != "cpu"
-                            and utils.koboldai_vars.hascuda
-                            and (self.breakmodel or self.usegpu)
-                            and model_dict[key].dtype is torch.float32
-                        ):
-                            model_dict[key] = model_dict[key].to(torch.float16)
-
-                        if breakmodel.primary_device == "cpu" or (
-                            not self.usegpu
-                            and not self.breakmodel
-                            and model_dict[key].dtype is torch.float16
-                        ):
-                            model_dict[key] = model_dict[key].to(torch.float32)
-
-                        if device == "shared":
-                            model_dict[key] = model_dict[key].to("cpu").detach_()
-                            if able_to_pin_layers:
-                                try:
-                                    model_dict[key] = model_dict[key].pin_memory()
-                                except:
-                                    able_to_pin_layers = False
-                        elif device == "disk":
-                            accelerate.utils.offload_weight(
-                                model_dict[key],
-                                get_original_key(key),
-                                "accelerate-disk-cache",
-                                index=utils.offload_index,
-                            )
-                            model_dict[key] = model_dict[key].to("meta")
-                        else:
-                            model_dict[key] = model_dict[key].to(device)
-
-                        utils.bar.update(1)
-                        utils.koboldai_vars.loaded_layers += 1
-
-                finally:
-                    if (
-                        utils.num_shards is None
-                        or utils.current_shard >= utils.num_shards
-                    ):
-                        if utils.offload_index:
-                            for name, tensor in utils.named_buffers:
-                                dtype = tensor.dtype
-                                if (
-                                    convert_to_float16
-                                    and breakmodel.primary_device != "cpu"
-                                    and utils.koboldai_vars.hascuda
-                                    and (self.breakmodel or self.usegpu)
-                                ):
-                                    dtype = torch.float16
-                                if breakmodel.primary_device == "cpu" or (
-                                    not self.usegpu and not self.breakmodel
-                                ):
-                                    dtype = torch.float32
-                                if (
-                                    name in model_dict
-                                    and model_dict[name].dtype is not dtype
-                                ):
-                                    model_dict[name] = model_dict[name].to(dtype)
-                                if tensor.dtype is not dtype:
-                                    tensor = tensor.to(dtype)
-                                if name not in utils.offload_index:
-                                    accelerate.utils.offload_weight(
-                                        tensor,
-                                        name,
-                                        "accelerate-disk-cache",
-                                        index=utils.offload_index,
-                                    )
-                            accelerate.utils.save_offload_index(
-                                utils.offload_index, "accelerate-disk-cache"
-                            )
-                        utils.bar.close()
-                        utils.bar = None
-                        utils.koboldai_vars.status_message = ""
-
-                    lazy_load_callback.nested = False
-
-        lazy_load_callback.nested = False
-        return lazy_load_callback
 
     @contextlib.contextmanager
     def _maybe_use_float16(self, always_use: bool = False):
