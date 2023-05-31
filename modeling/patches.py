@@ -290,6 +290,7 @@ def patch_transformers_for_lazyload() -> None:
                     tensor_name=param_name,
                     device=param_device,
                     value=param,
+                    dtype=dtype,
                 )
             else:
                 if (
