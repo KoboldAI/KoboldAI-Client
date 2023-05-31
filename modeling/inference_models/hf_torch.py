@@ -278,55 +278,21 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
-            # with accelerate.init_empty_weights():
-            #     model = AutoModelForCausalLM.from_config(self.model_config)
-
-            # print("[HUGE SKELETON] MAKING DEVICE MAP")
-            # device_map = infer_auto_device_map(
-            #     model,
-            #     no_split_module_classes=model._no_split_modules,
-            #     max_memory={0: "10GiB", 1: "7GiB", "cpu": "20GiB"},
-            #     dtype=torch.float16,
-            # )
-
-            # # TODO: ??
-            # print("[HUGE SKELETON] TYING WEIGHTS")
-            # model.tie_weights()
-
             print("[HUGE SKELETON] LOADING FROM PRETRAINED")
-            # model = load_checkpoint_and_dispatch(
-            #     model,
-            #     location + "/pytorch_model.bin",
-            #     device_map=device_map,
-            #     no_split_module_classes=model._no_split_modules,
-            #     dtype=torch.float16,
-            # )
             with lazy_loader.use_lazy_load(
                 enable=True,
+                # DO NOT DEMATERIALIZE MODULES / INIT WEIGHTS EMPTY!!! IT WILL EXPLODE!!!!!!!
                 # dematerialized_modules=True,
                 dematerialized_modules=False,
             ):
                 model = AutoModelForCausalLM.from_pretrained(
                     location,
                     device_map="auto",
-                    max_memory={0: "10GiB", 1: "7GiB", "cpu": "20GiB"},
+                    # max_memory={0: "10GiB", 1: "7GiB", "cpu": "20GiB"},
                     offload_folder="accelerate-disk-cache",
                     torch_dtype=torch.float16,
                     **tf_kwargs,
                 )
-
-            for name, value in list(model.named_parameters()) + list(
-                model.named_buffers()
-            ):
-                if value.device != torch.device("meta"):
-                    continue
-                print(name, value, value.nelement())
-                # try:
-                #     value.cpu()
-                # except NotImplementedError:
-                #     # Can't be copied out of meta tensor, no data
-                #     print("Bad news at", name)
-                #     # setattr(model, name, torch.zeros(value.size()))
 
             return model
         except Exception as e:
