@@ -280,26 +280,16 @@ class HFTorchInferenceModel(HFInferenceModel):
         try:
             model = AutoModelForCausalLM.from_config(self.model_config)
 
-            # load_checkpoint_in_model(
-            #     model.model,
-            #     location,
-            #     device_map=device_map
-            #     offload_folder="accelerate-disk-cache",
-            #     dtype="float16",
-            #     offload_state_dict=True
-            # )
-            # model.tie_weights()
-            no_split_module_classes = ["GPTJBlock", "OPTDecoderLayer"]
-
             print("[HUGE SKELETON] MAKING DEVICE MAP")
             device_map = infer_auto_device_map(
                 model,
                 max_memory={0: "10GiB", 1: "7GiB", "cpu": "15GiB"},
-                no_split_module_classes=no_split_module_classes,
+                no_split_module_classes=model._no_split_modules,
                 dtype="float16",
             )
-            print("[HUGE SKELETON] TYING WEIGHTS")
 
+            # TODO: ??
+            # print("[HUGE SKELETON] TYING WEIGHTS")
             model.tie_weights()
 
             print("[HUGE SKELETON] LOADING FROM PRETRAINED")
