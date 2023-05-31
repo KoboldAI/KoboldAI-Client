@@ -1206,12 +1206,12 @@ class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
                             'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui', 'trust_remote_code']
+                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'on_colab'
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch', 'trust_remote_code']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1297,7 +1297,6 @@ class system_settings(settings):
         self.seen_messages = []
         self.git_repository = ""
         self.git_branch = ""
-        self.trust_remote_code = False
         
         
         @dataclass
