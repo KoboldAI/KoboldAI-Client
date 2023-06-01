@@ -1471,7 +1471,6 @@ def general_startup(override_args=None):
         args.remote = True;
         args.override_rename = True;
         args.override_delete = True;
-        args.nobreakmodel = True;
         args.quiet = True;
         args.lowmem = True;
         args.noaimenu = True;
