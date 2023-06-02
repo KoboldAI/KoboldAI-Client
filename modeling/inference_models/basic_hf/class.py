@@ -31,7 +31,7 @@ from logger import logger
 
 from modeling.inference_model import InferenceModel
 
-model_backend_name = "Basic Huggingface"
+model_backend_name = "Very Basic Huggingface"
 model_backend_type = "Huggingface" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 LOG_SAMPLER_NO_EFFECT = False
@@ -110,6 +110,7 @@ class model_backend(InferenceModel):
         gen_settings: GenerationSettings,
         single_line: bool = False,
         batch_count: int = 1,
+        seed: Optional[int] = None,
         **kwargs,
     ) -> GenerationResult:
         if not isinstance(prompt_tokens, torch.Tensor):
