@@ -1682,7 +1682,6 @@ class RestrictedUnpickler(pickle.Unpickler):
             )
 
     def load(self, *args, **kwargs):
-        logger.info("Using safe unpickle")
         self.original_persistent_load = getattr(
             self, "persistent_load", pickle.Unpickler.persistent_load
         )
