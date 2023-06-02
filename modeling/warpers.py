@@ -42,10 +42,17 @@ import utils
 import torch
 import numpy as np
 
-if utils.koboldai_vars.use_colab_tpu:
-    import jax
-    import jax.numpy as jnp
-    import tpu_mtj_backend
+try:
+    ignore = utils.koboldai_vars.use_colab_tpu
+    ok = True
+except:
+    ok = False
+
+if ok:
+    if utils.koboldai_vars.use_colab_tpu:
+        import jax
+        import jax.numpy as jnp
+        import tpu_mtj_backend
 
 
 def update_settings():
