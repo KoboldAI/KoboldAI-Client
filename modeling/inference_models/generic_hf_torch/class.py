@@ -251,7 +251,7 @@ class model_backend(HFTorchInferenceModel):
 
         
         if utils.koboldai_vars.hascuda:
-            if self.usegpu:
+            if self.usegpu or self.nobreakmodel:
                 # Use just VRAM
                 self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
             elif self.breakmodel:

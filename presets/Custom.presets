@@ -17,13 +17,13 @@
 		"rep_pen_range": 1024,
 		"rep_pen_slope": 0.7,
 		"sampler_order": [
+			6,
 			5,
 			4,
 			3,
 			2,
 			1,
-			0,
-			6
+			0
 		]
 	},
 	{
@@ -44,13 +44,13 @@
 		"rep_pen_range": 1024,
 		"rep_pen_slope": 0.7,
 		"sampler_order": [
+			6,
 			5,
 			4,
 			3,
 			1,
 			2,
-			0,
-			6
+			0
 		]
 	},
 	{
@@ -71,13 +71,13 @@
 		"rep_pen_range": 1024,
 		"rep_pen_slope": 0.7,
 		"sampler_order": [
+			6,
 			0,
 			1,
 			2,
 			3,
 			4,
-			5,
-			6
+			5
 		]
 	},
 	{
@@ -98,13 +98,13 @@
 		"rep_pen_range": 1024,
 		"rep_pen_slope": 0.7,
 		"sampler_order": [
+			6,
 			0,
 			1,
 			2,
 			3,
 			4,
-			5,
-			6
+			5
 		]
 	},
 	{
@@ -125,13 +125,13 @@
 		"rep_pen_range": 1024,
 		"rep_pen_slope": 0.7,
 		"sampler_order": [
+			6,
 			0,
 			1,
 			2,
 			3,
 			4,
-			5,
-			6
+			5
 		]
 	},
 	{
@@ -152,13 +152,13 @@
 		"rep_pen_range": 1024,
 		"rep_pen_slope": 0.7,
 		"sampler_order": [
+			6,
 			4,
 			5,
 			1,
 			0,
 			2,
-			3,
-			6
+			3
 		]
 	}
 ]
