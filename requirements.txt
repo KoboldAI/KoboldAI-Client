@@ -37,4 +37,7 @@ pytest-html==3.2.0
 pytest-metadata==2.0.4
 requests-mock==1.10.0
 safetensors==0.3.1
+git+https://github.com/0cc4m/hf_bleeding_edge/
+--find-links=https://0cc4m.github.io/KoboldAI/gptq-whl-links.html gptq_koboldai==0.0.4
+einops
 peft==0.3.0
