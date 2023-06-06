@@ -295,7 +295,11 @@ class model_backend(InferenceModel):
         )
 
     def _get_model(self, location: str, tf_kwargs: Dict):
+        if not self.model_config:
+            ExLlamaConfig(os.path.join(location, "config.json"))
+
         _, self.model_config.model_path = load_model_gptq_settings(location)
+        # self.model_config.gpu_peer_fix = True
         return ExLlama(self.model_config)
 
     def _get_tokenizer(self, location: str):
@@ -351,6 +355,7 @@ class model_backend(InferenceModel):
                 layers.append(parameters["{}_Layers".format(i)])
 
         self.layers = layers
+        self.model_config.device_map.layers = []
         for i, l in enumerate(layers):
             if l > 0:
                 self.model_config.device_map.layers.extend([f"cuda:{i}"] * l)
