@@ -21,6 +21,7 @@ call miniconda3\condabin\activate
 GOTO GIT
 
 :drivemap
+subst /D K: >nul
 subst K: miniconda3 >nul
 SET TEMP=K:\
 SET TMP=K:\
@@ -28,6 +29,7 @@ call K:\python\condabin\activate
 GOTO GIT
 
 :drivemap_B
+subst /D B: >nul
 subst B: miniconda3 >nul
 SET TEMP=B:\
 SET TMP=B:\
