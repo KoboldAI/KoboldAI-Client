@@ -96,17 +96,17 @@ def get_gptq_version(fpath):
     v2 = all([s in data for s in v3_strings])
 
     if v2:
-        if v0 or v1:
-            logger.warning(f"GPTQ model identified as v2, but v0={v0} and v1={v1}")
-        return 2
+        if v0:
+            logger.warning(f"GPTQ model identified as v2, but v0={v0}")
+        return 2, v1
     if v1:
         if v0 or v2:
             logger.warning(f"GPTQ model identified as v1, but v0={v0} and v2={v2}")
-        return 1
+        return 1, False
     if v0:
         if v1 or v2:
             logger.warning(f"GPTQ model identified as v0, but v1={v1} and v2={v2}")
-        return 0
+        return 0, False
 
 
 class model_backend(HFTorchInferenceModel):
@@ -203,26 +203,27 @@ class model_backend(HFTorchInferenceModel):
 
     def _get_model(self, location: str, tf_kwargs: Dict):
         gptq_model, gptq_bits, gptq_groupsize, gptq_file, gptq_version = load_model_gptq_settings(location)
+        v2_bias = False
 
         if gptq_version < 0:
-            gptq_version = get_gptq_version(gptq_file)
+            gptq_version, v2_bias = get_gptq_version(gptq_file)
         gptq.modelutils.set_gptq_version(gptq_version)
 
         model_type = self.get_model_type()
 
-        logger.info(f"Using GPTQ file: {gptq_file}, {gptq_bits}-bit model, type {model_type}, version {gptq_version}, groupsize {gptq_groupsize}")
+        logger.info(f"Using GPTQ file: {gptq_file}, {gptq_bits}-bit model, type {model_type}, version {gptq_version}{' (with bias)' if v2_bias else ''}, groupsize {gptq_groupsize}")
         if model_type == "gptj":
-            model = load_quant_offload(gptj_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list)
+            model = load_quant_offload(gptj_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
         elif model_type == "gpt_neox":
-            model = load_quant_offload(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list)
+            model = load_quant_offload(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
         elif model_type == "llama":
-            model = load_quant_offload(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list)
+            model = load_quant_offload(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
         elif model_type == "opt":
-            model = load_quant_offload(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list)
+            model = load_quant_offload(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
         elif model_type == "mpt":
-            model = load_quant_offload(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list)
+            model = load_quant_offload(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
         elif model_type == "gpt_bigcode":
-            model = load_quant_offload(bigcode_load_quant, location, path_4bit, utils.koboldai_vars.gptq_bits, groupsize, self.gpu_layers_list).half()
+            model = load_quant_offload(bigcode_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias).half()
         elif autogptq_support:
             # Monkey patch in hf_bleeding_edge to avoid having to trust remote code
             auto_gptq.modeling._utils.AutoConfig = hf_bleeding_edge.AutoConfig
