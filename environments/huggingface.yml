@@ -47,6 +47,6 @@ dependencies:
     - diffusers
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - --find-links=https://0cc4m.github.io/KoboldAI/gptq-whl-links.html
-    - gptq_koboldai==0.0.5
+    - gptq_koboldai==0.0.6
     - einops
     - peft==0.3.0
