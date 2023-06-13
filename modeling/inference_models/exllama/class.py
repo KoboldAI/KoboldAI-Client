@@ -362,5 +362,10 @@ class model_backend(InferenceModel):
         self.model_config.device_map.lm_head = "cuda:0"
         self.model_config.device_map.norm = "cuda:0"
 
+        self.model_config.rmsnorm_no_half2 = bool(torch.version.hip)
+        self.model_config.rope_no_half2 = bool(torch.version.hip)
+        self.model_config.matmul_no_half2 = bool(torch.version.hip)
+        self.model_config.silu_no_half2 = bool(torch.version.hip)
+
         self.model_name = parameters['custom_model_name'] if 'custom_model_name' in parameters else parameters['id']
         self.path = parameters['path'] if 'path' in parameters else None
