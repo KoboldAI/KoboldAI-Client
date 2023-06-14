@@ -6234,10 +6234,9 @@ def UI_2_select_model(data):
             else:
                 #Here we have a model that's not in our menu structure (either a custom model or a custom path
                 #so we'll just go through all the possible loaders
-                for model_backend_type in model_backends:
-                    for model_backend in model_backend_type_crosswalk[model_backend_type]:
-                        if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
-                            valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
+                for model_backend in model_backends:
+                    if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
+                        valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
                 emit("selected_model_info", {"model_backends": valid_loaders})
         else:
             #Get directories
@@ -6245,14 +6244,13 @@ def UI_2_select_model(data):
             output = []
             for path in paths:
                 valid=False
-                for model_backend_type_crosswalk in model_backends:
-                    for model_backend in model_backend_type_crosswalk[model_backend_type]:
-                        if model_backends[model_backend].is_valid(path[1], path[0], "Custom"):
-                            logger.debug("{} says valid".format(model_backend))
-                            valid=True
-                            break
-                        else:
-                            logger.debug("{} says invalid".format(model_backend))
+                for model_backend in model_backends:
+                    if model_backends[model_backend].is_valid(path[1], path[0], "Custom"):
+                        logger.debug("{} says valid".format(model_backend))
+                        valid=True
+                        break
+                    else:
+                        logger.debug("{} says invalid".format(model_backend))
                     
                 output.append({'label': path[1], 'name': path[1], 'size': "", "menu": "Custom", 'path': path[0], 'isMenu': not valid})
             emit("open_model_load_menu", {"items": output+[{'label': 'Return to Main Menu', 'name':'mainmenu', 'size': "", "menu": "Custom", 'isMenu': True}], 'breadcrumbs': breadcrumbs})            
