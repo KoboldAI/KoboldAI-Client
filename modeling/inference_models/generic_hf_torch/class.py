@@ -23,6 +23,7 @@ except ModuleNotFoundError as e:
 from modeling.inference_models.hf_torch import HFTorchInferenceModel
 
 model_backend_name = "Huggingface"
+model_backend_type = "Huggingface" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class model_backend(HFTorchInferenceModel):
     

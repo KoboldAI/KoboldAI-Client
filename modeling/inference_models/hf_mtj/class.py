@@ -20,6 +20,7 @@ from modeling.inference_models.hf import HFInferenceModel
 from modeling.tokenizer import GenericTokenizer
 
 model_backend_name = "Huggingface MTJ"
+model_backend_type = "Huggingface" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 
 class model_backend(HFInferenceModel):

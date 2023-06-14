@@ -17,6 +17,7 @@ from modeling.inference_model import (
 
 
 model_backend_name = "KoboldAI Old Colab Method"
+model_backend_type = "KoboldAI Old Colab Method" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class BasicAPIException(Exception):
     """To be used for errors when using the Basic API as an interface."""
