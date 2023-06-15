@@ -129,7 +129,7 @@ class Stoppers:
             model.gen_state["completed"] = [False] * len(input_ids)
             
         for i in range(len(input_ids)):
-            if (data[i][-6:] == " > You"):
+            if (data[i][-6:] == "> You " or data[i][-4:] == "You:"):
                 model.gen_state["completed"][i] = True
                 
         if all(model.gen_state["completed"]):
