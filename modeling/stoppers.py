@@ -116,6 +116,7 @@ class Stoppers:
             return True
         return False
 
+    @staticmethod
     def adventure_mode_stopper(
         model: InferenceModel,
         input_ids: torch.LongTensor,
