@@ -15,6 +15,7 @@ from modeling.inference_model import (
 from modeling.inference_models.openai_gooseai import model_backend as openai_gooseai_model_backend
 
 model_backend_name = "GooseAI"
+model_backend_type = "GooseAI" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class OpenAIAPIError(Exception):
     def __init__(self, error_type: str, error_message) -> None:
