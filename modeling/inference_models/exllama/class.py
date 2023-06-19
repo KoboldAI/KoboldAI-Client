@@ -300,7 +300,11 @@ class model_backend(InferenceModel):
 
             self._post_token_gen(self.generator.sequence)
 
+            utils.koboldai_vars.generated_tkns += 1
+
             if token.item() == self.tokenizer.eos_token_id: break
+
+        utils.koboldai_vars.generated_tkns = max_new
 
         return GenerationResult(
             model=self,
