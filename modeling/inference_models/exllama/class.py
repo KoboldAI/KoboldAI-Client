@@ -282,7 +282,7 @@ class model_backend(InferenceModel):
         self.generator.settings.top_p = gen_settings.top_p
         self.generator.settings.min_p = 0.0
 
-        self.generator.gen_begin(gen_in)
+        self.generator.gen_begin_reuse(gen_in)
 
         for i in range(max_new):
             logits = self.model.forward(self.generator.sequence[:, -1:], self.generator.cache)
@@ -384,10 +384,15 @@ class model_backend(InferenceModel):
         self.model_config.device_map.lm_head = "cuda:0"
         self.model_config.device_map.norm = "cuda:0"
 
+        # Disable half2 for HIP
         self.model_config.rmsnorm_no_half2 = bool(torch.version.hip)
         self.model_config.rope_no_half2 = bool(torch.version.hip)
         self.model_config.matmul_no_half2 = bool(torch.version.hip)
         self.model_config.silu_no_half2 = bool(torch.version.hip)
+
+        # Disable scaled_dot_product_attention if torch version < 2
+        if torch.__version__.startswith("1."):
+            self.model_config.sdp_thd = 0
 
         self.model_name = parameters['custom_model_name'] if 'custom_model_name' in parameters else parameters['id']
         self.path = parameters['path'] if 'path' in parameters else None
