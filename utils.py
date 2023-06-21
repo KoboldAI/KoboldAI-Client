@@ -655,10 +655,13 @@ def get_auxilary_device():
 
     # NOTE: TPU isn't a torch device, so TPU stuff gets sent to CPU.
     if koboldai_vars.hascuda and koboldai_vars.usegpu:
+        print("GP")
         return koboldai_vars.gpu_device
     elif koboldai_vars.hascuda:
         # TODO: Primary device
+        print("CUDA")
         return "cuda"
+    print("CPU")
     return "cpu"
 
 #==================================================================#

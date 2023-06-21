@@ -46,9 +46,14 @@ class BreakmodelConfig:
     def __init__(self) -> None:
         self.disk_blocks = 0
         self.gpu_blocks = []
+
         self.primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
 
     def get_device_map(self, model: nn.Module) -> dict:
+        # HACK
+        if utils.args.cpu:
+            self.primary_device = "cpu"
+
         ram_blocks = len(utils.layers_module_names) - sum(self.gpu_blocks)
         cumulative_gpu_blocks = tuple(itertools.accumulate(self.gpu_blocks))
         device_map = {}
@@ -311,10 +316,21 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
+            print(f"self.lazy_load {self.lazy_load}")
+            print(f"self.breakmodel {self.breakmodel}")
+            print(f"self.nobreakmodel {self.nobreakmodel}")
+            print(f"args.cpu {utils.args.cpu}")
+
             if self.lazy_load:
                 with lazy_loader.use_lazy_load(dematerialized_modules=True):
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
-                    tf_kwargs["device_map"] = self.breakmodel_config.get_device_map(metamodel)
+                    if utils.args.cpu:
+                        cpu_map = {name: "cpu" for name in utils.layers_module_names}
+                        for name in utils.get_missing_module_names(metamodel, list(cpu_map.keys())):
+                            cpu_map[name] = "cpu"
+                        tf_kwargs["device_map"] = cpu_map
+                    else:
+                        tf_kwargs["device_map"] = self.breakmodel_config.get_device_map(metamodel)
 
             with lazy_loader.use_lazy_load(
                 enable=self.lazy_load,
