@@ -110,12 +110,17 @@ class HFTorchInferenceModel(HFInferenceModel):
             self.breakmodel_config.gpu_blocks = self.layers
             self.breakmodel_config.disk_blocks = self.disk_layers
 
+        # HACK: Prevent get_auxiliary_device from returning cuda
+        utils.koboldai_vars.hascuda = self.usegpu
+
         return ret
 
     def _get_target_dtype(self) -> Union[torch.float16, torch.float32]:
         if self.breakmodel_config.primary_device == "cpu":
             return torch.float32
         elif utils.args.cpu:
+            return torch.float32
+        elif not self.usegpu:
             return torch.float32
         return torch.float16
 
@@ -316,11 +321,6 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
-            print(f"self.lazy_load {self.lazy_load}")
-            print(f"self.breakmodel {self.breakmodel}")
-            print(f"self.nobreakmodel {self.nobreakmodel}")
-            print(f"args.cpu {utils.args.cpu}")
-
             if self.lazy_load:
                 with lazy_loader.use_lazy_load(dematerialized_modules=True):
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
@@ -343,6 +343,13 @@ class HFTorchInferenceModel(HFInferenceModel):
                     torch_dtype=self._get_target_dtype(),
                     **tf_kwargs,
                 )
+
+            if not self.lazy_load:
+                # We need to move the model to the desired device
+                if (not self.usegpu) or torch.cuda.device_count() <= 0:
+                    model = model.to("cpu")
+                else:
+                    model = model.to("cuda")
 
             return model
         except Exception as e:
