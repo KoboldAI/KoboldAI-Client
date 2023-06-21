@@ -159,7 +159,7 @@ class TorchLazyTensor(LazyTensor):
         ):
             # Cache miss. Assuming weights are loaded in order of
             # (key, seek_offset), this means we need to invalidate the cache.
-            print("!", end="", flush=True)
+            # print("!", end="", flush=True)
             CheckpointChunkCache.hit_data["misses"] += 1
 
             CheckpointChunkCache.clear()
@@ -176,7 +176,7 @@ class TorchLazyTensor(LazyTensor):
                 )
         else:
             # Cache hit. Hip hip hooray! :^)
-            print(".", end="", flush=True)
+            # print(".", end="", flush=True)
             CheckpointChunkCache.hit_data["hits"] += 1
 
         size = reduce(lambda x, y: x * y, self.shape, 1)
@@ -480,6 +480,11 @@ def post_load_cleanup() -> None:
 
     logger.debug(f"[lazy_load] CheckpointChunkCache Hit Data: {CheckpointChunkCache.hit_data}")
     CheckpointChunkCache.clear(unload_model=True)
+
+    # Bar is initialized in
+    # patches.patch_transformers_for_lazyload._load_state_dict_into_meta_model,
+    # as it has access to the state dict (for getting tensor count)
+    utils.bar = None
 
     for v in torch_checkpoint_file_handles.values():
         v.close()
