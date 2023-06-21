@@ -308,7 +308,6 @@ class HFTorchInferenceModel(HFInferenceModel):
                 with lazy_loader.use_lazy_load(dematerialized_modules=True):
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                     tf_kwargs["device_map"] = self.breakmodel_config.get_device_map(metamodel)
-                    print("Rodger rodger", tf_kwargs)
 
             with lazy_loader.use_lazy_load(
                 enable=self.lazy_load,
