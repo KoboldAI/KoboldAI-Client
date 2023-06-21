@@ -101,8 +101,9 @@ class HFTorchInferenceModel(HFInferenceModel):
         ret = super().set_input_parameters(parameters)
 
         # Hook onto input param setting for setting breakmodel stuff
-        self.breakmodel_config.gpu_blocks = self.layers
-        self.breakmodel_config.disk_blocks = self.disk_layers
+        if self.breakmodel:
+            self.breakmodel_config.gpu_blocks = self.layers
+            self.breakmodel_config.disk_blocks = self.disk_layers
 
         return ret
 
@@ -303,20 +304,19 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
-            with lazy_loader.use_lazy_load(dematerialized_modules=True):
-                metamodel = AutoModelForCausalLM.from_config(self.model_config)
-                device_map = self.breakmodel_config.get_device_map(metamodel)
+            if self.lazy_load:
+                with lazy_loader.use_lazy_load(dematerialized_modules=True):
+                    metamodel = AutoModelForCausalLM.from_config(self.model_config)
+                    tf_kwargs["device_map"] = self.breakmodel_config.get_device_map(metamodel)
+                    print("Rodger rodger", tf_kwargs)
 
             with lazy_loader.use_lazy_load(
-                enable=True,
+                enable=self.lazy_load,
                 # DO NOT DEMATERIALIZE MODULES / INIT WEIGHTS EMPTY!!! IT WILL EXPLODE!!!!!!!
                 dematerialized_modules=False,
             ):
-                print(device_map)
                 model = AutoModelForCausalLM.from_pretrained(
                     location,
-                    # device_map="auto",
-                    device_map=device_map,
                     offload_folder="accelerate-disk-cache",
                     torch_dtype=torch.float16,
                     **tf_kwargs,
