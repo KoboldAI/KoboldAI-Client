@@ -282,6 +282,7 @@ model_menu = {
         ],
     'nsfwlist': [
         MenuModel("Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB"),
+        MenuModel("Nerybus 13B (NSFW)", "KoboldAI/OPT-13B-Nerybus-Mix", "32GB"),
         MenuModel("Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB"),
         MenuModel("Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB"),
         MenuModel("Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB"),
