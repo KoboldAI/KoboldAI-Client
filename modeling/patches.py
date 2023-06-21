@@ -205,7 +205,7 @@ def patch_transformers_for_lazyload() -> None:
 
             if isinstance(param, LazyTensor):
                 # Should always be true
-                param = param.materialize()
+                param = param.materialize(map_location="cpu")
             utils.bar.update(1)
 # END PATCH
 
