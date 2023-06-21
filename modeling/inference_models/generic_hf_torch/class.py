@@ -59,8 +59,6 @@ class model_backend(HFTorchInferenceModel):
             # Also, lazy loader doesn't support GPT-2 models
             self.lazy_load = False
 
-        # If we're using torch_lazy_loader, we need to get breakmodel config
-        # early so that it knows where to load the individual model tensors
         logger.debug(
             "lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(
                 self.lazy_load,
@@ -69,6 +67,16 @@ class model_backend(HFTorchInferenceModel):
                 self.nobreakmodel,
             )
         )
+
+        # If we're using torch_lazy_loader, we need to get breakmodel config
+        # early so that it knows where to load the individual model tensors
+        if (
+            self.lazy_load
+            and utils.koboldai_vars.hascuda
+            and utils.koboldai_vars.breakmodel
+            and not utils.koboldai_vars.nobreakmodel
+        ):
+            self.breakmodel_device_config(self.model_config)
 
         if self.lazy_load:
             # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
