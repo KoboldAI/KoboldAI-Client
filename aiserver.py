@@ -10861,6 +10861,8 @@ def run():
                     # delay the display of this message until after that step
                     logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
                     logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {cloudflare}/lite")
+                    logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {cloudflare}/api")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
