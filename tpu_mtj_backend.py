@@ -1118,6 +1118,8 @@ def load_model(path: str, model_type: str, badwordsids=koboldai_settings.badword
     if initial_load:
         logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
         logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
 
     global badwords
     # These are the tokens that we don't want the AI to ever write
@@ -1255,7 +1257,11 @@ def load_model(path: str, model_type: str, badwordsids=koboldai_settings.badword
                         params["cores_per_replica"],
                         network.state["params"][spec["module"]][spec["param"]].shape,
                     )
-                    tensor = jnp.array(tensor.detach())
+                    tensor = tensor.detach()
+                    # numpy does not support bfloat16
+                    if tensor.dtype is torch.bfloat16:
+                      tensor = tensor.to(torch.float32)
+                    tensor = jnp.array(tensor)
                     if tensor.dtype is torch.float16 or tensor.dtype is torch.float32:
                         tensor = tensor.bfloat16()
                     network.state["params"][spec["module"]][spec["param"]] = move_xmap(

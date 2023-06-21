@@ -19,6 +19,7 @@ from modeling.inference_model import (
 )
 
 model_backend_name = "KoboldAI API"
+model_backend_type = "KoboldAI API" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class APIException(Exception):
     """To be used for errors when using the Kobold API as an interface."""

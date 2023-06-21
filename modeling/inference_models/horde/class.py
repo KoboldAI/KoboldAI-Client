@@ -18,6 +18,7 @@ from modeling.inference_model import (
 )
 
 model_backend_name = "Horde"
+model_backend_type = "Horde" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class HordeException(Exception):
     """To be used for errors on server side of the Horde."""
@@ -41,7 +42,7 @@ class model_backend(InferenceModel):
         return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
     
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
-        if os.path.exists("settings/api.model_backend.settings") and 'base_url' not in vars(self):
+        if os.path.exists("settings/horde.model_backend.settings") and 'base_url' not in vars(self):
             with open("settings/horde.model_backend.settings", "r") as f:
                 temp = json.load(f)
                 self.base_url = temp['url']
