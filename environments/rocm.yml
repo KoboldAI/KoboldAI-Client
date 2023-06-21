@@ -42,6 +42,5 @@ dependencies:
     - pydub
     - diffusers
     - git+https://github.com/0cc4m/hf_bleeding_edge/
-    - git+https://github.com/0cc4m/GPTQ-for-LLaMa@0.0.6
     - einops
     - peft==0.3.0
