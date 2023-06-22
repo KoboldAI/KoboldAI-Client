@@ -114,17 +114,12 @@ class HFTorchInferenceModel(HFInferenceModel):
             self.breakmodel_config.gpu_blocks = self.layers
             self.breakmodel_config.disk_blocks = self.disk_layers
 
-        # HACK: Prevent get_auxiliary_device from returning cuda
-        utils.koboldai_vars.hascuda = self.usegpu
-
         return ret
 
     def _get_target_dtype(self) -> Union[torch.float16, torch.float32]:
         if self.breakmodel_config.primary_device == "cpu":
             return torch.float32
         elif utils.args.cpu:
-            return torch.float32
-        elif not self.usegpu:
             return torch.float32
         return torch.float16
 
