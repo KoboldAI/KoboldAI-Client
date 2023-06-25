@@ -4418,7 +4418,7 @@ function load_model() {
 				} else if (element.getAttribute("data_type") == "float") {
 					element_data = parseFloat(element_data);
 				} else if (element.getAttribute("data_type") == "bool") {
-					element_data = (element_data == 'on');
+					element_data = element.checked;
 				}
 			}
 			data[element.id.split("|")[1].replace("_value", "")] = element_data;
