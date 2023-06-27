@@ -31,7 +31,7 @@ dependencies:
     - flask-cors
     - lupa==1.10
     - transformers==4.28.*
-    - huggingface_hub==0.12.1
+    - huggingface_hub==0.15.1
     - safetensors==0.3.1
     - accelerate==0.18.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra

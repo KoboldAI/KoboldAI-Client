@@ -7,7 +7,7 @@ jax==0.3.25
 jaxlib==0.3.25
 transformers==4.28.*
 chex == 0.1.5
-huggingface_hub==0.12.1
+huggingface_hub==0.15.1
 progressbar2
 git+https://github.com/Zurnaz/mesh-transformer-jax.git@llama_tpu
 Flask==2.2.3

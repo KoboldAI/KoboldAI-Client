@@ -282,6 +282,7 @@ model_menu = {
         ],
     'nsfwlist': [
         MenuModel("Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB"),
+        MenuModel("Nerybus 13B (NSFW)", "KoboldAI/OPT-13B-Nerybus-Mix", "32GB"),
         MenuModel("Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB"),
         MenuModel("Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB"),
         MenuModel("Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB"),
@@ -1852,9 +1853,6 @@ def load_model(model_backend, initial_load=False):
     if not os.path.exists("./softprompts"):
         os.mkdir("./softprompts")
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
-    if initial_load and koboldai_vars.cloudflare_link != "":
-        print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 1: " + koboldai_vars.cloudflare_link + format(colors.END))
-        print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 2: " + koboldai_vars.cloudflare_link + "/new_ui" + format(colors.END))
 
 
 # Setup IP Whitelisting
@@ -2562,7 +2560,7 @@ def execute_outmod():
 # Event triggered when browser SocketIO is loaded and connects to server
 #==================================================================#
 @socketio.on('connect')
-def do_connect():
+def do_connect(_):
     print("Connection Attempt: " + request.remote_addr)
     if allowed_ips:
         print("Allowed?: ",  request.remote_addr in allowed_ips)
@@ -4281,7 +4279,7 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem(folder_uid=None):
-    assert folder_uid is None or folder_uid in koboldai_vars.wifolders_d
+    assert folder_uid is None or str(folder_uid) in koboldai_vars.wifolders_d
     ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(koboldai_vars.worldinfo), "init": False, "selective": False, "constant": False}
     koboldai_vars.worldinfo.append(ob)
     while(True):
@@ -4291,7 +4289,7 @@ def addwiitem(folder_uid=None):
     koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
     koboldai_vars.worldinfo[-1]["uid"] = uid
     if(folder_uid is not None):
-        koboldai_vars.wifolders_u[folder_uid].append(koboldai_vars.worldinfo[-1])
+        koboldai_vars.wifolders_u[str(folder_uid)].append(koboldai_vars.worldinfo[-1])
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
 
 #==================================================================#
@@ -4315,19 +4313,20 @@ def addwifolder():
 #==================================================================#
 def movewiitem(dst, src):
     setgamesaved(False)
-    if(koboldai_vars.worldinfo_u[src]["folder"] is not None):
-        for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[src]["folder"]]):
-            if(e is koboldai_vars.worldinfo_u[src]):
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[src]["folder"]].pop(i)
+    if(koboldai_vars.worldinfo_u[str(src)]["folder"] is not None):
+        for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])]):
+            if(e == koboldai_vars.worldinfo_u[str(src)]):
+                koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])].pop(i)
                 break
-    if(koboldai_vars.worldinfo_u[dst]["folder"] is not None):
-        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[dst]["folder"]].append(koboldai_vars.worldinfo_u[src])
-    koboldai_vars.worldinfo_u[src]["folder"] = koboldai_vars.worldinfo_u[dst]["folder"]
+    if(koboldai_vars.worldinfo_u[str(dst)]["folder"] is not None):
+        koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(dst)]["folder"])].append(koboldai_vars.worldinfo_u[str(src)])
+    koboldai_vars.worldinfo_u[str(src)]["folder"] = koboldai_vars.worldinfo_u[str(dst)]["folder"]
     for i, e in enumerate(koboldai_vars.worldinfo):
-        if(e is koboldai_vars.worldinfo_u[src]):
+        if(e["uid"] == koboldai_vars.worldinfo_u[str(src)]["uid"]):
             _src = i
-        elif(e is koboldai_vars.worldinfo_u[dst]):
+        elif(e["uid"] == koboldai_vars.worldinfo_u[str(dst)]["uid"]):
             _dst = i
+    koboldai_vars.worldinfo[_src]["folder"] = koboldai_vars.worldinfo[_dst]["folder"]
     koboldai_vars.worldinfo.insert(_dst - (_dst >= _src), koboldai_vars.worldinfo.pop(_src))
     sendwi()
 
@@ -4337,12 +4336,12 @@ def movewiitem(dst, src):
 #==================================================================#
 def movewifolder(dst, src):
     setgamesaved(False)
-    koboldai_vars.wifolders_l.remove(src)
+    koboldai_vars.wifolders_l.remove(str(src))
     if(dst is None):
         # If dst is None, that means we should move src to be the last folder
-        koboldai_vars.wifolders_l.append(src)
+        koboldai_vars.wifolders_l.append(str(src))
     else:
-        koboldai_vars.wifolders_l.insert(koboldai_vars.wifolders_l.index(dst), src)
+        koboldai_vars.wifolders_l.insert(koboldai_vars.wifolders_l.index(str(dst)), str(src))
     sendwi()
 
 #==================================================================#
@@ -4390,7 +4389,7 @@ def requestwi():
 #==================================================================#
 def stablesortwi():
     mapping = {uid: index for index, uid in enumerate(koboldai_vars.wifolders_l)}
-    koboldai_vars.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
+    koboldai_vars.worldinfo.sort(key=lambda x: mapping[str(x["folder"])] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
     for i, wi in enumerate(koboldai_vars.worldinfo):
@@ -4434,9 +4433,9 @@ def deletewi(uid):
         koboldai_vars.deletewi = uid
         if(koboldai_vars.deletewi is not None):
             if(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"] is not None):
-                for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]]):
+                for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])]):
                     if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
-                        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]].pop(i)
+                        koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])].pop(i)
             for i, e in enumerate(koboldai_vars.worldinfo):
                 if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
                     del koboldai_vars.worldinfo[i]
@@ -4457,12 +4456,12 @@ def deletewifolder(uid):
     del koboldai_vars.wifolders_l[koboldai_vars.wifolders_l.index(uid)]
     setgamesaved(False)
     # Delete uninitialized entries in the folder we're going to delete
-    koboldai_vars.worldinfo = [wi for wi in koboldai_vars.worldinfo if wi["folder"] != uid or wi["init"]]
+    koboldai_vars.worldinfo = [wi for wi in koboldai_vars.worldinfo if str(wi["folder"]) != uid or wi["init"]]
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
     # Move WI entries that are inside of the folder we're going to delete
     # so that they're outside of all folders
     for wi in koboldai_vars.worldinfo:
-        if(wi["folder"] == uid):
+        if(str(wi["folder"]) == uid):
             wi["folder"] = None
 
     sendwi()
@@ -10860,6 +10859,8 @@ def run():
                     # delay the display of this message until after that step
                     logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
                     logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {cloudflare}/lite")
+                    logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {cloudflare}/api")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")

@@ -1,5 +1,5 @@
 transformers==4.28.*
-huggingface_hub==0.12.1
+huggingface_hub==0.15.1
 Flask==2.2.3
 Flask-SocketIO==5.3.2
 python-socketio==5.7.2
