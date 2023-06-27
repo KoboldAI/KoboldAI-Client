@@ -4315,7 +4315,7 @@ def movewiitem(dst, src):
     setgamesaved(False)
     if(koboldai_vars.worldinfo_u[str(src)]["folder"] is not None):
         for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])]):
-            if(e == koboldai_vars.worldinfo_u[str(src)]):
+            if(e["uid"] == koboldai_vars.worldinfo_u[str(src)]["uid"]):
                 koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])].pop(i)
                 break
     if(koboldai_vars.worldinfo_u[str(dst)]["folder"] is not None):
@@ -4434,10 +4434,11 @@ def deletewi(uid):
         if(koboldai_vars.deletewi is not None):
             if(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"] is not None):
                 for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])]):
-                    if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
+                    if(e["uid"] == koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["uid"]):
                         koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])].pop(i)
+                        break
             for i, e in enumerate(koboldai_vars.worldinfo):
-                if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
+                if(e["uid"] == koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["uid"]):
                     del koboldai_vars.worldinfo[i]
                     break
             del koboldai_vars.worldinfo_u[koboldai_vars.deletewi]
