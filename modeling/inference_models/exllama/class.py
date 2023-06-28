@@ -44,7 +44,7 @@ def load_model_gptq_settings(path):
     try:
         js = json.load(open(path + "/config.json", "r"))
     except Exception as e:
-        return False
+        return False, False
 
     gptq_model = False
     gptq_file = False
