@@ -116,7 +116,6 @@ class Stoppers:
             return True
         return False
 
-
     @staticmethod
     def stop_sequence_stopper(
         model: InferenceModel,
