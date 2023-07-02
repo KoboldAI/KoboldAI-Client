@@ -1528,6 +1528,7 @@ def general_startup(override_args=None):
             print(f"Allowed IPs: {allowed_ips}")
 
     if args.cpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = "None"
         koboldai_vars.use_colab_tpu = False
         koboldai_vars.hascuda = False
         koboldai_vars.usegpu = False
