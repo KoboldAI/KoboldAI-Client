@@ -190,7 +190,7 @@ def patch_transformers_for_lazyload() -> None:
             state_dict[new_key] = state_dict.pop(old_key)
 
 # BEGIN PATCH
-        utils.bar = tqdm(total=len(state_dict), desc="Loading model tensors", file=utils.UIProgressBarFile())
+        utils.bar = tqdm(total=len(state_dict), desc="Loading model tensors", file=utils.UIProgressBarFile(), position=1)
 
         for param_name, param in sorted(
             state_dict.items(),
