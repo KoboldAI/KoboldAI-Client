@@ -42,22 +42,24 @@ from modeling.inference_model import (
 # scores for each token.
 LOG_SAMPLER_NO_EFFECT = False
 
+
 class BreakmodelConfig:
     def __init__(self) -> None:
         self.disk_blocks = 0
         self.gpu_blocks = []
 
-        self.primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
+    @property
+    def primary_device(self):
+        if utils.args.cpu:
+            return "cpu"
+        elif not sum(self.gpu_blocks):
+            # No blocks are on GPU
+            return "cpu"
+        elif torch.cuda.device_count() <= 0:
+            return "cpu"
+        return 0
 
     def get_device_map(self, model: nn.Module) -> dict:
-        if (
-            # Explicitly CPU-only
-            utils.args.cpu
-            # No blocks are on GPU
-            or not sum(self.gpu_blocks)
-        ):
-            self.primary_device = "cpu"
-
         ram_blocks = len(utils.layers_module_names) - sum(self.gpu_blocks)
         cumulative_gpu_blocks = tuple(itertools.accumulate(self.gpu_blocks))
         device_map = {}
@@ -171,7 +173,6 @@ class HFTorchInferenceModel(HFInferenceModel):
             return "Unknown"
 
     def _post_load(m_self) -> None:
-
         if not utils.koboldai_vars.model_type:
             utils.koboldai_vars.model_type = m_self.get_model_type()
 
@@ -329,11 +330,15 @@ class HFTorchInferenceModel(HFInferenceModel):
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                     if utils.args.cpu:
                         cpu_map = {name: "cpu" for name in utils.layers_module_names}
-                        for name in utils.get_missing_module_names(metamodel, list(cpu_map.keys())):
+                        for name in utils.get_missing_module_names(
+                            metamodel, list(cpu_map.keys())
+                        ):
                             cpu_map[name] = "cpu"
                         tf_kwargs["device_map"] = cpu_map
                     else:
-                        tf_kwargs["device_map"] = self.breakmodel_config.get_device_map(metamodel)
+                        tf_kwargs["device_map"] = self.breakmodel_config.get_device_map(
+                            metamodel
+                        )
 
             with lazy_loader.use_lazy_load(
                 enable=self.lazy_load,
@@ -434,20 +439,6 @@ class HFTorchInferenceModel(HFInferenceModel):
         Embedding.__call__ = new_embedding_call
         Embedding._koboldai_patch_causallm_model = self.model
 
-    @contextlib.contextmanager
-    def _maybe_use_float16(self, always_use: bool = False):
-        if always_use or (
-            utils.koboldai_vars.hascuda
-            and self.low_mem
-            and (self.usegpu or self.breakmodel)
-        ):
-            original_dtype = torch.get_default_dtype()
-            torch.set_default_dtype(torch.float16)
-            yield True
-            torch.set_default_dtype(original_dtype)
-        else:
-            yield False
-
     def breakmodel_device_list(self, n_layers, primary=None, selected=None):
         device_count = torch.cuda.device_count()
         if device_count < 2:
@@ -484,7 +475,11 @@ class HFTorchInferenceModel(HFInferenceModel):
     def breakmodel_device_config(self, config):
         n_layers = utils.num_layers(config)
 
-        logger.debug("gpu blocks before modification: {}".format(self.breakmodel_config.gpu_blocks))
+        logger.debug(
+            "gpu blocks before modification: {}".format(
+                self.breakmodel_config.gpu_blocks
+            )
+        )
 
         if utils.args.cpu:
             self.breakmodel_config.gpu_blocks = [0] * n_layers
@@ -510,21 +505,29 @@ class HFTorchInferenceModel(HFInferenceModel):
                 n_layers -= self.breakmodel_config.disk_blocks
 
         logger.init_ok("Final device configuration:", status="Info")
-        self.breakmodel_device_list(n_layers, primary=self.breakmodel_config.primary_device)
+        self.breakmodel_device_list(
+            n_layers, primary=self.breakmodel_config.primary_device
+        )
         with open(
             "settings/{}.breakmodel".format(self.model_name.replace("/", "_")), "w"
         ) as file:
             file.write(
                 "{}\n{}".format(
-                    ",".join(map(str, self.breakmodel_config.gpu_blocks)), self.breakmodel_config.disk_blocks
+                    ",".join(map(str, self.breakmodel_config.gpu_blocks)),
+                    self.breakmodel_config.disk_blocks,
                 )
             )
 
         # If all layers are on the same device, use the old GPU generation mode
-        while len(self.breakmodel_config.gpu_blocks) and self.breakmodel_config.gpu_blocks[-1] == 0:
+        while (
+            len(self.breakmodel_config.gpu_blocks)
+            and self.breakmodel_config.gpu_blocks[-1] == 0
+        ):
             self.breakmodel_config.gpu_blocks.pop()
         self.breakmodel = True
-        if len(self.breakmodel_config.gpu_blocks) and self.breakmodel_config.gpu_blocks[-1] in (
+        if len(self.breakmodel_config.gpu_blocks) and self.breakmodel_config.gpu_blocks[
+            -1
+        ] in (
             -1,
             utils.num_layers(config),
         ):
