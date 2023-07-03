@@ -27,9 +27,6 @@ from ansi2html import Ansi2HTMLConverter
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 
-from modeling import patches
-patches.patch_transformers_for_lazyload()
-
 import attention_bias
 attention_bias.do_patches()
 
@@ -10809,7 +10806,7 @@ def run():
     Session(app)
     logger.init_ok("Flask", status="OK")
     logger.init("Webserver", status="Starting")
-    patch_transformers()
+    patch_transformers(use_tpu=koboldai_vars.use_colab_tpu)
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
@@ -10906,7 +10903,7 @@ else:
     logger.init("Flask", status="Starting")
     Session(app)
     logger.init_ok("Flask", status="OK")
-    patch_transformers()
+    patch_transformers(use_tpu=koboldai_vars.use_colab_tpu)
     startup(command_line_backend)
     koboldai_settings.port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)

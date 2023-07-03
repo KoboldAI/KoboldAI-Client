@@ -164,7 +164,6 @@ def patch_transformers_for_lazyload() -> None:
         # both for short term compatibility
         load_in_8bit=False,
         is_quantized=False,
-
         is_safetensors=False,
         keep_in_fp32_modules=None,
     ):
@@ -303,9 +302,10 @@ def patch_transformers_for_lazyload() -> None:
     )
 
 
-def patch_transformers() -> None:
+def patch_transformers(use_tpu: bool) -> None:
     patch_transformers_download()
     patch_transformers_loader()
 
-    # Doesn't do anything for TPU
-    patch_transformers_generation()
+    if not use_tpu:
+        patch_transformers_generation()
+        patch_transformers_for_lazyload()
