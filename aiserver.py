@@ -1854,10 +1854,10 @@ def load_model(model_backend, initial_load=False):
         os.mkdir("./softprompts")
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
     if initial_load and koboldai_vars.cloudflare_link != "":
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {cloudflare}/lite")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {cloudflare}/api")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
 
 # Setup IP Whitelisting
 # Define a function to check if IP is allowed
