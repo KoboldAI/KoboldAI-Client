@@ -1853,7 +1853,11 @@ def load_model(model_backend, initial_load=False):
     if not os.path.exists("./softprompts"):
         os.mkdir("./softprompts")
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
-
+    if initial_load and koboldai_vars.cloudflare_link != "":
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {cloudflare}/lite")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {cloudflare}/api")
 
 # Setup IP Whitelisting
 # Define a function to check if IP is allowed
@@ -10853,15 +10857,15 @@ def run():
        
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
-                cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
+                cloudflarelog.write("KoboldAI is available at the following link : " + cloudflare)
                 logger.init_ok("Webserver", status="OK")
                 if not koboldai_vars.use_colab_tpu:
                     # If we're using a TPU our UI will freeze during the connection to the TPU. To prevent this from showing to the user we 
                     # delay the display of this message until after that step
-                    logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
-                    logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
-                    logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {cloudflare}/lite")
-                    logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {cloudflare}/api")
+                    logger.message(f"KoboldAI is available at the following link for UI 1: {cloudflare}")
+                    logger.message(f"KoboldAI is available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI is available at the following link for KoboldAI Lite: {cloudflare}/lite")
+                    logger.message(f"KoboldAI is available at the following link for the API: {cloudflare}/api")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
