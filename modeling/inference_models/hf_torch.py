@@ -57,6 +57,10 @@ class BreakmodelConfig:
             return "cpu"
         elif torch.cuda.device_count() <= 0:
             return "cpu"
+
+        for device_index, blocks in enumerate(self.gpu_blocks):
+            if blocks:
+                return device_index
         return 0
 
     def get_device_map(self, model: nn.Module) -> dict:
