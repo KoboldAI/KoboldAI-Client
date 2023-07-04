@@ -196,8 +196,7 @@ def patch_transformers_for_lazyload() -> None:
             # State dict must be ordered in this manner to make the caching in
             # lazy_loader.py effective
             key=lambda x: (
-                # NOTE: Assuming key is just decimal
-                int(x[1].key),
+                x[1].key,
                 x[1].seek_offset,
             ),
         ):
