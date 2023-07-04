@@ -1,4 +1,4 @@
-torch >= 1.9, < 1.13
+torch == 2.0
 numpy
 tqdm
 requests
@@ -34,3 +34,4 @@ ijson
 ftfy
 pydub
 sentencepiece
+accelerate==0.18.0

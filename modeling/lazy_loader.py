@@ -47,6 +47,7 @@ POSSIBILITY OF SUCH DAMAGE.
 import contextlib
 from functools import reduce
 import itertools
+import time
 import zipfile
 import pickle
 import torch
@@ -54,35 +55,57 @@ import numpy as np
 import collections
 import _codecs
 import os
+from typing import Any, Callable, Dict, Optional, Tuple, Type
+import accelerate
+
 from torch.nn import Module
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from torch.storage import UntypedStorage
 
 # Safetensors is a dependency for the local version, TPU/Colab doesn't
 # support it yet.
 try:
     import safetensors
+
     HAS_SAFETENSORS = True
 except ModuleNotFoundError:
     HAS_SAFETENSORS = False
 
 import utils
+from logger import logger
+
+# Storage of zipfile handles for each shard
+torch_checkpoint_file_handles = {}
 
 
-_EXTRA_STATE_KEY_SUFFIX = "_extra_state"
+class CheckpointChunkCache:
+    """Storage for common checkpoint weight files to speed up loading. In order
+    for this to be effective at all, weights must be loaded in ascending order
+    of (key, seek_offset).
+    """
 
+    # There is considerable room for improvement here; we could peek into the
+    # state dict and preload the N most frequent weight files or something, but
+    # this first implementation is on par with the speed of whatever the
+    # previous callback did.
 
-STORAGE_TYPE_MAP = {
-    torch.float64: torch.DoubleStorage,
-    torch.float32: torch.FloatStorage,
-    torch.float16: torch.HalfStorage,
-    torch.int64: torch.LongStorage,
-    torch.int32: torch.IntStorage,
-    torch.int16: torch.ShortStorage,
-    torch.int8: torch.CharStorage,
-    torch.uint8: torch.ByteStorage,
-    torch.bool: torch.BoolStorage,
-    torch.bfloat16: torch.BFloat16Storage,
-}
+    file_name = None
+    key = None
+    handle = None
+
+    hit_data = {"hits": 0, "misses": 0}
+
+    @classmethod
+    def clear(cls, unload_model: bool = False) -> None:
+        if unload_model:
+            cls.hit_data["hits"] = 0
+            cls.hit_data["misses"] = 0
+
+        if cls.handle:
+            cls.handle.close()
+
+        cls.file_name = None
+        cls.key = None
+        cls.handle = None
 
 
 class LazyTensor:
@@ -111,6 +134,7 @@ class TorchLazyTensor(LazyTensor):
         self.stride = stride
         self.requires_grad = requires_grad
         self.backward_hooks = backward_hooks
+        self.file_name = None
 
     def __view(self, f: Callable):
         return f"{type(self).__name__}(storage_type={f(self.storage_type)}, key={f(self.key)}, location={f(self.location)}, dtype={f(self.dtype)}, seek_offset={f(self.seek_offset)}, shape={f(self.shape)}, stride={f(self.stride)}, requires_grad={f(self.requires_grad)}, backward_hooks={f(self.backward_hooks)})"
@@ -120,12 +144,42 @@ class TorchLazyTensor(LazyTensor):
 
     def materialize(
         self,
-        checkpoint: Union[zipfile.ZipFile, zipfile.ZipExtFile],
         map_location=None,
         no_grad=True,
-        filename="pytorch_model.bin",
     ) -> torch.Tensor:
-        filename = os.path.basename(os.path.normpath(filename)).split(".")[0]
+        checkpoint = torch_checkpoint_file_handles[self.file_name]
+        filename = os.path.basename(os.path.normpath(self.file_name)).split(".")[0]
+
+        # Often we are using the same weight file to store multiple tensors, so
+        # let's cache the file handle to maintain a seek position and other
+        # fast stuff.
+        if (
+            CheckpointChunkCache.file_name != filename
+            or CheckpointChunkCache.key != self.key
+            or not CheckpointChunkCache.handle
+        ):
+            # Cache miss. Assuming weights are loaded in order of
+            # (key, seek_offset), this means we need to invalidate the cache.
+            # print("!", end="", flush=True)
+            CheckpointChunkCache.hit_data["misses"] += 1
+
+            CheckpointChunkCache.clear()
+
+            CheckpointChunkCache.file_name = filename
+            CheckpointChunkCache.key = self.key
+            try:
+                CheckpointChunkCache.handle = checkpoint.open(
+                    f"archive/data/{self.key}", "r"
+                )
+            except KeyError:
+                CheckpointChunkCache.handle = checkpoint.open(
+                    f"{filename}/data/{self.key}", "r"
+                )
+        else:
+            # Cache hit. Hip hip hooray! :^)
+            # print(".", end="", flush=True)
+            CheckpointChunkCache.hit_data["hits"] += 1
+
         size = reduce(lambda x, y: x * y, self.shape, 1)
         dtype = self.dtype
         nbytes = (
@@ -133,27 +187,24 @@ class TorchLazyTensor(LazyTensor):
             if dtype is torch.bool
             else size
             * (
-                (torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits
+                (torch.finfo if self.dtype.is_floating_point else torch.iinfo)(
+                    self.dtype
+                ).bits
                 >> 3
             )
         )
-        if isinstance(checkpoint, zipfile.ZipFile):
-            try:
-                f = checkpoint.open(f"archive/data/{self.key}", "r")
-            except:
-                f = checkpoint.open(f"{filename}/data/{self.key}", "r")
-            f.read(self.seek_offset)
-        else:
-            f = checkpoint
-        try:
-            storage = STORAGE_TYPE_MAP[dtype].from_buffer(f.read(nbytes), "little")
-        finally:
-            if isinstance(checkpoint, zipfile.ZipFile):
-                f.close()
+
+        assert isinstance(checkpoint, zipfile.ZipFile)
+
+        CheckpointChunkCache.handle.seek(self.seek_offset, os.SEEK_SET)
+        storage = UntypedStorage.from_buffer(
+            CheckpointChunkCache.handle.read(nbytes), "little", dtype=self.dtype
+        )
+
         storage = torch.serialization._get_restore_location(map_location)(
             storage, self.location
         )
-        tensor = torch.tensor([], dtype=storage.dtype, device=storage.device)
+        tensor = torch.tensor([], dtype=self.dtype, device=storage.device)
         tensor.set_(storage, 0, self.shape, self.stride)
         tensor.requires_grad = not no_grad and self.requires_grad
         tensor._backward_hooks = self.backward_hooks
@@ -237,6 +288,7 @@ class _LazyUnpickler(RestrictedUnpickler):
     lazy_loaded_storages: Dict[str, LazyTensor]
 
     def __init__(self, *args, **kwargs):
+        # print(args, kwargs)
         self.lazy_loaded_storages = {}
         return super().__init__(*args, **kwargs)
 
@@ -271,117 +323,6 @@ def _rebuild_tensor(lazy_storage: LazyTensor, storage_offset, shape, stride):
     return lazy_storage
 
 
-# Modified version of https://github.com/pytorch/pytorch/blob/v1.11.0-rc4/torch/nn/modules/module.py#L1346-L1438
-def _load_from_state_dict(
-    self,
-    state_dict,
-    prefix,
-    local_metadata,
-    strict,
-    missing_keys,
-    unexpected_keys,
-    error_msgs,
-):
-    for hook in self._load_state_dict_pre_hooks.values():
-        hook(
-            state_dict,
-            prefix,
-            local_metadata,
-            strict,
-            missing_keys,
-            unexpected_keys,
-            error_msgs,
-        )
-
-    persistent_buffers = {
-        k: v
-        for k, v in self._buffers.items()
-        if k not in self._non_persistent_buffers_set
-    }
-    local_name_params = itertools.chain(
-        self._parameters.items(), persistent_buffers.items()
-    )
-    local_state = {k: v for k, v in local_name_params if v is not None}
-
-    for name, param in local_state.items():
-        key = prefix + name
-        if key in state_dict:
-            input_param = state_dict[key]
-            if not torch.overrides.is_tensor_like(input_param):
-                error_msgs.append(
-                    'While copying the parameter named "{}", '
-                    "expected torch.Tensor or Tensor-like object from checkpoint but "
-                    "received {}".format(key, type(input_param))
-                )
-                continue
-
-            # This is used to avoid copying uninitialized parameters into
-            # non-lazy modules, since they dont have the hook to do the checks
-            # in such case, it will error when accessing the .shape attribute.
-            is_param_lazy = torch.nn.parameter.is_lazy(param)
-            # Backward compatibility: loading 1-dim tensor from 0.3.* to version 0.4+
-            if (
-                not is_param_lazy
-                and len(param.shape) == 0
-                and len(input_param.shape) == 1
-            ):
-                input_param = input_param[0]
-
-            if not is_param_lazy and input_param.shape != param.shape:
-                # local shape should match the one in checkpoint
-                error_msgs.append(
-                    "size mismatch for {}: copying a param with shape {} from checkpoint, "
-                    "the shape in current model is {}.".format(
-                        key, input_param.shape, param.shape
-                    )
-                )
-                continue
-            try:
-                with torch.no_grad():
-                    # param.copy_(input_param)
-                    new_param = torch.nn.Parameter(
-                        input_param, requires_grad=param.requires_grad
-                    )  # This line is new
-                    if name in self._parameters:  # This line is new
-                        self._parameters[name] = new_param  # This line is new
-                    if name in persistent_buffers:  # This line is new
-                        self._buffers[name] = new_param  # This line is new
-            except Exception as ex:
-                error_msgs.append(
-                    'While copying the parameter named "{}", '
-                    "whose dimensions in the model are {} and "
-                    "whose dimensions in the checkpoint are {}, "
-                    "an exception occurred : {}.".format(
-                        key, param.size(), input_param.size(), ex.args
-                    )
-                )
-        elif strict:
-            missing_keys.append(key)
-
-    extra_state_key = prefix + _EXTRA_STATE_KEY_SUFFIX
-    if (
-        hasattr(Module, "set_extra_state")
-        and getattr(self.__class__, "set_extra_state", Module.set_extra_state)
-        is not Module.set_extra_state
-    ):  # if getattr(self.__class__, "set_extra_state", Module.set_extra_state) is not Module.set_extra_state:
-        if extra_state_key in state_dict:
-            self.set_extra_state(state_dict[extra_state_key])
-        elif strict:
-            missing_keys.append(extra_state_key)
-    elif strict and (extra_state_key in state_dict):
-        unexpected_keys.append(extra_state_key)
-
-    if strict:
-        for key in state_dict.keys():
-            if key.startswith(prefix) and key != extra_state_key:
-                input_name = key[len(prefix) :]
-                input_name = input_name.split(".", 1)[
-                    0
-                ]  # get the name of param/buffer/child
-                if input_name not in self._modules and input_name not in local_state:
-                    unexpected_keys.append(key)
-
-
 def safetensors_load_tensor_independently(
     checkpoint_file: str, tensor_key: str, device: Any
 ) -> torch.Tensor:
@@ -412,15 +353,18 @@ def patch_safetensors(callback):
         tensors = {}
 
         with safetensors.safe_open(
-            checkpoint_file, framework="pt", device=intermediary_device,
+            checkpoint_file,
+            framework="pt",
+            device=intermediary_device,
         ) as f:
             for key in f.keys():
                 tensors[key] = None
 
         for key in tensors.keys():
-
             tensors[key] = SafetensorsLazyTensor(
-                checkpoint_file=checkpoint_file, key=key, location=intermediary_device,
+                checkpoint_file=checkpoint_file,
+                key=key,
+                location=intermediary_device,
             )
 
         if callback is not None:
@@ -462,12 +406,13 @@ def use_lazy_load(
     enable=True,
     callback: Optional[Callable] = None,
     dematerialized_modules=False,
-    use_accelerate_init_empty_weights=False,
 ):
     if not enable:
         with use_custom_unpickler(RestrictedUnpickler):
             yield False
         return
+
+    begin_time = time.time()
 
     try:
         old_rebuild_tensor = torch._utils._rebuild_tensor
@@ -477,22 +422,30 @@ def use_lazy_load(
         old_torch_load = torch.load
 
         def torch_load(f, map_location=None, pickle_module=pickle, **pickle_load_args):
-            retval = old_torch_load(
+            model_dict = old_torch_load(
                 f=f,
                 map_location=map_location,
                 pickle_module=pickle_module,
                 **pickle_load_args,
             )
+
+            if f not in torch_checkpoint_file_handles:
+                torch_checkpoint_file_handles[f] = zipfile.ZipFile(f, "r")
+
+            for k, v in model_dict.items():
+                v.file_name = f
+
             if callback is not None:
                 callback(
-                    retval,
+                    model_dict,
                     f=f,
                     map_location=map_location,
                     pickle_module=pickle_module,
                     is_safetensors=False,
                     **pickle_load_args,
                 )
-            return retval
+
+            return model_dict
 
         torch.load = torch_load
 
@@ -500,30 +453,8 @@ def use_lazy_load(
             patch_safetensors(callback)
 
         if dematerialized_modules:
-            if use_accelerate_init_empty_weights:
-                import accelerate
-
-                init_empty_weights = accelerate.init_empty_weights()
-                init_empty_weights.__enter__()
-            else:
-                old_linear_init = torch.nn.Linear.__init__
-                old_embedding_init = torch.nn.Embedding.__init__
-                old_layernorm_init = torch.nn.LayerNorm.__init__
-
-                def linear_init(self, *args, device=None, **kwargs):
-                    return old_linear_init(self, *args, device="meta", **kwargs)
-
-                def embedding_init(self, *args, device=None, **kwargs):
-                    return old_embedding_init(self, *args, device="meta", **kwargs)
-
-                def layernorm_init(self, *args, device=None, **kwargs):
-                    return old_layernorm_init(self, *args, device="meta", **kwargs)
-
-                torch.nn.Linear.__init__ = linear_init
-                torch.nn.Embedding.__init__ = embedding_init
-                torch.nn.LayerNorm.__init__ = layernorm_init
-                old_load_from_state_dict = torch.nn.Module._load_from_state_dict
-                torch.nn.Module._load_from_state_dict = _load_from_state_dict
+            init_empty_weights = accelerate.init_empty_weights()
+            init_empty_weights.__enter__()
 
         with use_custom_unpickler(_LazyUnpickler):
             yield True
@@ -531,11 +462,30 @@ def use_lazy_load(
     finally:
         torch._utils._rebuild_tensor = old_rebuild_tensor
         torch.load = old_torch_load
+
+        post_load_cleanup()
+        logger.debug(
+            f"[lazy_load] Context closed in {round(time.time() - begin_time, 2)} seconds."
+        )
+
         if dematerialized_modules:
-            if use_accelerate_init_empty_weights:
-                init_empty_weights.__exit__(None, None, None)
-            else:
-                torch.nn.Linear.__init__ = old_linear_init
-                torch.nn.Embedding.__init__ = old_embedding_init
-                torch.nn.LayerNorm.__init__ = old_layernorm_init
-                torch.nn.Module._load_from_state_dict = old_load_from_state_dict
+            init_empty_weights.__exit__(None, None, None)
+
+
+def post_load_cleanup() -> None:
+    """Close dangling file pointers and clear caches after the load is complete."""
+    global torch_checkpoint_file_handles
+
+    logger.debug(
+        f"[lazy_load] CheckpointChunkCache Hit Data: {CheckpointChunkCache.hit_data}"
+    )
+    CheckpointChunkCache.clear(unload_model=True)
+
+    # Bar is initialized in
+    # patches.patch_transformers_for_lazyload._load_state_dict_into_meta_model,
+    # as it has access to the state dict (for getting tensor count)
+    utils.bar = None
+
+    for v in torch_checkpoint_file_handles.values():
+        v.close()
+    torch_checkpoint_file_handles = {}

@@ -650,17 +650,6 @@ class UIProgressBarFile(object):
     def flush(self):
         pass
 
-def get_auxilary_device():
-    """Get device auxilary tensors like inputs should be stored on."""
-
-    # NOTE: TPU isn't a torch device, so TPU stuff gets sent to CPU.
-    if koboldai_vars.hascuda and koboldai_vars.usegpu:
-        return koboldai_vars.gpu_device
-    elif koboldai_vars.hascuda and koboldai_vars.breakmodel:
-        import breakmodel
-        return breakmodel.primary_device
-    return "cpu"
-
 #==================================================================#
 # Strips submitted text from the text returned by the AI
 #==================================================================#

@@ -855,7 +855,7 @@ class TrainerBase(abc.ABC):
         lazy_load_callback.nested = False
 
         # Since we're using lazy loader, we need to figure out what the model's hidden layers are called
-        with lazy_loader.use_lazy_load(dematerialized_modules=True, use_accelerate_init_empty_weights=True):
+        with lazy_loader.use_lazy_load(dematerialized_modules=True):
             try:
                 metamodel = AutoModelForCausalLM.from_config(model_config)
             except Exception as e:
