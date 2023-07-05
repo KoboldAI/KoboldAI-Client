@@ -116,10 +116,10 @@ if [ "$init" != "skip" ]; then
             git=https://github.com/koboldai/KoboldAI-Client
         fi
         if [ "$git" == "United" ]; then
-            git="https://github.com/henk717/KoboldAI-Client -b b603690e4cc3dff7491cbc2fd0b445a18b7b88d4"
+            git='https://github.com/henk717/KoboldAI-Client -b b603690e4cc3dff7491cbc2fd0b445a18b7b88d4'
         fi
         if [ "$git" == "united" ]; then
-            git="https://github.com/henk717/KoboldAI-Client -b b603690e4cc3dff7491cbc2fd0b445a18b7b88d4"
+            git='https://github.com/henk717/KoboldAI-Client -b b603690e4cc3dff7491cbc2fd0b445a18b7b88d4'
         fi
     else
         git=https://github.com/koboldai/KoboldAI-Client
