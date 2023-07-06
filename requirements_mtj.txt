@@ -34,4 +34,3 @@ ijson
 ftfy
 pydub
 sentencepiece
-accelerate==0.18.0
