@@ -172,14 +172,11 @@ class TorchLazyTensor(LazyTensor):
 
             CheckpointChunkCache.file_name = filename
             CheckpointChunkCache.key = self.key
-            try:
-                CheckpointChunkCache.handle = checkpoint.open(
-                    f"archive/data/{self.key}", "r"
-                )
-            except KeyError:
-                CheckpointChunkCache.handle = checkpoint.open(
-                    f"{filename}/data/{self.key}", "r"
-                )
+            ziproot = checkpoint.namelist()[0].split("/")[0]
+            CheckpointChunkCache.handle = checkpoint.open(f"{ziproot}/data/{self.key}", "r")
+
+                
+                                
         else:
             # Cache hit. Hip hip hooray! :^)
             # print(".", end="", flush=True)
@@ -523,8 +520,8 @@ def use_lazy_load(
 
         torch.load = torch_load
 
-        if HAS_SAFETENSORS:
-            patch_safetensors(callback)
+        #if HAS_SAFETENSORS:
+            #patch_safetensors(callback)
 
         if dematerialized_modules:
             # Most devices can just use Accelerate's implementation, but the Transformers on
