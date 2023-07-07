@@ -219,6 +219,9 @@ class SafetensorsLazyTensor(LazyTensor):
         self.key = key
         self.location = location
 
+        # Stub for cache sorting
+        self.seek_offset = 0
+
     def __view(self, f: Callable):
         return f"{type(self).__name__}(checkpoint_file={f(self.checkpoint_file)}, key={f(self.key)}, location={f(self.location)})"
 
@@ -517,8 +520,8 @@ def use_lazy_load(
 
         torch.load = torch_load
 
-        #if HAS_SAFETENSORS:
-            #patch_safetensors(callback)
+        if HAS_SAFETENSORS:
+            patch_safetensors(callback)
 
         if dematerialized_modules:
             # Most devices can just use Accelerate's implementation, but the Transformers on
