@@ -520,8 +520,8 @@ def use_lazy_load(
 
         torch.load = torch_load
 
-        #if HAS_SAFETENSORS:
-            #patch_safetensors(callback)
+        if HAS_SAFETENSORS:
+            patch_safetensors(callback)
 
         if dematerialized_modules:
             # Most devices can just use Accelerate's implementation, but the Transformers on
