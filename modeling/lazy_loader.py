@@ -222,6 +222,9 @@ class SafetensorsLazyTensor(LazyTensor):
         self.key = key
         self.location = location
 
+        # Stub for cache sorting
+        self.seek_offset = 0
+
     def __view(self, f: Callable):
         return f"{type(self).__name__}(checkpoint_file={f(self.checkpoint_file)}, key={f(self.key)}, location={f(self.location)})"
 
