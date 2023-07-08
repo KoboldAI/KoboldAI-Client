@@ -363,6 +363,8 @@ class HFTorchInferenceModel(HFInferenceModel):
                 return GPTNeoForCausalLM.from_pretrained(location, **tf_kwargs)
         except Exception as e:
             logger.warning(f"{self.model_name} is a no-go; {e} - Falling back to auto.")
+            if utils.args.panic:
+                raise e
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
@@ -413,6 +415,9 @@ class HFTorchInferenceModel(HFInferenceModel):
             if "invalid load key" in traceback_string:
                 logger.error("Invalid load key! Aborting.")
                 raise
+
+            if utils.args.panic:
+                raise e
 
             logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
             logger.debug(traceback.format_exc())

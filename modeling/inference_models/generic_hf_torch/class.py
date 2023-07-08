@@ -90,6 +90,8 @@ class model_backend(HFTorchInferenceModel):
                     utils.module_names = list(metamodel.state_dict().keys())
                     utils.named_buffers = list(metamodel.named_buffers(recurse=True))
                 except Exception as e:
+                    if utils.args.panic:
+                        raise e
                     logger.warning(f"Gave up on lazy loading due to {e}")
                     self.lazy_load = False
 
