@@ -363,6 +363,8 @@ class HFTorchInferenceModel(HFInferenceModel):
                 return GPTNeoForCausalLM.from_pretrained(location, **tf_kwargs)
         except Exception as e:
             logger.warning(f"{self.model_name} is a no-go; {e} - Falling back to auto.")
+            if utils.args.panic:
+                raise
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
@@ -381,11 +383,28 @@ class HFTorchInferenceModel(HFInferenceModel):
                             metamodel
                         )
 
-            with lazy_loader.use_lazy_load(
-                enable=self.lazy_load,
-                # DO NOT DEMATERIALIZE MODULES / INIT WEIGHTS EMPTY!!! IT WILL EXPLODE!!!!!!!
-                dematerialized_modules=False,
-            ):
+            try:
+                # Try to load with the lazyloader first...
+                with lazy_loader.use_lazy_load(
+                    enable=self.lazy_load,
+                    # DO NOT DEMATERIALIZE MODULES / INIT WEIGHTS EMPTY!!! IT WILL EXPLODE!!!!!!!
+                    dematerialized_modules=False,
+                ):
+                    model = AutoModelForCausalLM.from_pretrained(
+                        location,
+                        offload_folder="accelerate-disk-cache",
+                        torch_dtype=self._get_target_dtype(),
+                        **tf_kwargs,
+                    )
+            except Exception as e:
+                # ...but fall back to stock HF if lazyloader fails.
+                if utils.args.panic:
+                    raise
+                logger.error("Lazyloader failed, falling back to stock HF load. You may run out of RAM here. Details:")
+                logger.error(e)
+                logger.error(traceback.format_exc())
+                logger.info("Falling back to stock HF load...")
+
                 model = AutoModelForCausalLM.from_pretrained(
                     location,
                     offload_folder="accelerate-disk-cache",
@@ -412,6 +431,9 @@ class HFTorchInferenceModel(HFInferenceModel):
             # Model corrupted or serious loading problem. Stop here.
             if "invalid load key" in traceback_string:
                 logger.error("Invalid load key! Aborting.")
+                raise
+
+            if utils.args.panic:
                 raise
 
             logger.warning(f"Fell back to GPT2LMHeadModel due to {e}")
