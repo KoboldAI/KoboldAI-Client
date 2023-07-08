@@ -60,6 +60,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type
 from torch import Tensor
 from torch.nn import Module
 from torch.storage import UntypedStorage
+from modeling.patches import LazyloadPatches
 
 # Safetensors is a dependency for the local version, TPU/Colab doesn't
 # support it yet.
@@ -510,6 +511,8 @@ def use_lazy_load(
     begin_time = time.time()
 
     try:
+        LazyloadPatches.__enter__()
+
         old_rebuild_tensor = torch._utils._rebuild_tensor
         torch._utils._rebuild_tensor = _rebuild_tensor
 
@@ -577,6 +580,7 @@ def use_lazy_load(
             yield True
 
     finally:
+        LazyloadPatches.__exit__(None, None, None)
         torch._utils._rebuild_tensor = old_rebuild_tensor
         torch.load = old_torch_load
 
