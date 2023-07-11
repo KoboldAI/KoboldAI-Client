@@ -201,6 +201,7 @@ class LazyloadPatches:
 
 # BEGIN PATCH
         utils.bar = tqdm(total=len(state_dict), desc="Loading model tensors", file=utils.UIProgressBarFile(), position=1)
+        utils.koboldai_vars.total_layers = len(state_dict)
 
         for param_name, param in sorted(
             state_dict.items(),
@@ -216,6 +217,7 @@ class LazyloadPatches:
                 # Should always be true
                 param = param.materialize(map_location="cpu")
             utils.bar.update(1)
+            utils.koboldai_vars.loaded_layers += 1
 # END PATCH
 
             # First part of the test is always true as load_state_dict_keys always contains state_dict keys.
