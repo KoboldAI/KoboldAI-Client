@@ -1,4 +1,4 @@
-transformers==4.28.*
+transformers==4.30.*
 huggingface_hub==0.15.1
 Flask==2.2.3
 Flask-SocketIO==5.3.2
@@ -15,7 +15,7 @@ markdown
 bleach==4.1.0
 sentencepiece
 protobuf
-accelerate==0.18.0
+accelerate==0.20.3
 flask-session==0.4.0
 marshmallow>=3.13
 apispec-webframeworks
@@ -28,7 +28,8 @@ psutil
 ansi2html
 flask_compress
 ijson
-bitsandbytes
+bitsandbytes==0.40.0; sys_platform == 'linux'
+https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.40.0-py3-none-win_amd64.whl; sys_platform == 'win32'
 ftfy
 py==1.11.0
 pydub

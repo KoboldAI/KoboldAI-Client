@@ -30,10 +30,10 @@ dependencies:
     - flask-ngrok
     - flask-cors
     - lupa==1.10
-    - transformers==4.28.*
+    - transformers==4.30.1
     - huggingface_hub==0.15.1
     - safetensors==0.3.1
-    - accelerate==0.18.0
+    - accelerate==0.20.3
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - ansi2html
     - flask_compress
