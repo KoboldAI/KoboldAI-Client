@@ -17,6 +17,7 @@ class HFInferenceModel(InferenceModel):
         self.model_config = None
         #self.model_name = model_name
 
+        self.hf_torch = False
         self.model = None
         self.tokenizer = None
         self.badwordsids = koboldai_settings.badwordsids_default

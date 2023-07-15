@@ -627,19 +627,36 @@ from modeling.patches import patch_transformers
 import importlib
 model_backend_code = {}
 model_backends = {}
+model_backend_module_names = {}
 model_backend_type_crosswalk = {}
+
+PRIORITIZED_BACKEND_MODULES = ["generic_hf_torch"]
+
 for module in os.listdir("./modeling/inference_models"):
     if not os.path.isfile(os.path.join("./modeling/inference_models",module)) and module != '__pycache__':
         try:
-            model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
-            model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
-            if 'disable' in vars(model_backends[model_backend_code[module].model_backend_name]) and model_backends[model_backend_code[module].model_backend_name].disable:
-                del model_backends[model_backend_code[module].model_backend_name]
-            else:
-                if model_backend_code[module].model_backend_type in model_backend_type_crosswalk:
-                    model_backend_type_crosswalk[model_backend_code[module].model_backend_type].append(model_backend_code[module].model_backend_name)
+            backend_code = importlib.import_module('modeling.inference_models.{}.class'.format(module))
+            backend_name = backend_code.model_backend_name
+            backend_type = backend_code.model_backend_type
+            backend_object = backend_code.model_backend()
+
+            if "disable" in vars(backend_object) and backend_object.disable:
+                continue
+
+            model_backends[backend_name] = backend_object
+            model_backend_code[module] = backend_code
+
+            if backend_name in model_backend_module_names:
+                raise RuntimeError(f"{module} cannot make backend '{backend_name}'; it already exists!")
+            model_backend_module_names[backend_name] = module
+
+            if backend_type in model_backend_type_crosswalk:
+                if module in PRIORITIZED_BACKEND_MODULES:
+                    model_backend_type_crosswalk[backend_type].insert(0, backend_name)
                 else:
-                    model_backend_type_crosswalk[model_backend_code[module].model_backend_type] = [model_backend_code[module].model_backend_name]
+                    model_backend_type_crosswalk[backend_type].append(backend_name)
+            else:
+                model_backend_type_crosswalk[backend_type] = [backend_name]
                     
         except Exception:
             logger.error("Model Backend {} failed to load".format(module))
@@ -6240,7 +6257,11 @@ def UI_2_select_model(data):
             else:
                 #Here we have a model that's not in our menu structure (either a custom model or a custom path
                 #so we'll just go through all the possible loaders
-                for model_backend in model_backends:
+                for model_backend in sorted(
+                    model_backends,
+                    key=lambda x: model_backend_module_names[x] in PRIORITIZED_BACKEND_MODULES,
+                    reverse=True,
+                ):
                     if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
                         valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
                 emit("selected_model_info", {"model_backends": valid_loaders})

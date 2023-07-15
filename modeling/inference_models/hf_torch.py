@@ -412,7 +412,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                     **tf_kwargs,
                 )
 
-            if not self.lazy_load:
+            if not self.lazy_load and not self.breakmodel:
                 # We need to move the model to the desired device
                 if (not self.usegpu) or torch.cuda.device_count() <= 0:
                     model = model.to("cpu")
