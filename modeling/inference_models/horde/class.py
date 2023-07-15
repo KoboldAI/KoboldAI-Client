@@ -18,6 +18,7 @@ from modeling.inference_model import (
 )
 
 model_backend_name = "Horde"
+model_backend_type = "Horde" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class HordeException(Exception):
     """To be used for errors on server side of the Horde."""

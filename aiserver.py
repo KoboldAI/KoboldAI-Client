@@ -284,6 +284,7 @@ model_menu = {
         ],
     'nsfwlist': [
         MenuModel("Erebus 20B (NSFW)", "KoboldAI/GPT-NeoX-20B-Erebus", "64GB"),
+        MenuModel("Nerybus 13B (NSFW)", "KoboldAI/OPT-13B-Nerybus-Mix", "32GB"),
         MenuModel("Erebus 13B (NSFW)", "KoboldAI/OPT-13B-Erebus", "32GB"),
         MenuModel("Shinen FSD 13B (NSFW)", "KoboldAI/fairseq-dense-13B-Shinen", "32GB"),
         MenuModel("Erebus 6.7B (NSFW)", "KoboldAI/OPT-6.7B-Erebus", "16GB"),
@@ -628,14 +629,37 @@ from modeling.patches import patch_transformers
 import importlib
 model_backend_code = {}
 model_backends = {}
+model_backend_module_names = {}
+model_backend_type_crosswalk = {}
+
+PRIORITIZED_BACKEND_MODULES = ["generic_hf_torch"]
+
 for module in os.listdir("./modeling/inference_models"):
     if not os.path.isfile(os.path.join("./modeling/inference_models",module)) and module != '__pycache__':
         try:
-            model_backend_code[module] = importlib.import_module('modeling.inference_models.{}.class'.format(module))
-            model_backends[model_backend_code[module].model_backend_name] = model_backend_code[module].model_backend()
-            if 'disable' in vars(model_backends[model_backend_code[module].model_backend_name]):
-                if model_backends[model_backend_code[module].model_backend_name].disable:
-                    del model_backends[model_backend_code[module].model_backend_name]
+            backend_code = importlib.import_module('modeling.inference_models.{}.class'.format(module))
+            backend_name = backend_code.model_backend_name
+            backend_type = backend_code.model_backend_type
+            backend_object = backend_code.model_backend()
+
+            if "disable" in vars(backend_object) and backend_object.disable:
+                continue
+
+            model_backends[backend_name] = backend_object
+            model_backend_code[module] = backend_code
+
+            if backend_name in model_backend_module_names:
+                raise RuntimeError(f"{module} cannot make backend '{backend_name}'; it already exists!")
+            model_backend_module_names[backend_name] = module
+
+            if backend_type in model_backend_type_crosswalk:
+                if module in PRIORITIZED_BACKEND_MODULES:
+                    model_backend_type_crosswalk[backend_type].insert(0, backend_name)
+                else:
+                    model_backend_type_crosswalk[backend_type].append(backend_name)
+            else:
+                model_backend_type_crosswalk[backend_type] = [backend_name]
+                    
         except Exception:
             logger.error("Model Backend {} failed to load".format(module))
             logger.error(traceback.format_exc())
@@ -1394,6 +1418,7 @@ def general_startup(override_args=None):
     parser.add_argument('-f', action='store', help="option for compatability with colab memory profiles")
     parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
     parser.add_argument('-q', '--quiesce', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
+    parser.add_argument("--panic", action='store_true', help="Disables falling back when loading fails.")
 
     #args: argparse.Namespace = None
     if "pytest" in sys.modules and override_args is None:
@@ -1519,6 +1544,7 @@ def general_startup(override_args=None):
             print(f"Allowed IPs: {allowed_ips}")
 
     if args.cpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = "None"
         koboldai_vars.use_colab_tpu = False
         koboldai_vars.hascuda = False
         koboldai_vars.usegpu = False
@@ -1844,9 +1870,10 @@ def load_model(model_backend, initial_load=False):
         os.mkdir("./softprompts")
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
     if initial_load and koboldai_vars.cloudflare_link != "":
-        print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 1: " + koboldai_vars.cloudflare_link + format(colors.END))
-        print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link for UI 2: " + koboldai_vars.cloudflare_link + "/new_ui" + format(colors.END))
-
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
 
 # Setup IP Whitelisting
 # Define a function to check if IP is allowed
@@ -2553,7 +2580,7 @@ def execute_outmod():
 # Event triggered when browser SocketIO is loaded and connects to server
 #==================================================================#
 @socketio.on('connect')
-def do_connect():
+def do_connect(_):
     print("Connection Attempt: " + request.remote_addr)
     if allowed_ips:
         print("Allowed?: ",  request.remote_addr in allowed_ips)
@@ -4272,7 +4299,7 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem(folder_uid=None):
-    assert folder_uid is None or folder_uid in koboldai_vars.wifolders_d
+    assert folder_uid is None or str(folder_uid) in koboldai_vars.wifolders_d
     ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(koboldai_vars.worldinfo), "init": False, "selective": False, "constant": False}
     koboldai_vars.worldinfo.append(ob)
     while(True):
@@ -4282,7 +4309,7 @@ def addwiitem(folder_uid=None):
     koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
     koboldai_vars.worldinfo[-1]["uid"] = uid
     if(folder_uid is not None):
-        koboldai_vars.wifolders_u[folder_uid].append(koboldai_vars.worldinfo[-1])
+        koboldai_vars.wifolders_u[str(folder_uid)].append(koboldai_vars.worldinfo[-1])
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
 
 #==================================================================#
@@ -4306,19 +4333,20 @@ def addwifolder():
 #==================================================================#
 def movewiitem(dst, src):
     setgamesaved(False)
-    if(koboldai_vars.worldinfo_u[src]["folder"] is not None):
-        for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[src]["folder"]]):
-            if(e is koboldai_vars.worldinfo_u[src]):
-                koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[src]["folder"]].pop(i)
+    if(koboldai_vars.worldinfo_u[str(src)]["folder"] is not None):
+        for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])]):
+            if(e["uid"] == koboldai_vars.worldinfo_u[str(src)]["uid"]):
+                koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])].pop(i)
                 break
-    if(koboldai_vars.worldinfo_u[dst]["folder"] is not None):
-        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[dst]["folder"]].append(koboldai_vars.worldinfo_u[src])
-    koboldai_vars.worldinfo_u[src]["folder"] = koboldai_vars.worldinfo_u[dst]["folder"]
+    if(koboldai_vars.worldinfo_u[str(dst)]["folder"] is not None):
+        koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(dst)]["folder"])].append(koboldai_vars.worldinfo_u[str(src)])
+    koboldai_vars.worldinfo_u[str(src)]["folder"] = koboldai_vars.worldinfo_u[str(dst)]["folder"]
     for i, e in enumerate(koboldai_vars.worldinfo):
-        if(e is koboldai_vars.worldinfo_u[src]):
+        if(e["uid"] == koboldai_vars.worldinfo_u[str(src)]["uid"]):
             _src = i
-        elif(e is koboldai_vars.worldinfo_u[dst]):
+        elif(e["uid"] == koboldai_vars.worldinfo_u[str(dst)]["uid"]):
             _dst = i
+    koboldai_vars.worldinfo[_src]["folder"] = koboldai_vars.worldinfo[_dst]["folder"]
     koboldai_vars.worldinfo.insert(_dst - (_dst >= _src), koboldai_vars.worldinfo.pop(_src))
     sendwi()
 
@@ -4328,12 +4356,12 @@ def movewiitem(dst, src):
 #==================================================================#
 def movewifolder(dst, src):
     setgamesaved(False)
-    koboldai_vars.wifolders_l.remove(src)
+    koboldai_vars.wifolders_l.remove(str(src))
     if(dst is None):
         # If dst is None, that means we should move src to be the last folder
-        koboldai_vars.wifolders_l.append(src)
+        koboldai_vars.wifolders_l.append(str(src))
     else:
-        koboldai_vars.wifolders_l.insert(koboldai_vars.wifolders_l.index(dst), src)
+        koboldai_vars.wifolders_l.insert(koboldai_vars.wifolders_l.index(str(dst)), str(src))
     sendwi()
 
 #==================================================================#
@@ -4381,7 +4409,7 @@ def requestwi():
 #==================================================================#
 def stablesortwi():
     mapping = {uid: index for index, uid in enumerate(koboldai_vars.wifolders_l)}
-    koboldai_vars.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
+    koboldai_vars.worldinfo.sort(key=lambda x: mapping[str(x["folder"])] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
     for i, wi in enumerate(koboldai_vars.worldinfo):
@@ -4425,11 +4453,12 @@ def deletewi(uid):
         koboldai_vars.deletewi = uid
         if(koboldai_vars.deletewi is not None):
             if(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"] is not None):
-                for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]]):
-                    if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
-                        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]].pop(i)
+                for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])]):
+                    if(e["uid"] == koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["uid"]):
+                        koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])].pop(i)
+                        break
             for i, e in enumerate(koboldai_vars.worldinfo):
-                if(e is koboldai_vars.worldinfo_u[koboldai_vars.deletewi]):
+                if(e["uid"] == koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["uid"]):
                     del koboldai_vars.worldinfo[i]
                     break
             del koboldai_vars.worldinfo_u[koboldai_vars.deletewi]
@@ -4448,12 +4477,12 @@ def deletewifolder(uid):
     del koboldai_vars.wifolders_l[koboldai_vars.wifolders_l.index(uid)]
     setgamesaved(False)
     # Delete uninitialized entries in the folder we're going to delete
-    koboldai_vars.worldinfo = [wi for wi in koboldai_vars.worldinfo if wi["folder"] != uid or wi["init"]]
+    koboldai_vars.worldinfo = [wi for wi in koboldai_vars.worldinfo if str(wi["folder"]) != uid or wi["init"]]
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
     # Move WI entries that are inside of the folder we're going to delete
     # so that they're outside of all folders
     for wi in koboldai_vars.worldinfo:
-        if(wi["folder"] == uid):
+        if(str(wi["folder"]) == uid):
             wi["folder"] = None
 
     sendwi()
@@ -6208,6 +6237,7 @@ def UI_2_load_model_button(data):
 @socketio.on('select_model')
 @logger.catch
 def UI_2_select_model(data):
+    global model_backend_type_crosswalk #No idea why I have to make this a global where I don't for model_backends...
     logger.debug("Clicked on model entry: {}".format(data))
     if data["name"] in model_menu and data['ismenu'] == "true":
         emit("open_model_load_menu", {"items": [{**item.to_json(), **{"menu":data["name"]}} for item in model_menu[data["name"]] if item.should_show()]})
@@ -6217,13 +6247,18 @@ def UI_2_select_model(data):
             valid_loaders = {}
             if data['id'] in [item.name for sublist in model_menu for item in model_menu[sublist]]:
                 #Here if we have a model id that's in our menu, we explicitly use that backend
-                for model_backend in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
-                    valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
+                for model_backend_type in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
+                    for model_backend in model_backend_type_crosswalk[model_backend_type]:
+                        valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
                 emit("selected_model_info", {"model_backends": valid_loaders})
             else:
                 #Here we have a model that's not in our menu structure (either a custom model or a custom path
                 #so we'll just go through all the possible loaders
-                for model_backend in model_backends:
+                for model_backend in sorted(
+                    model_backends,
+                    key=lambda x: model_backend_module_names[x] in PRIORITIZED_BACKEND_MODULES,
+                    reverse=True,
+                ):
                     if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
                         valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"])
                 emit("selected_model_info", {"model_backends": valid_loaders})
@@ -10796,7 +10831,7 @@ def run():
     Session(app)
     logger.init_ok("Flask", status="OK")
     logger.init("Webserver", status="Starting")
-    patch_transformers()
+    patch_transformers(use_tpu=koboldai_vars.use_colab_tpu)
     
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     port = args.port if "port" in args and args.port is not None else 5000
@@ -10842,13 +10877,15 @@ def run():
        
         if(args.localtunnel or args.ngrok or args.remote):
             with open('cloudflare.log', 'w') as cloudflarelog:
-                cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
+                cloudflarelog.write("KoboldAI is available at the following link : " + cloudflare)
                 logger.init_ok("Webserver", status="OK")
                 if not koboldai_vars.use_colab_tpu:
                     # If we're using a TPU our UI will freeze during the connection to the TPU. To prevent this from showing to the user we 
                     # delay the display of this message until after that step
-                    logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {cloudflare}")
-                    logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI is available at the following link for UI 1: {cloudflare}")
+                    logger.message(f"KoboldAI is available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI is available at the following link for KoboldAI Lite: {cloudflare}/lite")
+                    logger.message(f"KoboldAI is available at the following link for the API: {cloudflare}/api")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
@@ -10891,7 +10928,7 @@ else:
     logger.init("Flask", status="Starting")
     Session(app)
     logger.init_ok("Flask", status="OK")
-    patch_transformers()
+    patch_transformers(use_tpu=koboldai_vars.use_colab_tpu)
     startup(command_line_backend)
     koboldai_settings.port = args.port if "port" in args and args.port is not None else 5000
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
