@@ -28,7 +28,7 @@ class model_backend(HFTorchInferenceModel):
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters)
         dependency_exists = importlib.util.find_spec("bitsandbytes")
-        if dependency_exists:
+        if dependency_exists and (model_name != 'customhuggingface' or "custom_model_name" in parameters):
             requested_parameters.append({
                                         "uitype": "toggle",
                                         "unit": "bool",
