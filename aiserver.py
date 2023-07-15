@@ -6293,9 +6293,9 @@ def UI_2_select_model(data):
 @logger.catch
 def UI_2_resubmit_model_info(data):
     valid_loaders = {}
-    for model_backend in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
+    for model_backend in data['valid_backends']:
         valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"], parameters=data)
-    emit("selected_model_info", {"model_backends": valid_loaders})
+    emit("selected_model_info", {"model_backends": valid_loaders, 'selected_model_backend': data['plugin']})
 
 #==================================================================#
 # Event triggered when user loads a model

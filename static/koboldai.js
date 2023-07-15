@@ -1651,6 +1651,12 @@ function show_model_menu(data) {
 	
 }
 
+function getOptions(id){
+  let selectElement = document.getElementById(id);
+  let optionNames = [...selectElement.options].map(o => o.text);
+  return optionNames;
+}
+
 function model_settings_checker() {
 	//get check value:
 	missing_element = false;
@@ -1702,6 +1708,7 @@ function model_settings_checker() {
 				data = {...data, ...selected_model_data};
 				
 				data['plugin'] = document.getElementById("modelplugin").value;
+				data['valid_backends'] = getOptions("modelplugin");
 				
 				socket.emit("resubmit_model_info", data);
 			}
@@ -1775,7 +1782,13 @@ function model_settings_checker() {
 	}
 }
 
+function set_toggle(id) {
+	$('#'+id).bootstrapToggle({size: "mini", onstyle: "success", toggle: "toggle"});
+}
+
+var temp;
 function selected_model_info(sent_data) {
+	temp = sent_data;
 	const data = sent_data['model_backends'];
 	//clear out the loadmodelsettings
 	var loadmodelsettings = document.getElementById('loadmodelsettings')
@@ -1869,9 +1882,7 @@ function selected_model_info(sent_data) {
 					toggle.check_data = null;
 				}
 				new_setting.querySelector('#blank_model_settings_toggle').append(toggle);
-				setTimeout(function() {
-										  $('#'+loader + "\\|" + item['id'] + "_value").bootstrapToggle({size: "mini", onstyle: "success", toggle: "toggle"});
-										}, 200);
+				setTimeout(set_toggle, 200, loader + "\\|" + item['id'] + "_value");
 				toggle.noresubmit = true;
 				toggle.onclick();
 				toggle.noresubmit = false;
@@ -1955,6 +1966,10 @@ function selected_model_info(sent_data) {
 			model_area.append(new_setting);
 			loadmodelsettings.append(model_area);
 		}
+	}
+	
+	if ('selected_model_backend' in sent_data) {
+		document.getElementById("modelplugin").value = sent_data['selected_model_backend'];
 	}
 	
 	//unhide the first plugin settings
