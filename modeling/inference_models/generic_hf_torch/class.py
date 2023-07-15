@@ -28,18 +28,19 @@ class model_backend(HFTorchInferenceModel):
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters)
         dependency_exists = importlib.util.find_spec("bitsandbytes")
-        if dependency_exists and (model_name != 'customhuggingface' or "custom_model_name" in parameters):
-            requested_parameters.append({
-                                        "uitype": "toggle",
-                                        "unit": "bool",
-                                        "label": "Use 4-bit",
-                                        "id": "use_4_bit",
-                                        "default": False,
-                                        "tooltip": "Whether or not to use BnB's 4-bit mode",
-                                        "menu_path": "Layers",
-                                        "extra_classes": "",
-                                        "refresh_model_inputs": False
-                                    })
+        if dependency_exists:
+            if model_name != 'customhuggingface' or "custom_model_name" in parameters:
+                requested_parameters.append({
+                                            "uitype": "toggle",
+                                            "unit": "bool",
+                                            "label": "Use 4-bit",
+                                            "id": "use_4_bit",
+                                            "default": False,
+                                            "tooltip": "Whether or not to use BnB's 4-bit mode",
+                                            "menu_path": "Layers",
+                                            "extra_classes": "",
+                                            "refresh_model_inputs": False
+                                        })
         else:
             logger.warning("Bitsandbytes is not installed, you can not use Huggingface models in 4-bit")
         return requested_parameters
