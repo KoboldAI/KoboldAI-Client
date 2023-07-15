@@ -1863,6 +1863,9 @@ function selected_model_info(sent_data) {
 				toggle.onclick = onchange_event;
 				toggle.setAttribute("data_type", item['unit']);
 				toggle.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				toggle.classList.add("bootstrap_toggle");
+				$('.bootstrap_toggle').bootstrapToggle('state', item['default']);
+				toggle.classList.remove("bootstrap_toggle");
 				if ('check' in item) {
 					toggle.check_data = item['check'];
 				} else {
