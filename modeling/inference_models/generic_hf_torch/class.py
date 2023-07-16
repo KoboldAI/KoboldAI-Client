@@ -47,7 +47,7 @@ class model_backend(HFTorchInferenceModel):
  
     def set_input_parameters(self, parameters):
         super().set_input_parameters(parameters)
-        self.use_4_bit = parameters['use_4_bit']
+        self.use_4_bit = parameters['use_4_bit'] if 'use_4_bit' in parameters else False
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
