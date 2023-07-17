@@ -5606,7 +5606,7 @@ def upload_file(data):
                     with open(path, "wb") as f:
                         f.write(data['data'])
                     get_files_folders(session['current_folder'])
-            elif session['popup_jailed_dir'] in session['current_folder']:
+            elif os.path.abspath(session['popup_jailed_dir']) in os.path.abspath(session['current_folder']):
                 if os.path.exists(path):
                     emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False,  room="UI_2");
                 else:
