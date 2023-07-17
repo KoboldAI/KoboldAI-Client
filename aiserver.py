@@ -633,34 +633,49 @@ model_backend_type_crosswalk = {}
 PRIORITIZED_BACKEND_MODULES = ["generic_hf_torch"]
 
 for module in os.listdir("./modeling/inference_models"):
-    if not os.path.isfile(os.path.join("./modeling/inference_models",module)) and module != '__pycache__':
-        try:
-            backend_code = importlib.import_module('modeling.inference_models.{}.class'.format(module))
-            backend_name = backend_code.model_backend_name
-            backend_type = backend_code.model_backend_type
-            backend_object = backend_code.model_backend()
+    if module == '__pycache__':
+        continue
 
-            if "disable" in vars(backend_object) and backend_object.disable:
-                continue
+    module_path = os.path.join("modeling/inference_models", module)
+    if not os.path.isdir(module_path):
+        # Drop-in modules must be folders
+        continue
 
-            model_backends[backend_name] = backend_object
-            model_backend_code[module] = backend_code
+    if os.listdir(module_path) == ["__pycache__"]:
+        # Delete backends which have been deleted upstream. As __pycache__
+        # folders aren't tracked, they'll stick around until we zap em'
+        assert len(os.listdir(module_path)) == 1
+        logger.info(f"Deleting old backend {module}")
+        shutil.rmtree(module_path)
+        continue
 
-            if backend_name in model_backend_module_names:
-                raise RuntimeError(f"{module} cannot make backend '{backend_name}'; it already exists!")
-            model_backend_module_names[backend_name] = module
+    try:
+        backend_code = importlib.import_module('modeling.inference_models.{}.class'.format(module))
+        backend_name = backend_code.model_backend_name
+        backend_type = backend_code.model_backend_type
+        backend_object = backend_code.model_backend()
 
-            if backend_type in model_backend_type_crosswalk:
-                if module in PRIORITIZED_BACKEND_MODULES:
-                    model_backend_type_crosswalk[backend_type].insert(0, backend_name)
-                else:
-                    model_backend_type_crosswalk[backend_type].append(backend_name)
+        if "disable" in vars(backend_object) and backend_object.disable:
+            continue
+
+        model_backends[backend_name] = backend_object
+        model_backend_code[module] = backend_code
+
+        if backend_name in model_backend_module_names:
+            raise RuntimeError(f"{module} cannot make backend '{backend_name}'; it already exists!")
+        model_backend_module_names[backend_name] = module
+
+        if backend_type in model_backend_type_crosswalk:
+            if module in PRIORITIZED_BACKEND_MODULES:
+                model_backend_type_crosswalk[backend_type].insert(0, backend_name)
             else:
-                model_backend_type_crosswalk[backend_type] = [backend_name]
-                    
-        except Exception:
-            logger.error("Model Backend {} failed to load".format(module))
-            logger.error(traceback.format_exc())
+                model_backend_type_crosswalk[backend_type].append(backend_name)
+        else:
+            model_backend_type_crosswalk[backend_type] = [backend_name]
+
+    except Exception:
+        logger.error("Model Backend {} failed to load".format(module))
+        logger.error(traceback.format_exc())
 
 logger.info("We loaded the following model backends: \n{}".format("\n".join([x for x in model_backends])))
         
