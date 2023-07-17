@@ -80,7 +80,6 @@ class model_backend(HFTorchInferenceModel):
         if self.use_4_bit:
             self.lazy_load = False
             tf_kwargs.update({
-                "load_in_4bit": True,
                 "quantization_config":BitsAndBytesConfig(
                     load_in_4bit=True,
                     bnb_4bit_compute_dtype=torch.float16,
