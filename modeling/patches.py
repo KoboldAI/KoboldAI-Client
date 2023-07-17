@@ -181,7 +181,7 @@ class LazyloadPatches:
         is_quantized = is_quantized or load_in_8bit
 
         if is_quantized:
-            from .utils.bitsandbytes import set_module_8bit_tensor_to_device
+            from transformers.utils.bitsandbytes import set_module_quantized_tensor_to_device
 
         error_msgs = []
 
@@ -299,7 +299,7 @@ class LazyloadPatches:
                     fp16_statistics = None
 
                 if "SCB" not in param_name:
-                    set_module_8bit_tensor_to_device(
+                    set_module_quantized_tensor_to_device(
                         model,
                         param_name,
                         param_device,
