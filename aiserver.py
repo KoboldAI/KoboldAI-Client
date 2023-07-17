@@ -5595,10 +5595,13 @@ def upload_file(data):
     else:
         if 'current_folder' in session:
             path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
-            if koboldai_vars.debug:
-                print("Want to save to {}".format(path))
+            logger.debug("Want to save to {}".format(path))
+            if os.path.join(os.getcwd(), "modeling") in path:
+                logger.error("Someone tried to upload something to the modeling directory. As the system loads code dynamically from here we cannot allow that!")
+                emit("error_popup", "You tried to upload a file to the modeling directory. This is a secuirty concern and cannot be done.", broadcast=False, room="UI_2");
             if 'popup_jailed_dir' not in session:
-                print("Someone is trying to upload a file to your server. Blocked.")
+                logger.error("Someone is trying to upload a file to your server. Blocked.")
+                emit("error_popup", "Someone is trying to upload a file to your server. Blocked.", broadcast=False, room="UI_2");
             elif session['popup_jailed_dir'] is None:
                 if os.path.exists(path):
                     emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False, room="UI_2");
