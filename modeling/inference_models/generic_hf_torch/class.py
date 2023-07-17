@@ -82,7 +82,7 @@ class model_backend(HFTorchInferenceModel):
             "low_cpu_mem_usage": True,
         }
         
-        if self.use_4_bit:
+        if self.use_4_bit or utils.koboldai_vars.colab_arg:
             tf_kwargs.update({
                 "quantization_config":BitsAndBytesConfig(
                     load_in_4bit=True,

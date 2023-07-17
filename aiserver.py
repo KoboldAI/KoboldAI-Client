@@ -1514,6 +1514,7 @@ def general_startup(override_args=None):
         args.quiet = True;
         args.lowmem = True;
         args.noaimenu = True;
+        koboldai_vars.colab_arg = True;
 
     if args.quiet:
         koboldai_vars.quiet = True
