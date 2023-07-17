@@ -30,12 +30,16 @@ class model_backend(HFTorchInferenceModel):
         dependency_exists = importlib.util.find_spec("bitsandbytes")
         if dependency_exists:
             if model_name != 'customhuggingface' or "custom_model_name" in parameters:
+                if os.path.exists("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
+                    with open("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
+                        temp = json.load(f)
+                else temp = {}
                 requested_parameters.append({
                                             "uitype": "toggle",
                                             "unit": "bool",
                                             "label": "Use 4-bit",
                                             "id": "use_4_bit",
-                                            "default": False,
+                                            "default": temp['use_4_bit'] if 'use_4_bit' in temp else False,
                                             "tooltip": "Whether or not to use BnB's 4-bit mode",
                                             "menu_path": "Layers",
                                             "extra_classes": "",
@@ -292,6 +296,7 @@ class model_backend(HFTorchInferenceModel):
                     "disk_layers": self.disk_layers
                     if "disk_layers" in vars(self)
                     else 0,
+                    "use_4_bit": self.use_4_bit,
                 },
                 f,
                 indent="",
