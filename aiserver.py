@@ -5599,7 +5599,7 @@ def upload_file(data):
             if os.path.join(os.getcwd(), "modeling") in path:
                 logger.error("Someone tried to upload something to the modeling directory. As the system loads code dynamically from here we cannot allow that!")
                 emit("error_popup", "You tried to upload a file to the modeling directory. This is a secuirty concern and cannot be done.", broadcast=False, room="UI_2");
-            if 'popup_jailed_dir' not in session:
+            elif 'popup_jailed_dir' not in session:
                 logger.error("Someone is trying to upload a file to your server. Blocked.")
                 emit("error_popup", "Someone is trying to upload a file to your server. Blocked.", broadcast=False, room="UI_2");
             elif session['popup_jailed_dir'] is None:
