@@ -5130,9 +5130,13 @@ def load_story_v1(js, from_file=None):
 def load_story_v2(js, from_file=None):
     logger.debug("Loading V2 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
-    leave_room(session['story'])
-    session['story'] = js['story_name']
-    join_room(session['story'])
+
+    new_story = js["story_name"]
+    # In socket context
+    if hasattr(request, "sid"):
+        leave_room(session['story'])
+        join_room(new_story)
+    session['story'] = new_story
     
     koboldai_vars.load_story(session['story'], js)
     
