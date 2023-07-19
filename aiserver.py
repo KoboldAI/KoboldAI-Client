@@ -635,34 +635,49 @@ model_backend_type_crosswalk = {}
 PRIORITIZED_BACKEND_MODULES = ["generic_hf_torch"]
 
 for module in os.listdir("./modeling/inference_models"):
-    if not os.path.isfile(os.path.join("./modeling/inference_models",module)) and module != '__pycache__':
-        try:
-            backend_code = importlib.import_module('modeling.inference_models.{}.class'.format(module))
-            backend_name = backend_code.model_backend_name
-            backend_type = backend_code.model_backend_type
-            backend_object = backend_code.model_backend()
+    if module == '__pycache__':
+        continue
 
-            if "disable" in vars(backend_object) and backend_object.disable:
-                continue
+    module_path = os.path.join("modeling/inference_models", module)
+    if not os.path.isdir(module_path):
+        # Drop-in modules must be folders
+        continue
 
-            model_backends[backend_name] = backend_object
-            model_backend_code[module] = backend_code
+    if os.listdir(module_path) == ["__pycache__"]:
+        # Delete backends which have been deleted upstream. As __pycache__
+        # folders aren't tracked, they'll stick around until we zap em'
+        assert len(os.listdir(module_path)) == 1
+        logger.info(f"Deleting old backend {module}")
+        shutil.rmtree(module_path)
+        continue
 
-            if backend_name in model_backend_module_names:
-                raise RuntimeError(f"{module} cannot make backend '{backend_name}'; it already exists!")
-            model_backend_module_names[backend_name] = module
+    try:
+        backend_code = importlib.import_module('modeling.inference_models.{}.class'.format(module))
+        backend_name = backend_code.model_backend_name
+        backend_type = backend_code.model_backend_type
+        backend_object = backend_code.model_backend()
 
-            if backend_type in model_backend_type_crosswalk:
-                if module in PRIORITIZED_BACKEND_MODULES:
-                    model_backend_type_crosswalk[backend_type].insert(0, backend_name)
-                else:
-                    model_backend_type_crosswalk[backend_type].append(backend_name)
+        if "disable" in vars(backend_object) and backend_object.disable:
+            continue
+
+        model_backends[backend_name] = backend_object
+        model_backend_code[module] = backend_code
+
+        if backend_name in model_backend_module_names:
+            raise RuntimeError(f"{module} cannot make backend '{backend_name}'; it already exists!")
+        model_backend_module_names[backend_name] = module
+
+        if backend_type in model_backend_type_crosswalk:
+            if module in PRIORITIZED_BACKEND_MODULES:
+                model_backend_type_crosswalk[backend_type].insert(0, backend_name)
             else:
-                model_backend_type_crosswalk[backend_type] = [backend_name]
-                    
-        except Exception:
-            logger.error("Model Backend {} failed to load".format(module))
-            logger.error(traceback.format_exc())
+                model_backend_type_crosswalk[backend_type].append(backend_name)
+        else:
+            model_backend_type_crosswalk[backend_type] = [backend_name]
+
+    except Exception:
+        logger.error("Model Backend {} failed to load".format(module))
+        logger.error(traceback.format_exc())
 
 logger.info("We loaded the following model backends: \n{}".format("\n".join([x for x in model_backends])))
         
@@ -1500,6 +1515,7 @@ def general_startup(override_args=None):
         args.quiet = True;
         args.lowmem = True;
         args.noaimenu = True;
+        koboldai_vars.colab_arg = True;
 
     if args.quiet:
         koboldai_vars.quiet = True
@@ -1603,12 +1619,12 @@ def general_startup(override_args=None):
                 elif parameter['id'] not in arg_parameters:
                     arg_parameters[parameter['id']] = parameter['default']
         if not ok_to_load:
-            logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
+            logger.error("Your selected backend needs additional parameters to run. Please pass through the parameters as a json like \"{'[ID]': '[Value]', '[ID2]': '[Value]'}\" using --model_parameters (required parameters shown below)")
             logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters if x['uitype'] != "Valid Display"])))
             logger.error("Missing: {}".format(", ".join(mising_parameters)))
             exit()
         if args.model_parameters.lower() == "help":
-            logger.error("Please pass through the parameters as a json like {\"[ID]\": \"[Value]\"} using --model_parameters (required parameters shown below)")
+            logger.error("Please pass through the parameters as a json like \"{'[ID]': '[Value]', '[ID2]': '[Value]'}\" using --model_parameters (required parameters shown below)")
             logger.error("Parameters (ID: Default Value (Help Text)): {}".format("\n".join(["{}: {} ({})".format(x['id'],x['default'],x['tooltip']) for x in parameters if x['uitype'] != "Valid Display"])))
             exit()
         arg_parameters['id'] = args.model
@@ -5592,10 +5608,13 @@ def upload_file(data):
     else:
         if 'current_folder' in session:
             path = os.path.abspath(os.path.join(session['current_folder'], data['filename']).replace("\\", "/")).replace("\\", "/")
-            if koboldai_vars.debug:
-                print("Want to save to {}".format(path))
-            if 'popup_jailed_dir' not in session:
-                print("Someone is trying to upload a file to your server. Blocked.")
+            logger.debug("Want to save to {}".format(path))
+            if os.path.join(os.getcwd(), "modeling") in path:
+                logger.error("Someone tried to upload something to the modeling directory. As the system loads code dynamically from here we cannot allow that!")
+                emit("error_popup", "You tried to upload a file to the modeling directory. This is a secuirty concern and cannot be done.", broadcast=False, room="UI_2");
+            elif 'popup_jailed_dir' not in session:
+                logger.error("Someone is trying to upload a file to your server. Blocked.")
+                emit("error_popup", "Someone is trying to upload a file to your server. Blocked.", broadcast=False, room="UI_2");
             elif session['popup_jailed_dir'] is None:
                 if os.path.exists(path):
                     emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False, room="UI_2");
@@ -5603,7 +5622,7 @@ def upload_file(data):
                     with open(path, "wb") as f:
                         f.write(data['data'])
                     get_files_folders(session['current_folder'])
-            elif session['popup_jailed_dir'] in session['current_folder']:
+            elif os.path.abspath(session['popup_jailed_dir']) in os.path.abspath(session['current_folder']):
                 if os.path.exists(path):
                     emit("error_popup", "The file already exists. Please delete it or rename the file before uploading", broadcast=False,  room="UI_2");
                 else:
@@ -6290,9 +6309,9 @@ def UI_2_select_model(data):
 @logger.catch
 def UI_2_resubmit_model_info(data):
     valid_loaders = {}
-    for model_backend in set([item.model_backend for sublist in model_menu for item in model_menu[sublist] if item.name == data['id']]):
+    for model_backend in data['valid_backends']:
         valid_loaders[model_backend] = model_backends[model_backend].get_requested_parameters(data["name"], data["path"] if 'path' in data else None, data["menu"], parameters=data)
-    emit("selected_model_info", {"model_backends": valid_loaders})
+    emit("selected_model_info", {"model_backends": valid_loaders, 'selected_model_backend': data['plugin']})
 
 #==================================================================#
 # Event triggered when user loads a model

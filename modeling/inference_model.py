@@ -171,10 +171,10 @@ class InferenceModel:
         self.capabilties = ModelCapabilities()
         self.model_name = "Not Defined"
     
-    def is_valid(self, model_name, model_path, menu_path, vram):
+    def is_valid(self, model_name, model_path, menu_path):
         return True
         
-    def requested_parameters(self, model_name, model_path, menu_path, vram):
+    def requested_parameters(self, model_name, model_path, menu_path):
         return {}
         
     def set_input_parameters(self, parameters):

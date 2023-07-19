@@ -6,7 +6,7 @@ import torch
 import shutil
 from typing import Union
 
-from transformers import GPTNeoForCausalLM, GPT2LMHeadModel
+from transformers import GPTNeoForCausalLM, GPT2LMHeadModel, BitsAndBytesConfig
 from hf_bleeding_edge import AutoModelForCausalLM
 
 from transformers.utils import WEIGHTS_NAME, WEIGHTS_INDEX_NAME, TF2_WEIGHTS_NAME, TF2_WEIGHTS_INDEX_NAME, TF_WEIGHTS_NAME, FLAX_WEIGHTS_NAME, FLAX_WEIGHTS_INDEX_NAME, SAFE_WEIGHTS_NAME, SAFE_WEIGHTS_INDEX_NAME
@@ -45,12 +45,17 @@ class model_backend(HFTorchInferenceModel):
         dependency_exists = importlib.util.find_spec("bitsandbytes")
         if dependency_exists:
             if model_name != 'customhuggingface' or "custom_model_name" in parameters:
+                if os.path.exists("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
+                    with open("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
+                        temp = json.load(f)
+                else:
+                    temp = {}
                 requested_parameters.append({
                                             "uitype": "toggle",
                                             "unit": "bool",
                                             "label": "Use 4-bit",
                                             "id": "use_4_bit",
-                                            "default": False,
+                                            "default": temp['use_4_bit'] if 'use_4_bit' in temp else False,
                                             "tooltip": "Whether or not to use BnB's 4-bit mode",
                                             "menu_path": "Layers",
                                             "extra_classes": "",
@@ -62,7 +67,7 @@ class model_backend(HFTorchInferenceModel):
  
     def set_input_parameters(self, parameters):
         super().set_input_parameters(parameters)
-        self.use_4_bit = parameters['use_4_bit']
+        self.use_4_bit = parameters['use_4_bit'] if 'use_4_bit' in parameters else False
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
@@ -92,10 +97,15 @@ class model_backend(HFTorchInferenceModel):
             "low_cpu_mem_usage": True,
         }
         
-        if self.use_4_bit:
-            self.lazy_load = False
+        if self.use_4_bit or utils.koboldai_vars.colab_arg:
             tf_kwargs.update({
-                "load_in_4bit": True,
+                "quantization_config":BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type='nf4',
+                    llm_int8_enable_fp32_cpu_offload=True
+                ),
             })
 
         if self.model_type == "gpt2":
@@ -302,6 +312,7 @@ class model_backend(HFTorchInferenceModel):
                     "disk_layers": self.disk_layers
                     if "disk_layers" in vars(self)
                     else 0,
+                    "use_4_bit": self.use_4_bit,
                 },
                 f,
                 indent="",
