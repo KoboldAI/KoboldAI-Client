@@ -38,6 +38,17 @@ class model_backend(HFTorchInferenceModel):
                 requested_parameters.append({
                                             "uitype": "toggle",
                                             "unit": "bool",
+                                            "label": "Use 8-bit",
+                                            "id": "use_8_bit",
+                                            "default": temp['use_8_bit'] if 'use_8_bit' in temp else False,
+                                            "tooltip": "Whether or not to use BnB's 8-bit mode",
+                                            "menu_path": "Layers",
+                                            "extra_classes": "",
+                                            "refresh_model_inputs": False
+                                        })
+                requested_parameters.append({
+                                            "uitype": "toggle",
+                                            "unit": "bool",
                                             "label": "Use 4-bit",
                                             "id": "use_4_bit",
                                             "default": temp['use_4_bit'] if 'use_4_bit' in temp else False,
@@ -53,6 +64,7 @@ class model_backend(HFTorchInferenceModel):
     def set_input_parameters(self, parameters):
         super().set_input_parameters(parameters)
         self.use_4_bit = parameters['use_4_bit'] if 'use_4_bit' in parameters else False
+        self.use_8_bit = parameters['use_8_bit'] if 'use_8_bit' in parameters else False
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
@@ -82,6 +94,14 @@ class model_backend(HFTorchInferenceModel):
             "low_cpu_mem_usage": True,
         }
         
+        if self.use_8_bit:
+            tf_kwargs.update({
+                "quantization_config":BitsAndBytesConfig(
+                    load_in_8bit=True,
+                    llm_int8_enable_fp32_cpu_offload=True
+                ),
+            })
+
         if self.use_4_bit or utils.koboldai_vars.colab_arg:
             tf_kwargs.update({
                 "quantization_config":BitsAndBytesConfig(
@@ -298,6 +318,7 @@ class model_backend(HFTorchInferenceModel):
                     if "disk_layers" in vars(self)
                     else 0,
                     "use_4_bit": self.use_4_bit,
+                    "use_8_bit": self.use_8_bit,
                 },
                 f,
                 indent="",
