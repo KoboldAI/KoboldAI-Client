@@ -8852,7 +8852,7 @@ def get_story_nums():
     chunks = []
     if koboldai_vars.gamestarted:
         chunks.append(0)
-    for num in koboldai_vars.actions.keys():
+    for num in koboldai_vars.actions.actions.keys():
         chunks.append(num + 1)
     return {"results": chunks}
 
