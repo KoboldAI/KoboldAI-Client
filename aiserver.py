@@ -3265,9 +3265,9 @@ def check_for_backend_compilation():
 
 def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False, ignore_aibusy=False):
     # Ignore new submissions if the AI is currently busy
-    if(koboldai_vars.aibusy):
+    if koboldai_vars.aibusy and not ignore_aibusy:
         return
-    
+
     while(True):
         set_aibusy(1)
         koboldai_vars.actions.clear_unused_options()
