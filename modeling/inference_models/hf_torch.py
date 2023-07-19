@@ -89,7 +89,10 @@ class HFTorchInferenceModel(HFInferenceModel):
         self.hf_torch = True
         self.lazy_load = True
         self.low_mem = False
+
+        # TODO: Mayyyybe only keep one of these variables
         self.nobreakmodel = False
+        self.breakmodel = False
 
         self.post_token_hooks = [
             PostTokenHooks.stream_tokens,

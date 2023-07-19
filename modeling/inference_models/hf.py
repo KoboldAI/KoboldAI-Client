@@ -15,8 +15,12 @@ class HFInferenceModel(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
         self.model_config = None
-        #self.model_name = model_name
 
+        # TODO: model_name should probably be an instantiation parameter all the
+        # way down the inheritance chain.
+        self.model_name = None
+
+        self.path = None
         self.hf_torch = False
         self.model = None
         self.tokenizer = None
@@ -213,6 +217,11 @@ class HFInferenceModel(InferenceModel):
                 torch.cuda.empty_cache()
         except:
             pass
+    
+    def _pre_load(self) -> None:
+        # HACK: Make model instantiation work without UI parameters
+        self.model_name = self.model_name or utils.koboldai_vars.model
+        return super()._pre_load()
 
     def _post_load(self) -> None:
         self.badwordsids = koboldai_settings.badwordsids_default

@@ -21,7 +21,10 @@ model_backend_name = "Huggingface"
 model_backend_type = "Huggingface" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class model_backend(HFTorchInferenceModel):
-        
+    def __init__(self) -> None:
+        super().__init__()
+        self.use_4_bit = False
+
     def _initialize_model(self):
         return
 

@@ -1747,9 +1747,6 @@ def load_model(model_backend, initial_load=False):
     koboldai_vars.aibusy = True
     koboldai_vars.horde_share = False
 
-    if initial_load:
-        use_breakmodel_args = True
-
     koboldai_vars.reset_model()
 
     koboldai_vars.noai = False
@@ -8235,6 +8232,7 @@ class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
 
 class ModelSelectionSchema(KoboldSchema):
     model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+    backend: Optional[str] = fields.String(required=False, validate=validate.OneOf(model_backends.keys()))
 
 def _generate_text(body: GenerationInputSchema):
     if koboldai_vars.aibusy or koboldai_vars.genseqs:
@@ -8492,6 +8490,7 @@ def put_model(body: ModelSelectionSchema):
       summary: Load a model
       description: |-2
         Loads a model given its Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model.
+        Optionally, a backend parameter can be passed in to dictate which backend loads the model.
       tags:
         - model
       requestBody:
@@ -8501,6 +8500,7 @@ def put_model(body: ModelSelectionSchema):
             schema: ModelSelectionSchema
             example:
               model: ReadOnly
+              backend: Read Only
       responses:
         200:
           description: Successful request
@@ -8518,8 +8518,18 @@ def put_model(body: ModelSelectionSchema):
     set_aibusy(1)
     old_model = koboldai_vars.model
     koboldai_vars.model = body.model.strip()
+
+    backend = getattr(body, "backend", None)
+    if not backend:
+        # Backend is optional for backwards compatibility; it should probably be
+        # required on the next major API version.
+        if body.model == "ReadOnly":
+            backend = "Read Only"
+        else:
+            backend = "Huggingface"
+
     try:
-        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
+        load_model(backend)
     except Exception as e:
         koboldai_vars.model = old_model
         raise e
