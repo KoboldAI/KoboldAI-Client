@@ -8817,8 +8817,14 @@ def get_story():
     chunks = []
     if koboldai_vars.gamestarted:
         chunks.append({"num": 0, "text": koboldai_vars.prompt})
-    for num, action in koboldai_vars.actions.items():
-        chunks.append({"num": num + 1, "text": action})
+
+    last_action_num = list(koboldai_vars.actions.actions.keys())[-1]
+    for num, action in koboldai_vars.actions.actions.items():
+        text = action["Selected Text"]
+        # The last action seems to always be empty
+        if not text and num == last_action_num:
+            continue
+        chunks.append({"num": num + 1, "text": text})
     return {"results": chunks}
 
 
