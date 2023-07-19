@@ -32,6 +32,7 @@ from exllama.model import ExLlama, ExLlamaCache, ExLlamaConfig
 from transformers import LlamaTokenizer
 from exllama.generator import ExLlamaGenerator
 
+model_backend_type = "GPTQ"
 model_backend_name = "ExLlama"
 
 # When set to true, messages will appear in the console if samplers are not

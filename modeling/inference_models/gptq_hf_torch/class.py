@@ -18,13 +18,6 @@ import modeling.lazy_loader as lazy_loader
 import koboldai_settings
 from logger import logger, set_logger_verbosity
 
-try:
-    import breakmodel
-except ModuleNotFoundError as e:
-    # Breakmodel is only expected to work on GPU
-    if not utils.koboldai_vars.use_colab_tpu:
-        raise e
-
 from modeling.inference_models.hf_torch import HFTorchInferenceModel
 from modeling.tokenizer import GenericTokenizer
 
@@ -47,6 +40,7 @@ except ImportError:
     autogptq_support = False
 
 
+model_backend_type = "GPTQ"
 model_backend_name = "Huggingface GPTQ"
 
 
@@ -112,7 +106,7 @@ def get_gptq_version(fpath):
 class model_backend(HFTorchInferenceModel):
     def is_valid(self, model_name, model_path, menu_path):
         gptq_model, _, _, _, _ = load_model_gptq_settings(model_path)
-        return gptq_model
+        return bool(gptq_model)
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         # Make model path the same as the model name to make this consistent
@@ -126,7 +120,7 @@ class model_backend(HFTorchInferenceModel):
 
         self.lazy_load = False
 
-        gpulayers = breakmodel.gpu_blocks
+        gpulayers = self.breakmodel_config.gpu_blocks
 
         try:
             self.gpu_layers_list = [int(l) for l in gpulayers.split(",")]
@@ -149,42 +143,28 @@ class model_backend(HFTorchInferenceModel):
             self.breakmodel_device_config(self.model_config)
 
         if self.lazy_load:
+            # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
+            tf_kwargs.pop("low_cpu_mem_usage", None)
+
             # If we're using lazy loader, we need to figure out what the model's hidden layers are called
-            with lazy_loader.use_lazy_load(
-                dematerialized_modules=True, use_accelerate_init_empty_weights=True
-            ):
+            with lazy_loader.use_lazy_load(dematerialized_modules=True):
                 try:
                     metamodel = AutoModelForCausalLM.from_config(self.model_config)
                     utils.layers_module_names = utils.get_layers_module_names(metamodel)
                     utils.module_names = list(metamodel.state_dict().keys())
                     utils.named_buffers = list(metamodel.named_buffers(recurse=True))
                 except Exception as e:
+                    if utils.args.panic:
+                        raise e
                     logger.warning(f"Gave up on lazy loading due to {e}")
                     self.lazy_load = False
 
-        # Download model from Huggingface if it does not exist, otherwise load locally
-        with self._maybe_use_float16(), lazy_loader.use_lazy_load(
-            enable=self.lazy_load,
-            callback=self._get_lazy_load_callback(utils.num_layers(self.model_config))
-            if self.lazy_load
-            else None,
-            dematerialized_modules=True,
-        ):
-            if self.lazy_load:
-                # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
-                tf_kwargs.pop("low_cpu_mem_usage", None)
-
-            if self.get_local_model_path():
-                # Model is stored locally, load it.
-                self.model = self._get_model(self.get_local_model_path(), tf_kwargs)
-                self.tokenizer = self._get_tokenizer(self.get_local_model_path())
-            else:
-                raise NotImplementedError("GPTQ Model downloading not implemented")
-
-        if not self.lazy_load:
-            utils.layers_module_names = utils.get_layers_module_names(self.model)
-            utils.module_names = list(self.model.state_dict().keys())
-            utils.named_buffers = list(self.model.named_buffers(recurse=True))
+        if self.get_local_model_path():
+            # Model is stored locally, load it.
+            self.model = self._get_model(self.get_local_model_path(), tf_kwargs)
+            self.tokenizer = self._get_tokenizer(self.get_local_model_path())
+        else:
+            raise NotImplementedError("GPTQ Model downloading not implemented")
 
         if (
             utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
