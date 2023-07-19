@@ -892,7 +892,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.2",
+    version="1.2.3",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
