@@ -50,8 +50,6 @@ import multiprocessing
 import numpy as np
 from collections import OrderedDict
 from typing import Any, Callable, TypeVar, Tuple, Union, Dict, Set, List, Optional, Type
-import glob
-from pathlib import Path
 
 import requests
 import html
@@ -1087,6 +1085,8 @@ def getmodelname():
 def get_hidden_size_from_model(model):
     return model.get_input_embeddings().embedding_dim
 
+
+
 #==================================================================#
 #  Allow the models to override some settings
 #==================================================================#
@@ -1161,7 +1161,6 @@ def loadmodelsettings():
         koboldai_vars.setauthornotetemplate = js["antemplate"]
         if(not koboldai_vars.gamestarted):
             koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
-
 
 #==================================================================#
 #  Take settings from koboldai_vars and write them to client settings file
@@ -1594,7 +1593,8 @@ def general_startup(override_args=None):
     
     if koboldai_vars.use_colab_tpu and args.model_backend == "Huggingface":
          args.model_backend = "Huggingface MTJ"
-
+         
+    
     if args.model:
         # At this point we have to try to load the model through the selected backend
         if args.model_backend not in model_backends:
@@ -1761,7 +1761,8 @@ def load_model(model_backend, initial_load=False):
 
     if 'model' in globals():
         model.unload()
-
+    
+    
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         # loadmodelsettings()
@@ -1783,6 +1784,8 @@ def load_model(model_backend, initial_load=False):
     else:
         koboldai_vars.default_preset = koboldai_settings.default_preset
 
+                    
+    
     with use_custom_unpickler(RestrictedUnpickler):
         model = model_backends[model_backend]
         model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
@@ -1791,7 +1794,7 @@ def load_model(model_backend, initial_load=False):
         koboldai_vars.model = os.path.basename(os.path.normpath(model.path))
         logger.info(koboldai_vars.model)
     logger.debug("Model Type: {}".format(koboldai_vars.model_type))
-
+    
     # TODO: Convert everywhere to use model.tokenizer
     if model:
         tokenizer = model.tokenizer
