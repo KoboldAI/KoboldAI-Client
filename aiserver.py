@@ -4424,7 +4424,7 @@ def requestwi():
 #  and items in different folders are sorted based on the order of the folders
 #==================================================================#
 def stablesortwi():
-    mapping = {uid: index for index, uid in enumerate(koboldai_vars.wifolders_l)}
+    mapping = {str(uid): index for index, uid in enumerate(koboldai_vars.wifolders_l)}
     koboldai_vars.worldinfo.sort(key=lambda x: mapping[str(x["folder"])] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
@@ -9213,7 +9213,7 @@ def get_world_info():
             if wi["folder"] != last_folder:
                 folder = []
                 if wi["folder"] is not None:
-                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[wi["folder"]]["name"], "entries": folder})
+                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[str(wi["folder"])]["name"], "entries": folder})
                 last_folder = wi["folder"]
             (folder if wi["folder"] is not None else entries).append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
     return {"folders": folders, "entries": entries}
