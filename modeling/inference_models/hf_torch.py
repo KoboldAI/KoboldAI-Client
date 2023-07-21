@@ -90,7 +90,8 @@ class HFTorchInferenceModel(HFInferenceModel):
         self.lazy_load = True
         self.low_mem = False
 
-        # TODO: Mayyyybe only keep one of these variables
+        # `nobreakmodel` indicates that breakmodel cannot be used, while `breakmodel`
+        # indicates whether breakmodel is currently being used
         self.nobreakmodel = False
         self.breakmodel = False
 
