@@ -5818,8 +5818,21 @@ function position_context_menu(contextMenu, x, y) {
 		right: x + width,
 	};
 
+	// Slide over if running against the window bounds.
 	if (farMenuBounds.right > bounds.right) x -= farMenuBounds.right - bounds.right;
-	if (farMenuBounds.bottom > bounds.bottom) y -= farMenuBounds.bottom - bounds.bottom;
+
+	if (farMenuBounds.bottom > bounds.bottom) {
+		// We've hit the bottom.
+
+		// The old algorithm pushed the menu against the wall, similar to what's
+		// done on the x-axis:
+		// y -= farMenuBounds.bottom - bounds.bottom;
+		// But now, we make the box change its emission direction from the cursor:
+		y -= (height + 5);
+		// The main advantage of this approach is that the cursor is never directly
+		// placed above a context menu item immediately after activating the context
+		// menu. (Thus the 5px offset also added)
+	}
 
 	contextMenu.style.left = `${x}px`;
 	contextMenu.style.top = `${y}px`;
