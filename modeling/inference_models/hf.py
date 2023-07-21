@@ -326,7 +326,10 @@ class HFInferenceModel(InferenceModel):
                 if any(c in str(k) for c in "[]")
             ]
 
-            self.badwordsids.remove([self.tokenizer.pad_token_id])
+            try:
+                self.badwordsids.remove([self.tokenizer.pad_token_id])
+            except:
+                pass
             
             if utils.koboldai_vars.newlinemode == "n":
                 self.badwordsids.append([self.tokenizer.eos_token_id])
