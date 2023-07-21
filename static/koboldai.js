@@ -2408,12 +2408,12 @@ function world_info_entry(data) {
 	comment.setAttribute("uid", data.uid);
 	comment.value = data.comment;
 	comment.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['comment'] = this.textContent;
-							send_world_info(this.getAttribute('uid'));
+							world_info_data[data.uid].comment = this.value;
+							send_world_info(data.uid);
 							this.classList.add("pulse");
 						}
 	comment.classList.remove("pulse");
-						
+
 	//Let's figure out the order to insert this card
 	var found = false;
 	var moved = false;
