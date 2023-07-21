@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import time
 from typing import List, Optional, Union
+
+from enum import Enum
 from logger import logger
 
 import torch
@@ -12,6 +14,7 @@ from transformers import (
     GPT2Tokenizer,
     AutoTokenizer,
 )
+from modeling.stoppers import Stoppers
 from modeling.tokenizer import GenericTokenizer
 from modeling import logits_processors
 
@@ -154,6 +157,12 @@ class ModelCapabilities:
     # Some models need to warm up the TPU before use
     uses_tpu: bool = False
 
+class GenerationMode(Enum):
+    STANDARD = 0
+    FOREVER = 1
+    UNTIL_EOS = 2
+    UNTIL_NEWLINE = 3
+    UNTIL_SENTENCE_END = 4
 
 class InferenceModel:
     """Root class for all models."""
@@ -256,6 +265,7 @@ class InferenceModel:
         self,
         text: list,
         found_entries: set,
+        gen_mode: GenerationMode = GenerationMode.STANDARD,
     ):
         """Generate story text. Heavily tied to story-specific parameters; if
         you are making a new generation-based feature, consider `generate_raw()`.
@@ -263,6 +273,7 @@ class InferenceModel:
         Args:
             text (list): Encoded input tokens
             found_entries (set): Entries found for Dynamic WI
+            gen_mode (GenerationMode): The GenerationMode to pass to raw_generate. Defaults to GenerationMode.STANDARD
 
         Raises:
             RuntimeError: if inconsistancies are detected with the internal state and Lua state -- sanity check
@@ -358,6 +369,7 @@ class InferenceModel:
                         seed=utils.koboldai_vars.seed
                         if utils.koboldai_vars.full_determinism
                         else None,
+                        gen_mode=gen_mode
                     )
                     logger.debug(
                         "core_generate: run raw_generate pass {} {}s".format(
@@ -532,6 +544,7 @@ class InferenceModel:
         found_entries: set = (),
         tpu_dynamic_inference: bool = False,
         seed: Optional[int] = None,
+        gen_mode: GenerationMode = GenerationMode.STANDARD,
         **kwargs,
     ) -> GenerationResult:
         """A wrapper around `_raw_generate()` that handles gen_state and other stuff. Use this to generate text outside of the story.
@@ -547,6 +560,7 @@ class InferenceModel:
             is_core (bool, optional): Whether this generation is a core story generation. Defaults to False.
             single_line (bool, optional): Generate one line only.. Defaults to False.
             found_entries (set, optional): Entries found for Dynamic WI. Defaults to ().
+            gen_mode (GenerationMode): Special generation mode. Defaults to GenerationMode.STANDARD.
 
         Raises:
             ValueError: If prompt type is weird
@@ -567,6 +581,21 @@ class InferenceModel:
         self.gen_state["wi_scanner_excluded_keys"] = self.gen_state.get(
             "wi_scanner_excluded_keys", set()
         )
+
+        temp_stoppers = []
+
+        if gen_mode == GenerationMode.FOREVER:
+            raise NotImplementedError()
+        elif gen_mode == GenerationMode.UNTIL_EOS:
+            # Still need to unban
+            raise NotImplementedError()
+        elif gen_mode == GenerationMode.UNTIL_NEWLINE:
+            # TODO: Look into replacing `single_line` with `generation_mode`
+            temp_stoppers.append(Stoppers.newline_stopper)
+        elif gen_mode == GenerationMode.UNTIL_SENTENCE_END:
+            temp_stoppers.append(Stoppers.sentence_end_stopper)
+
+        self.stopper_hooks += temp_stoppers
 
         utils.koboldai_vars.inference_config.do_core = is_core
         gen_settings = GenerationSettings(*(generation_settings or {}))
@@ -603,6 +632,9 @@ class InferenceModel:
             logger.info(
                 f"Generated {len(result.encoded[0])} tokens in {time_end} seconds, for an average rate of {tokens_per_second} tokens per second."
             )
+
+        for stopper in temp_stoppers:
+            self.stopper_hooks.remove(stopper)
 
         return result
 

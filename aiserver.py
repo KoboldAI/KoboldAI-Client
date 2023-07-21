@@ -12,6 +12,8 @@ import random
 import shutil
 import eventlet
 
+from modeling.inference_model import GenerationMode
+
 eventlet.monkey_patch(all=True, thread=False, os=False)
 import os, inspect, contextlib, pickle
 os.system("")
@@ -3266,7 +3268,16 @@ def check_for_backend_compilation():
             break
     koboldai_vars.checking = False
 
-def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False, ignore_aibusy=False):
+def actionsubmit(
+    data,
+    actionmode=0,
+    force_submit=False,
+    force_prompt_gen=False,
+    disable_recentrng=False,
+    no_generate=False,
+    ignore_aibusy=False,
+    gen_mode=GenerationMode.STANDARD
+):
     # Ignore new submissions if the AI is currently busy
     if(koboldai_vars.aibusy):
         return
@@ -3424,7 +3435,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
 
             if(not no_generate and not koboldai_vars.noai and koboldai_vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
-                calcsubmit("")
+                calcsubmit("", gen_mode=gen_mode)
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
@@ -3779,7 +3790,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
 #==================================================================#
-def calcsubmit(txt):
+def calcsubmit(txt, gen_mode=GenerationMode.STANDARD):
     anotetxt     = ""    # Placeholder for Author's Note text
     forceanote   = False # In case we don't have enough actions to hit A.N. depth
     anoteadded   = False # In case our budget runs out before we hit A.N. depth
@@ -3821,7 +3832,7 @@ def calcsubmit(txt):
         logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
         
         start_time = time.time()
-        generate(subtxt, min, max, found_entries)
+        generate(subtxt, min, max, found_entries, gen_mode=gen_mode)
         logger.debug("Submit: generate time {}s".format(time.time()-start_time))
         attention_bias.attention_bias = None
 
@@ -3889,7 +3900,7 @@ class HordeException(Exception):
 # Send text to generator and deal with output
 #==================================================================#
 
-def generate(txt, minimum, maximum, found_entries=None):    
+def generate(txt, minimum, maximum, found_entries=None, gen_mode=GenerationMode.STANDARD):
     koboldai_vars.generated_tkns = 0
 
     if(found_entries is None):
@@ -3911,7 +3922,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Submit input text to generator
     try:
         start_time = time.time()
-        genout, already_generated = tpool.execute(model.core_generate, txt, found_entries)
+        genout, already_generated = tpool.execute(model.core_generate, txt, found_entries, gen_mode=gen_mode)
         logger.debug("Generate: core_generate time {}s".format(time.time()-start_time))
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
@@ -6168,22 +6179,43 @@ def UI_2_delete_option(data):
 @socketio.on('submit')
 @logger.catch
 def UI_2_submit(data):
-    if not koboldai_vars.noai and data['theme'] != "":
+    if not koboldai_vars.noai and data['theme']:
+        # Random prompt generation
         logger.debug("doing random prompt")
         memory = koboldai_vars.memory
         koboldai_vars.memory = "{}\n\nYou generate the following {} story concept :".format(koboldai_vars.memory, data['theme'])
         koboldai_vars.lua_koboldbridge.feedback = None
         actionsubmit("", force_submit=True, force_prompt_gen=True)
         koboldai_vars.memory = memory
-    else:
-        logger.debug("doing normal input")
-        koboldai_vars.actions.clear_unused_options()
-        koboldai_vars.lua_koboldbridge.feedback = None
-        koboldai_vars.recentrng = koboldai_vars.recentrngm = None
-        if koboldai_vars.actions.action_count == -1:
-            actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
-        else:
-            actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
+        return
+
+    logger.debug("doing normal input")
+    koboldai_vars.actions.clear_unused_options()
+    koboldai_vars.lua_koboldbridge.feedback = None
+    koboldai_vars.recentrng = koboldai_vars.recentrngm = None
+
+    gen_mode_name = data.get("gen_mode", None)
+    gen_mode = {
+        # If we don't have a gen mode, or it's None (the default), just do a
+        # normal submission.
+        None: GenerationMode.STANDARD,
+
+        # NOTE: forever should be a no-op on models that don't support
+        # interrupting generation. This should be conveyed to the user by
+        # graying out the option in the context menu.
+        "forever": GenerationMode.FOREVER,
+
+        # The following gen modes require stopping criteria to be respected by
+        # the backend:
+        "until_eos": GenerationMode.UNTIL_EOS,
+        "until_newline": GenerationMode.UNTIL_NEWLINE,
+        "until_sentence_end": GenerationMode.UNTIL_SENTENCE_END,
+    }.get(gen_mode_name, None)
+
+    if not gen_mode:
+        raise RuntimeError(f"Unknown gen_mode '{gen_mode_name}'")
+
+    actionsubmit(data['data'], actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)
  
  #==================================================================#
 # Event triggered when user clicks the submit button

@@ -149,13 +149,13 @@ const context_menu_actions = {
 		{label: "Use Generated Image", icon: "image", enabledOn: "GENERATED-IMAGE", click: wiImageUseGeneratedImage},
 	],
 	"submit-button": [
-		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: function(){}},
+		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: () => storySubmit()},
 		null,
-		{label: "Generate Forever", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
-		{label: "Generate Until EOS", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
+		{label: "Generate Forever", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("forever")},
+		{label: "Generate Until EOS", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_eos")},
 		null,
-		{label: "Finish Line", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
-		{label: "Finish Sentence", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
+		{label: "Finish Line", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_newline")},
+		{label: "Finish Sentence", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_sentence_end")},
 	],
 	"undo-button": [
 		{label: "Undo", icon: "undo", enabledOn: "ALWAYS", click: function(){}},
@@ -256,10 +256,17 @@ function disconnect() {
 	document.getElementById("disconnect_message").classList.remove("hidden");
 }
 
-function storySubmit() {
+function storySubmit(genMode=null) {
+	const textInput = document.getElementById("input_text");
+	const themeInput = document.getElementById("themetext");
 	disruptStoryState();
-	socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});
-	document.getElementById('input_text').value = '';
+	socket.emit('submit', {
+		data: textInput.value,
+		theme: themeInput.value,
+		gen_mode: genMode,
+	});
+
+	textInput.value = '';
 	document.getElementById('themetext').value = '';
 }
 
