@@ -157,14 +157,6 @@ const context_menu_actions = {
 		{label: "Finish Line", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_newline")},
 		{label: "Finish Sentence", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_sentence_end")},
 	],
-	"undo-button": [
-		{label: "Undo", icon: "undo", enabledOn: "ALWAYS", click: function(){}},
-		null,
-		{label: "Prune Actions", icon: "cut", enabledOn: "ALWAYS", click: function(){}},
-		{label: "Shred", icon: "local_fire_department", enabledOn: "ALWAYS", click: function(){}},
-		null,
-		{label: "Trim Last Sentence", icon: "carpenter", enabledOn: "ALWAYS", click: function(){}},
-	]
 };
 
 let context_menu_cache = [];
