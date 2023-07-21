@@ -2709,7 +2709,7 @@ body {
 }
 
 .context-menu-item {
-	padding: 5px;
+	padding: 4px;
 	padding-right: 25px;
 	min-width: 100px;
 	white-space: nowrap;
