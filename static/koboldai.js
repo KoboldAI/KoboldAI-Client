@@ -597,13 +597,11 @@ function do_story_text_updates(action) {
 				story_area.append(item);
 			}
 		}
-		
-		
-		if (action.action['Selected Text'].charAt(0) == ">") {
-			item.classList.add("action_mode_input");
-		} else {
-			item.classList.remove("action_mode_input");
-		}
+
+		item.classList.toggle(
+			"action_mode_input",
+			action.action['Selected Text'].replaceAll("\n", "")[0] === ">"
+		);
 
 		if ('wi_highlighted_text' in action.action) {
 			for (chunk of action.action['wi_highlighted_text']) {
