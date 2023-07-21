@@ -6071,7 +6071,7 @@ process_cookies();
 			context_menu_cache.push({shouldShow: action.shouldShow});
 
 			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
-			item.append(action.label);
+			$e("span", item, {classes: ["context-menu-label"], innerText: action.label});
 
 			item.addEventListener("mousedown", e => e.preventDefault());
 			// Expose the "summonEvent" to enable access to original context menu target.
