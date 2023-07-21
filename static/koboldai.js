@@ -151,8 +151,19 @@ const context_menu_actions = {
 	"submit-button": [
 		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: function(){}},
 		null,
+		{label: "Generate Forever", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
+		{label: "Generate Until EOS", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
+		null,
 		{label: "Finish Line", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
 		{label: "Finish Sentence", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
+	],
+	"undo-button": [
+		{label: "Undo", icon: "undo", enabledOn: "ALWAYS", click: function(){}},
+		null,
+		{label: "Prune Actions", icon: "cut", enabledOn: "ALWAYS", click: function(){}},
+		{label: "Shred", icon: "local_fire_department", enabledOn: "ALWAYS", click: function(){}},
+		null,
+		{label: "Trim Last Sentence", icon: "carpenter", enabledOn: "ALWAYS", click: function(){}},
 	]
 };
 

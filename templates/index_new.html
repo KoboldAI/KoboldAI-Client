@@ -112,7 +112,7 @@
 			</span>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" onclick="storySubmit();" context-menu="submit-button">Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsent"><img id="thinking" src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
-			<button type="button" class="btn action_button back var_sync_alt_system_aibusy" system_aibusy=False onclick="storyBack();" aria-label="undo"><span class="material-icons-outlined" style="font-size: 1.4em;">replay</span></button>
+			<button type="button" class="btn action_button back var_sync_alt_system_aibusy" system_aibusy=False onclick="storyBack();" aria-label="undo" context-menu="undo-button"><span class="material-icons-outlined" style="font-size: 1.4em;">replay</span></button>
 			<button type="button" class="btn action_button redo var_sync_alt_system_aibusy" system_aibusy=False onclick="storyRedo();" aria-label="redo"><span class="material-icons-outlined" style="font-size: 1.4em;">arrow_forward</span></button>
 			<button type="button" class="btn action_button retry var_sync_alt_system_aibusy" system_aibusy=False onclick="storyRetry();" aria-label="retry"><span class="material-icons-outlined" style="font-size: 1.4em;">autorenew</span></button>
 		</div>
