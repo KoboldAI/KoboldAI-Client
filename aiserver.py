@@ -10908,7 +10908,7 @@ def run():
                     logger.message(f"KoboldAI is still loading your model but available at the following link for UI 1: {cloudflare}")
                     logger.message(f"KoboldAI is still loading your model but available at the following link for UI 2: {cloudflare}/new_ui")
                     logger.message(f"KoboldAI is still loading your model but available at the following link for KoboldAI Lite: {cloudflare}/lite")
-                    logger.message(f"KoboldAI is still loading your model but available at the following link for the API: [Pending Model]")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for the API: [Loading Model...]")
                     logger.message(f"While the model loads you can use the above links to begin setting up your session, for generations you must wait until after its done loading.")
         else:
             logger.init_ok("Webserver", status="OK")
