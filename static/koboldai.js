@@ -6153,6 +6153,10 @@ process_cookies();
 
 		// Show only applicable actions in the context menu
 		let contextMenuType = target.getAttribute("context-menu");
+
+		// If context menu is not present, return
+		if (!context_menu_actions[contextMenuType]) return;
+
 		for (const contextMenuItem of contextMenu.childNodes) {
 			let shouldShow = contextMenuItem.classList.contains(`context-menu-${contextMenuType}`);
 
