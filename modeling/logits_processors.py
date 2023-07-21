@@ -267,6 +267,14 @@ class PhraseBiasLogitsProcessor:
 
         for batch in range(scores_shape[0]):
             for token, bias in self._get_biased_tokens(input_ids[batch]).items():
-                scores[batch][token] += bias
+                if bias > 0 and bool(scores[batch][token].isneginf()):
+                    # Adding bias to -inf will do NOTHING!!! So just set it for
+                    # now. There may be more mathishly correct way to do this
+                    # but it'll work. Also, make sure the bias is actually
+                    # positive. Don't give a -inf token more chance by setting
+                    # it to -0.5!
+                    scores[batch][token] = bias
+                else:
+                    scores[batch][token] += bias
 
         return scores
