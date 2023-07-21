@@ -1790,7 +1790,9 @@ def load_model(model_backend, initial_load=False):
     
     with use_custom_unpickler(RestrictedUnpickler):
         model = model_backends[model_backend]
+        koboldai_vars.supported_gen_modes = [x.value for x in model.get_supported_gen_modes()]
         model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
+
     koboldai_vars.model = model.model_name if "model_name" in vars(model) else model.id #Should have model_name, but it could be set to id depending on how it's setup
     if koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
         koboldai_vars.model = os.path.basename(os.path.normpath(model.path))
@@ -6194,26 +6196,13 @@ def UI_2_submit(data):
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
 
-    gen_mode_name = data.get("gen_mode", None)
-    gen_mode = {
-        # If we don't have a gen mode, or it's None (the default), just do a
-        # normal submission.
-        None: GenerationMode.STANDARD,
-
-        # NOTE: forever should be a no-op on models that don't support
-        # interrupting generation. This should be conveyed to the user by
-        # graying out the option in the context menu.
-        "forever": GenerationMode.FOREVER,
-
-        # The following gen modes require stopping criteria to be respected by
-        # the backend:
-        "until_eos": GenerationMode.UNTIL_EOS,
-        "until_newline": GenerationMode.UNTIL_NEWLINE,
-        "until_sentence_end": GenerationMode.UNTIL_SENTENCE_END,
-    }.get(gen_mode_name, None)
-
-    if not gen_mode:
-        raise RuntimeError(f"Unknown gen_mode '{gen_mode_name}'")
+    gen_mode_name = data.get("gen_mode", None) or "standard"
+    try:
+        gen_mode = GenerationMode(gen_mode_name)
+    except ValueError:
+        # Invalid enum lookup!
+        gen_mode = GenerationMode.STANDARD
+        logger.warning(f"Unknown gen_mode '{gen_mode_name}', using STANDARD! Report this!")
 
     actionsubmit(data['data'], actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)
  

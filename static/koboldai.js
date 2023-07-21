@@ -83,6 +83,7 @@ let story_id = -1;
 var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
 var selected_model_data;
+var supported_gen_modes = [];
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -151,11 +152,31 @@ const context_menu_actions = {
 	"submit-button": [
 		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: () => storySubmit()},
 		null,
-		{label: "Generate Forever", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("forever")},
-		{label: "Generate Until EOS", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_eos")},
+		{
+			label: "Generate Forever",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("forever"),
+			click: () => storySubmit("forever")
+		},
+		{
+			label: "Generate Until EOS",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_eos"),
+			click: () => storySubmit("until_eos")
+		},
 		null,
-		{label: "Finish Line", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_newline")},
-		{label: "Finish Sentence", icon: "edit_off", enabledOn: "ALWAYS", click: () => storySubmit("until_sentence_end")},
+		{
+			label: "Finish Line",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_newline"),
+			click: () => storySubmit("until_newline")
+		},
+		{
+			label: "Finish Sentence",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_sentence_end"),
+			click: () => storySubmit("until_sentence_end")
+		},
 	],
 };
 
@@ -941,6 +962,9 @@ function var_changed(data) {
 	//special case for welcome text since we want to allow HTML
 	} else if (data.classname == 'model' && data.name == 'welcome') {
 		document.getElementById('welcome_text').innerHTML = data.value;
+	//Special case for permitted generation modes
+	} else if (data.classname == 'model' && data.name == 'supported_gen_modes') {
+		supported_gen_modes = data.value;
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -6090,21 +6114,23 @@ process_cookies();
 				continue;
 			}
 
+			const enableCriteriaIsFunction = typeof action.enabledOn === "function"
 
-			let item = $e("div", contextMenu, {
+			const itemEl = $e("div", contextMenu, {
 				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
-				"enabled-on": action.enabledOn,
+				"enabled-on": enableCriteriaIsFunction ? "CALLBACK" : action.enabledOn,
 				"cache-index": context_menu_cache.length
 			});
+			itemEl.enabledOnCallback = action.enabledOn;
 
 			context_menu_cache.push({shouldShow: action.shouldShow});
 
-			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
-			$e("span", item, {classes: ["context-menu-label"], innerText: action.label});
+			const icon = $e("span", itemEl, {classes: ["material-icons-outlined"], innerText: action.icon});
+			$e("span", itemEl, {classes: ["context-menu-label"], innerText: action.label});
 
-			item.addEventListener("mousedown", e => e.preventDefault());
+			itemEl.addEventListener("mousedown", e => e.preventDefault());
 			// Expose the "summonEvent" to enable access to original context menu target.
-			item.addEventListener("click", () => action.click(summonEvent));
+			itemEl.addEventListener("click", () => action.click(summonEvent));
 		}
 	}
 
@@ -6154,10 +6180,10 @@ process_cookies();
 
 		// Disable non-applicable items
 		$(".context-menu-item").addClass("disabled");
-		
+
 		// A selection is made
 		if (getSelectionText()) $(".context-menu-item[enabled-on=SELECTION]").removeClass("disabled");
-		
+
 		// The caret is placed
 		if (get_caret_position(target) !== null) $(".context-menu-item[enabled-on=CARET]").removeClass("disabled");
 
@@ -6165,6 +6191,11 @@ process_cookies();
 		if ($el(".action_image")) $(".context-menu-item[enabled-on=GENERATED-IMAGE]").removeClass("disabled");
 
 		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
+
+		for (const contextMenuItem of document.querySelectorAll(".context-menu-item[enabled-on=CALLBACK]")) {
+			if (!contextMenuItem.enabledOnCallback()) continue;
+			contextMenuItem.classList.remove("disabled");
+		}
 
 		// Make sure hr isn't first or last visible element
 		let visibles = [];

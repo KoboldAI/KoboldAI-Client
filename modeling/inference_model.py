@@ -147,7 +147,10 @@ class GenerationSettings:
 class ModelCapabilities:
     embedding_manipulation: bool = False
     post_token_hooks: bool = False
+
+    # Used to gauge if manual stopping is possible
     stopper_hooks: bool = False
+
     # TODO: Support non-live probabilities from APIs
     post_token_probs: bool = False
 
@@ -158,11 +161,11 @@ class ModelCapabilities:
     uses_tpu: bool = False
 
 class GenerationMode(Enum):
-    STANDARD = 0
-    FOREVER = 1
-    UNTIL_EOS = 2
-    UNTIL_NEWLINE = 3
-    UNTIL_SENTENCE_END = 4
+    STANDARD = "standard"
+    FOREVER = "forever"
+    UNTIL_EOS = "until_eos"
+    UNTIL_NEWLINE = "until_newline"
+    UNTIL_SENTENCE_END = "until_sentence_end"
 
 class InferenceModel:
     """Root class for all models."""
@@ -585,7 +588,13 @@ class InferenceModel:
         temp_stoppers = []
 
         if gen_mode == GenerationMode.FOREVER:
-            raise NotImplementedError()
+            if self.capabilties.stopper_hooks:
+                self.gen_state["stop_at_genamt"] = False
+                max_new = 1e7
+            else:
+                logger.warning(
+                    "User requested infinite generation on model that doesn't support stop hooks. Recipe for disaster!"
+                )
         elif gen_mode == GenerationMode.UNTIL_EOS:
             # Still need to unban
             raise NotImplementedError()
@@ -652,3 +661,19 @@ class InferenceModel:
     def _post_token_gen(self, input_ids: torch.LongTensor) -> None:
         for hook in self.post_token_hooks:
             hook(self, input_ids)
+
+    def get_supported_gen_modes(self) -> List[GenerationMode]:
+        """Returns a list of compatible `GenerationMode`s for the current model.
+
+        Returns:
+            List[GenerationMode]: A list of compatible `GenerationMode`s.
+        """
+        ret = []
+        if self.capabilties.stopper_hooks:
+            ret += [
+                GenerationMode.FOREVER,
+                GenerationMode.UNTIL_EOS,
+                GenerationMode.UNTIL_NEWLINE,
+                GenerationMode.UNTIL_SENTENCE_END,
+            ]
+        return ret
