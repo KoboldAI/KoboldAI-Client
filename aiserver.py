@@ -3371,7 +3371,7 @@ def actionsubmit(
                 koboldai_vars.prompt = data
                 # Clear the startup text from game screen
                 emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True, room="UI_1")
-                calcsubmit("") # Run the first action through the generator
+                calcsubmit("", gen_mode=gen_mode) # Run the first action through the generator
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
@@ -6205,7 +6205,7 @@ def UI_2_submit(data):
         logger.warning(f"Unknown gen_mode '{gen_mode_name}', using STANDARD! Report this!")
 
     actionsubmit(data['data'], actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)
- 
+
  #==================================================================#
 # Event triggered when user clicks the submit button
 #==================================================================#
