@@ -585,19 +585,21 @@ class InferenceModel:
             "wi_scanner_excluded_keys", set()
         )
 
+        self.gen_state["allow_eos"] = False
+
         temp_stoppers = []
 
+        if gen_mode not in self.get_supported_gen_modes():
+            gen_mode = GenerationMode.STANDARD
+            logger.warning(f"User requested unsupported GenerationMode '{gen_mode}'!")
+
         if gen_mode == GenerationMode.FOREVER:
-            if self.capabilties.stopper_hooks:
-                self.gen_state["stop_at_genamt"] = False
-                max_new = 1e7
-            else:
-                logger.warning(
-                    "User requested infinite generation on model that doesn't support stop hooks. Recipe for disaster!"
-                )
+            self.gen_state["stop_at_genamt"] = False
+            max_new = 1e7
         elif gen_mode == GenerationMode.UNTIL_EOS:
-            # Still need to unban
-            raise NotImplementedError()
+            self.gen_state["allow_eos"] = True
+            self.gen_state["stop_at_genamt"] = False
+            max_new = 1e7
         elif gen_mode == GenerationMode.UNTIL_NEWLINE:
             # TODO: Look into replacing `single_line` with `generation_mode`
             temp_stoppers.append(Stoppers.newline_stopper)
@@ -668,11 +670,11 @@ class InferenceModel:
         Returns:
             List[GenerationMode]: A list of compatible `GenerationMode`s.
         """
-        ret = []
+        ret = [GenerationMode.STANDARD]
+
         if self.capabilties.stopper_hooks:
             ret += [
                 GenerationMode.FOREVER,
-                GenerationMode.UNTIL_EOS,
                 GenerationMode.UNTIL_NEWLINE,
                 GenerationMode.UNTIL_SENTENCE_END,
             ]
