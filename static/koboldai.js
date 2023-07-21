@@ -147,6 +147,12 @@ const context_menu_actions = {
 	"wi-img-upload-button": [
 		{label: "Upload Image", icon: "file_upload", enabledOn: "ALWAYS", click: wiImageReplace},
 		{label: "Use Generated Image", icon: "image", enabledOn: "GENERATED-IMAGE", click: wiImageUseGeneratedImage},
+	],
+	"submit-button": [
+		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: function(){}},
+		null,
+		{label: "Finish Line", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
+		{label: "Finish Sentence", icon: "edit_off", enabledOn: "ALWAYS", click: function(){}},
 	]
 };
 
