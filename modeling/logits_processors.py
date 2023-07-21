@@ -233,6 +233,8 @@ class PhraseBiasLogitsProcessor:
             token_seqs = self._get_token_sequence(phrase)
             variant_deltas = {}
             for token_seq in token_seqs:
+                if not token_seq:
+                    continue
                 bias_index = self._find_intersection(input_ids, token_seq)
 
                 # Ensure completion after completion_threshold tokens
