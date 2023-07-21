@@ -1894,6 +1894,7 @@ def load_model(model_backend, initial_load=False):
         logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
         logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
 
+
 # Setup IP Whitelisting
 # Define a function to check if IP is allowed
 def is_allowed_ip():
@@ -10901,13 +10902,14 @@ def run():
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI is available at the following link : " + cloudflare)
                 logger.init_ok("Webserver", status="OK")
-                if not koboldai_vars.use_colab_tpu:
+                if not koboldai_vars.use_colab_tpu and args.model:
                     # If we're using a TPU our UI will freeze during the connection to the TPU. To prevent this from showing to the user we 
                     # delay the display of this message until after that step
-                    logger.message(f"KoboldAI is available at the following link for UI 1: {cloudflare}")
-                    logger.message(f"KoboldAI is available at the following link for UI 2: {cloudflare}/new_ui")
-                    logger.message(f"KoboldAI is available at the following link for KoboldAI Lite: {cloudflare}/lite")
-                    logger.message(f"KoboldAI is available at the following link for the API: {cloudflare}/api")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for UI 1: {cloudflare}")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for KoboldAI Lite: {cloudflare}/lite")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for the API: [Pending Model]")
+                    logger.message(f"While the model loads you can use the above links to begin setting up your session, for generations you must wait until after its done loading.")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
