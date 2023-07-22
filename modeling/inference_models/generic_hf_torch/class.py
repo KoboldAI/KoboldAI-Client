@@ -110,6 +110,11 @@ class model_backend(HFTorchInferenceModel):
             # Also, lazy loader doesn't support GPT-2 models
             self.lazy_load = False
 
+        if self.model_type == "llama":
+            tf_kwargs.update({
+                "pretraining_tp": 1 # Workaround recommended by HF to fix their mistake on the config.json tuners adopted
+            })
+        
         logger.debug(
             "lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(
                 self.lazy_load,
