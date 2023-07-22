@@ -1259,13 +1259,18 @@ td.server_vars {
 .world_info_label_container > .generate-button:hover { opacity: 1.0; }
 
 .tag {
+	display: inline-block;
 	background-color: var(--wi_tag_color);
 	color: var(--wi_tag_text_color);
+
+	margin-right: 3px;
+	margin-top: 3px;
+
 	padding: 2px;
-	margin-right: 2px;
+	padding-left: 3px;
+	padding-right: 3px;
+
 	border-radius: var(--radius_wi_card);
-	border: solid;
-	border-color: var(--wi_tag_color);
 }
 
 .tag .tag_button {
