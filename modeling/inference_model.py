@@ -597,7 +597,12 @@ class InferenceModel:
             )
 
         time_end = round(time.time() - time_start, 2)
-        tokens_per_second = round(len(result.encoded[0]) / time_end, 2)
+
+        try:
+            tokens_per_second = round(len(result.encoded[0]) / time_end, 2)
+        except ZeroDivisionError:
+            # Introducing KoboldAI's fastest model: ReadOnly!
+            tokens_per_second = 0
 
         if not utils.koboldai_vars.quiet:
             logger.info(
