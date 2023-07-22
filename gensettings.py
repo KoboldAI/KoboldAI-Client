@@ -296,7 +296,7 @@ gensettingstf = [
 	"max": 1,
 	"step": 1,
 	"default": 0,
-    "tooltip": "Scans the AI's output for World Info keys as it is generating the one.",
+    "tooltip": "Look for World Info keys in the AI's response while it is still being generated.",
     "menu_path": "World Info",
     "sub_path": "",
     "classname": "story",
