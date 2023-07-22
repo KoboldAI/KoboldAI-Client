@@ -6715,11 +6715,18 @@ def UI_2_set_wi_image(uid):
         except FileNotFoundError:
             pass
     else:
-        # Otherwise assign image
-        with open(path, "wb") as file:
-            file.write(data)
+        try:
+            # Otherwise assign image
+            with open(path, "wb") as file:
+                file.write(data)
+        except FileNotFoundError:
+            show_error_notification(
+                "Unable to write image",
+                "Please save the game before uploading images."
+            )
+            return ":(", 500
     koboldai_vars.gamesaved = False
-    return ":)"
+    return ":)", 200
 
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
 @require_allowed_ip
