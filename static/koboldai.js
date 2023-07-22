@@ -83,6 +83,7 @@ let story_id = -1;
 var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
 var selected_model_data;
+var privacy_mode_enabled = false;
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -161,7 +162,7 @@ const shortcuts = [
 	{mod: "ctrl", key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
 	{mod: "ctrl", key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
 	{mod: "ctrl", key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
-	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
+	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: maybe_enable_privacy_mode},
 	{mod: "ctrl", key: "k", desc: "Finder", func: open_finder},
 	{mod: "ctrl", key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
 ]
@@ -3402,16 +3403,36 @@ function update_story_picture(chunk_id) {
 	image.setAttribute("chunk", chunk_id);
 }
 
+function maybe_enable_privacy_mode() {
+	const password = document.getElementById("user_privacy_password").value;
+
+	if (!password) {
+		showNotification(
+			"Lock Failed",
+			"Please set a password before locking KoboldAI.",
+			"error"
+		)
+		return;
+	}
+
+	socket.emit("privacy_mode", {'enabled': true})
+}
+
 function privacy_mode(enabled) {
+	privacy_mode_enabled = enabled;
+	updateTitle();
+
+	const sideMenu = document.getElementById("SideMenu");
+	const mainGrid = document.getElementById("main-grid");
+	const rightSideMenu = document.getElementById("rightSideMenu");
+
+	for (const menu of [sideMenu, mainGrid, rightSideMenu]) {
+		menu.classList.toggle("superblur", enabled);
+	}
+
 	if (enabled) {
-		document.getElementById('SideMenu').classList.add("superblur");
-		document.getElementById('main-grid').classList.add("superblur");
-		document.getElementById('rightSideMenu').classList.add("superblur");
 		openPopup("privacy_mode");
 	} else {
-		document.getElementById('SideMenu').classList.remove("superblur");
-		document.getElementById('main-grid').classList.remove("superblur");
-		document.getElementById('rightSideMenu').classList.remove("superblur");
 		if (!$el("#privacy_mode").classList.contains("hidden")) closePopups();
 		document.getElementById('privacy_password').value = "";
 	}
@@ -4708,7 +4729,7 @@ function close_menus() {
 	document.getElementById("main-grid").classList.remove("story_menu-open");
 	
 	//close popup menus
-	closePopups();
+	closePopups(true);
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
@@ -5809,8 +5830,15 @@ function position_context_menu(contextMenu, x, y) {
 
 function updateTitle() {
 	const titleInput = $el(".var_sync_story_story_name");
-	if (!titleInput.innerText) return;
-	document.title = `${titleInput.innerText} - KoboldAI Client`;
+	let titleText = "Story";
+
+	if (!privacy_mode_enabled && titleInput.innerText) {
+		titleText = titleInput.innerText;
+	} else {
+		titleText = "[🔒]"
+	}
+
+	document.title = `${titleText} - KoboldAI Client`;
 }
 
 function openClubImport() {
@@ -5845,17 +5873,27 @@ function openPopup(id) {
 	}
 }
 
-function closePopups() {
+function closePopups(userAction=false) {
+	// userAction specifies if a user tried to close the popup by normal means
+	// (ESC, clicking outside the menu, etc).
 	const container = $el("#popup-container");
-	container.classList.add("hidden");
+	let allHidden = true;
 
 	for (const popupWindow of container.children) {
+		// Do not let the user close windows they shouldn't be! Sneaky devils!
+		if (userAction && popupWindow.getAttribute("allow-close") === "false") {
+			allHidden = false;
+			continue;
+		}
+
 		popupWindow.classList.add("hidden");
 	}
+
+	if (allHidden) container.classList.add("hidden");
 }
 
 $el("#popup-container").addEventListener("click", function(event) {
-	if (event.target === this) closePopups();
+	if (event.target === this) closePopups(true);
 });
 
 /* -- Colab Cookie Handling -- */

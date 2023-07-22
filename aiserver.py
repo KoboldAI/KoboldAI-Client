@@ -7784,9 +7784,16 @@ def UI_2_update_tokens(data):
 def UI_2_privacy_mode(data):
     if data['enabled']:
         koboldai_vars.privacy_mode = True
+        return
+
+    if data['password'] == koboldai_vars.privacy_password:
+        koboldai_vars.privacy_mode = False
     else:
-        if data['password'] == koboldai_vars.privacy_password:
-            koboldai_vars.privacy_mode = False
+        logger.warning("Watch out! Someone tried to unlock your instance with an incorrect password! Stay on your toes...")
+        show_error_notification(
+            title="Invalid password",
+            text="The password you provided was incorrect. Please try again."
+        )
 
 #==================================================================#
 # Genres
