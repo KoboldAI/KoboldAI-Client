@@ -3570,8 +3570,13 @@ h2 .material-icons-outlined {
 }
 
 .section_header {
+	font-weight: bold;
 	margin-left: 2px;
 	margin-bottom: 2px;
+}
+
+.story_category_area > * > label {
+	user-select: none
 }
 
 .help_text {
