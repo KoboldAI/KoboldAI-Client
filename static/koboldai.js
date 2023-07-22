@@ -83,6 +83,7 @@ let story_id = -1;
 var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
 var selected_model_data;
+var attention_wanting_wi_bar = null;
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -2230,15 +2231,16 @@ function world_info_entry(data) {
 		this.classList.add("pulse");
 	})
 
-	tags = world_info_card.querySelector('.world_info_tag_primary_area');
+	const tags = world_info_card.querySelector('.world_info_tag_primary_area');
 	tags.id = "world_info_tags_"+data.uid;
 	//add tag content here
-	add_tags(tags, data);
+	add_tags(tags, data, "primary");
 	
-	secondarytags = world_info_card.querySelector('.world_info_tag_secondary_area');
+	const secondarytags = world_info_card.querySelector('.world_info_tag_secondary_area');
 	secondarytags.id = "world_info_secondtags_"+data.uid;
 	//add second tag content here
-	add_secondary_tags(secondarytags, data);
+	add_tags(secondarytags, data, "secondary");
+
 	//w++ toggle
 	wpp_toggle_area = world_info_card.querySelector('.world_info_wpp_toggle_area');
 	wpp_toggle_area.id = "world_info_wpp_toggle_area_"+data.uid;
@@ -4229,161 +4231,139 @@ function removeA(arr) {
     return arr;
 }
 
-function add_tags(tags, data) {
-	while (tags.firstChild) { 
-		tags.removeChild(tags.firstChild);
+function create_tag_element(tagText, uid, tagType) {
+	// tagText is string, or null for empty tag at end.
+	// barType should be "primary" or "secondary"
+	const isPlaceholderTag = tagText === null;
+
+	const wiCardEl = document.querySelector(`.world_info_card[uid="${uid}"]`)
+	const keyField = {primary: "key", secondary: "keysecondary"}[tagType];
+	const tagClassFragment = {primary: "tags", primary: "secondtags"}[tagType];
+
+	const tagEl = document.createElement("span");
+	tagEl.classList.add("tag");
+	if (isPlaceholderTag) tagEl.classList.add("placeholder_tag");
+
+	const xEl = document.createElement("span");
+	xEl.classList.add("material-icons-outlined");
+	xEl.classList.add("tag_button");
+
+	if (!isPlaceholderTag) {
+		xEl.classList.add("delete_icon");
+		xEl.textContent = "close";
+	} else {
+		xEl.classList.add("add_icon");
+		xEl.textContent = "add";
 	}
-	for (tag of data.key) {
-		tag_item = document.createElement("span");
-		tag_item.classList.add("tag");
-		x = document.createElement("span");
-		x.textContent = "x ";
-		x.classList.add("delete_icon");
-		x.setAttribute("uid", data.uid);
-		x.setAttribute("tag", tag);
-		x.onclick = function () {
-						removeA(world_info_data[this.getAttribute('uid')]['key'], this.getAttribute('tag'));
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		text = document.createElement("span");
-		text.textContent = tag;
-		text.setAttribute("contenteditable", true);
-		text.setAttribute("uid", data.uid);
-		text.setAttribute("tag", tag);
-		text.id = "world_info_tags_text_"+data.uid+"_"+tag;
-		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-		text.setAttribute("draggable", "true");
-		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-		text.onblur = function () {
-						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-						this.setAttribute('draggable', 'true');
-						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['key'].length; i++) {
-							if (world_info_data[this.getAttribute('uid')]['key'][i] == this.getAttribute("tag")) {
-								world_info_data[this.getAttribute('uid')]['key'][i] = this.textContent;
-							}
-						}
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		tag_item.append(x);
-		tag_item.append(text);
-		tag_item.id = "world_info_tags_"+data.uid+"_"+tag;
-		tags.append(tag_item);
-	}
-	//add the blank tag
-	tag_item = document.createElement("span");
-	tag_item.classList.add("tag");
-	x = document.createElement("span");
-	x.textContent = "+ ";
-	tag_item.append(x);
-	text = document.createElement("span");
-	text.classList.add("rawtext");
-	text.textContent = "    ";
-	text.setAttribute("uid", data.uid);
-	text.setAttribute("contenteditable", true);
-	text.id = "world_info_tags_text_"+data.uid+"_blank";
-	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-	text.setAttribute("draggable", "true");
-	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-	text.onblur = function () {
-					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-					this.setAttribute('draggable', 'true');
-					if (this.textContent.trim() != "") {
-						//console.log(this.textContent);
-						on_new_wi_item = this.id;
-						world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					} else {
-						this.textContent = "    ";
-					}
-				};
-	text.onclick = function () {
-					this.textContent = "";
-				};
-	tag_item.append(text);
-	tag_item.id = "world_info_secondtags_"+data.uid+"_new";
-	tags.append(tag_item);
+
+	xEl.setAttribute("uid", uid);
+	xEl.setAttribute("tag", tagText);
+	xEl.addEventListener("click", function() {
+		removeA(
+			world_info_data[uid][keyField],
+			tagText
+		);
+		send_world_info(uid);
+		this.classList.add("pulse");
+	});
+
+	const textEl = document.createElement("span");
+	textEl.classList.add("tag_text");
+	textEl.textContent = tagText;
+
+	textEl.setAttribute("data-placeholder", "Tag")
+	textEl.setAttribute("contenteditable", true);
+	textEl.setAttribute("uid", uid);
+	textEl.setAttribute("tag", tagText);
+	textEl.setAttribute("draggable", "true");
+	textEl.id = `world_info_${tagClassFragment}_text_${uid}_${tagText || "blank"}`;
+
+	textEl.addEventListener("dragstart", function(event) {
+		event.preventDefault();
+		event.stopPropagation();
+	});
+
+	textEl.addEventListener("focus", function(event) {
+		wiCardEl.setAttribute('draggable', 'false');
+		this.setAttribute('draggable', 'false');
+	});
+
+	textEl.addEventListener("blur", function () {
+		wiCardEl.setAttribute('draggable', 'true');
+		this.setAttribute('draggable', 'true');
+
+		if (!isPlaceholderTag) {
+			// Normal tag
+			for (var i = 0; i < world_info_data[uid][keyField].length; i++) {
+				if (world_info_data[uid][keyField][i] !== tagText) {
+					world_info_data[uid][keyField][i] = this.innerText;
+				}
+			}
+		} else {
+			// Placeholder tag
+			if (!this.textContent.trim()) return;
+
+			on_new_wi_item = this.id;
+			world_info_data[uid][keyField].push(this.textContent);
+		}
+
+		send_world_info(uid);
+		this.classList.add("pulse");
+	});
+
+	textEl.addEventListener("keydown", function(event) {
+		if (event.key === "Enter") {
+			// Press Enter to save tag and focus next one
+			event.preventDefault();
+
+			// HACK: Work around the fact that the server is in control of
+			// placing these elements
+			attention_wanting_wi_bar = tagType;
+			// And don't wait for like 10000 years to randomly take focus from
+			// the user
+			setTimeout(() => attention_wanting_wi_bar = null, 500);
+
+			this.blur();
+		} else if (event.key === "Escape") {
+
+		}
+	})
+
+	tagEl.append(xEl);
+	tagEl.append(textEl);
+	tagEl.id = `world_info_${tagClassFragment}_${uid}_${tagText || "new"}`;
+
+	return tagEl;
 }
 
-function add_secondary_tags(tags, data) {
-	while (tags.firstChild) { 
-		tags.removeChild(tags.firstChild);
+function add_tags(tagBarEl, data, tagType) {
+	// tagType is either "primary" or "secondary"
+
+	// Remove existing tags
+	while (tagBarEl.firstChild) {
+		tagBarEl.removeChild(tagBarEl.firstChild);
 	}
-	for (tag of data.keysecondary) {
-		tag_item = document.createElement("span");
-		tag_item.classList.add("tag");
-		x = document.createElement("span");
-		x.textContent = "x ";
-		x.classList.add("delete_icon");
-		x.setAttribute("uid", data.uid);
-		x.setAttribute("tag", tag);
-		x.onclick = function () {
-						removeA(world_info_data[this.getAttribute('uid')]['keysecondary'], this.getAttribute('tag'));
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		text = document.createElement("span");
-		text.textContent = tag;
-		text.setAttribute("contenteditable", true);
-		text.setAttribute("uid", data.uid);
-		text.setAttribute("tag", tag);
-		text.id = "world_info_secondtags_text_"+data.uid+"_"+tag;
-		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-		text.setAttribute("draggable", "true");
-		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-		text.onblur = function () {
-						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-						this.setAttribute('draggable', 'true');
-						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['keysecondary'].length; i++) {
-							if (world_info_data[this.getAttribute('uid')]['keysecondary'][i] == this.getAttribute("tag")) {
-								world_info_data[this.getAttribute('uid')]['keysecondary'][i] = this.textContent;
-							}
-						}
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		tag_item.append(x);
-		tag_item.append(text);
-		tag_item.id = "world_info_secondtags_"+data.uid+"_"+tag;
-		tags.append(tag_item);
+
+	const tagList = {
+		primary: data.key,
+		secondary: data.keysecondary
+	}[tagType];
+
+	for (tag of tagList) {
+		tagBarEl.append(create_tag_element(tag, data.uid, tagType));
 	}
+
 	//add the blank tag
-	tag_item = document.createElement("span");
-	tag_item.classList.add("tag");
-	x = document.createElement("span");
-	x.textContent = "+ ";
-	tag_item.append(x);
-	text = document.createElement("span");
-	text.classList.add("rawtext");
-	text.textContent = "    ";
-	text.setAttribute("uid", data.uid);
-	text.setAttribute("contenteditable", true);
-	text.id = "world_info_secondtags_text_"+data.uid+"_blank";
-	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-	text.setAttribute("draggable", "true");
-	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-	text.onblur = function () {
-					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-					this.setAttribute('draggable', 'true');
-					if (this.textContent.trim() != "") {
-						on_new_wi_item = this.id;
-						world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					} else {
-						this.textContent = "    ";
-					}
-				};
-	text.onclick = function () {
-					this.textContent = "";
-				};
-	tag_item.append(text);
-	tag_item.id = "world_info_secondtags_"+data.uid+"_new";
-	tags.append(tag_item);
+	const placeholderTagEl = create_tag_element(null, data.uid, tagType);
+	tagBarEl.append(placeholderTagEl);
+
+	if (attention_wanting_wi_bar === tagType) {
+		const textEl = placeholderTagEl.querySelector(".tag_text");
+		// HACK: Please don't ask because I do not know
+		setTimeout(() => textEl.focus(), 1);
+	}
 }
-	
+
 function create_new_wi_entry(folder) {
 	var uid = -1;
 	for (item of document.getElementsByClassName('world_info_card')) {

@@ -1268,8 +1268,32 @@ td.server_vars {
 	border-color: var(--wi_tag_color);
 }
 
-.tag .delete_icon {
+.tag .tag_button {
 	cursor: pointer;
+	opacity: 0.4;
+	font-size: 16px;
+	position: relative;
+}
+
+.tag .delete_icon {
+	top: 3px;
+	right: 3px;
+}
+
+.tag .add_icon {
+	top: 3px;
+	right: 3px;
+}
+
+.tag .tag_text {
+	display: inline-block;
+	outline: none;
+	position: relative;
+	right: 3px;
+}
+
+.placeholder_tag .tag_text:empty {
+	opacity: 0.4;
 }
 
 .oi[folder] {
