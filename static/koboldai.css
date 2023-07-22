@@ -2849,6 +2849,10 @@ body {
 	height: 100%;
 }
 
+#welcome_text a {
+	text-decoration: underline;
+}
+
 .welcome_text {
 	display: flex;
 	height: 100%;
