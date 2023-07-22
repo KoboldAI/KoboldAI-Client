@@ -81,7 +81,6 @@ class model_backend(HFTorchInferenceModel):
 
         tf_kwargs = {
             "low_cpu_mem_usage": True,
-            "pretraining_tp": 1,
         }
         
         if self.quantization == "8bit":
