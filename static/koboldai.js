@@ -2092,6 +2092,7 @@ function world_info_entry(data) {
 	} else {
 		world_info_card.classList.remove("used_in_game");
 	}
+
 	const title = world_info_card.querySelector('.world_info_title');
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
@@ -2099,7 +2100,7 @@ function world_info_entry(data) {
 	title.setAttribute("original_text", data.title);
 	title.setAttribute("contenteditable", true);
 	title.classList.remove("pulse");
-	title.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+	title.ondragstart=function(event) {event.preventDefault();event.stopPropagation();};
 	title.onblur = function () {
 				this.parentElement.parentElement.setAttribute('draggable', 'true');
 				this.setAttribute('draggable', 'true');
@@ -2109,13 +2110,23 @@ function world_info_entry(data) {
 					this.classList.add("pulse");
 				}
 			}
-	world_info_card.addEventListener('dragstart', dragStart);
-	world_info_card.addEventListener('dragend', dragend);
+
+	title.addEventListener("keydown", function(event) {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			this.blur();
+		}
+	});
+
 	title.addEventListener('dragenter', dragEnter)
 	title.addEventListener('dragover', dragOver);
 	title.addEventListener('dragleave', dragLeave);
 	title.addEventListener('drop', drop);
-	delete_icon = world_info_card.querySelector('.world_info_delete');
+
+	world_info_card.addEventListener('dragstart', dragStart);
+	world_info_card.addEventListener('dragend', dragend);
+
+	const delete_icon = world_info_card.querySelector('.world_info_delete');
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
 	delete_icon.setAttribute("wi-title", data.title);
