@@ -739,7 +739,7 @@ gensettingstf = [
  	"max": 1,
  	"step": 1,
  	"default": 0,
-	"tooltip": "If enabled, experimental features will be displayed in the UI.",
+	"tooltip": "If enabled, experimental features will be displayed in the UI. Note: These features have been determined to be too unstable for standard use, and may corrupt your data. You're on your own from here.",
     "menu_path": "Interface",
     "sub_path": "UI",
     "classname": "system",
