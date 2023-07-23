@@ -7,7 +7,10 @@ import shutil
 from typing import Union
 
 from transformers import GPTNeoForCausalLM, GPT2LMHeadModel, BitsAndBytesConfig
-from hf_bleeding_edge import AutoModelForCausalLM
+try:
+    from hf_bleeding_edge import AutoModelForCausalLM
+except ImportError:
+    from transformers import AutoModelForCausalLM
 
 from transformers.utils import WEIGHTS_NAME, WEIGHTS_INDEX_NAME, TF2_WEIGHTS_NAME, TF2_WEIGHTS_INDEX_NAME, TF_WEIGHTS_NAME, FLAX_WEIGHTS_NAME, FLAX_WEIGHTS_INDEX_NAME, SAFE_WEIGHTS_NAME, SAFE_WEIGHTS_INDEX_NAME
 

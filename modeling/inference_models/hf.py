@@ -1,6 +1,9 @@
 import os, sys
 from typing import Optional
-from hf_bleeding_edge import AutoConfig
+try:
+    from hf_bleeding_edge import AutoConfig
+except ImportError:
+    from transformers import AutoConfig
 
 import warnings
 import utils

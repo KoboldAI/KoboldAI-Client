@@ -10,8 +10,11 @@ import sys
 from typing import Union
 
 from transformers import GPTNeoForCausalLM, AutoTokenizer, LlamaTokenizer
-import hf_bleeding_edge
-from hf_bleeding_edge import AutoModelForCausalLM
+try:
+    import hf_bleeding_edge
+    from hf_bleeding_edge import AutoModelForCausalLM
+except ImportError:
+    from transformers import AutoModelForCausalLM
 
 import utils
 import modeling.lazy_loader as lazy_loader
