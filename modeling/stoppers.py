@@ -127,7 +127,7 @@ class Stoppers:
         if "completed" not in model.gen_state:
             model.gen_state["completed"] = [False] * len(input_ids)
         if utils.koboldai_vars.adventure:
-            extra_options = ["> You", "You:", "\n\n You", "\n\nYou", ". You"]
+            extra_options = [">", "\n>"]
             for option in extra_options:
                 if option not in utils.koboldai_vars.stop_sequence:
                     utils.koboldai_vars.stop_sequence.append(option)
