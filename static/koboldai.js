@@ -529,8 +529,6 @@ function process_actions_data(data) {
 	game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
 	clearTimeout(auto_loader_timeout);
 	
-	streaming.windowOpen = true;
-	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 	
@@ -3357,7 +3355,6 @@ function update_game_text(id, new_text) {
 			socket.emit("Set Selected Text", {"id": id, "text": ""});
 		}
 	}
-	
 }
 
 function stream_tokens(tokens) {
@@ -3365,6 +3362,11 @@ function stream_tokens(tokens) {
 	const smoothStreamingEnabled = $el("#user_smooth_streaming").checked;
 
 	let streamBuffer = $el("#token-stream-buffer");
+
+	if (tokens === true) {
+		streaming.windowOpen = true;
+		return;
+	}
 
 	if (!streaming.windowOpen) {
 		// Reject tokens sent after the streaming window is closed
@@ -3402,6 +3404,7 @@ function stream_tokens(tokens) {
 			// Get the average time (ms) it took the last 5 tokens to generate
 
 			if (!streaming.typeyTimeout) return;
+			if (!streaming.windowOpen) return;
 			if (!smoothStreamingEnabled) return;
 			streaming.typeyTimeout = setTimeout(_char, avg);
 
