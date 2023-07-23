@@ -630,7 +630,10 @@ model_backends = {}
 model_backend_module_names = {}
 model_backend_type_crosswalk = {}
 
-PRIORITIZED_BACKEND_MODULES = ["generic_hf_torch"]
+PRIORITIZED_BACKEND_MODULES = {
+    "gptq_hf_torch": 1,
+    "generic_hf_torch": 2
+}
 
 for module in os.listdir("./modeling/inference_models"):
     if module == '__pycache__':
@@ -666,10 +669,15 @@ for module in os.listdir("./modeling/inference_models"):
         model_backend_module_names[backend_name] = module
 
         if backend_type in model_backend_type_crosswalk:
-            if module in PRIORITIZED_BACKEND_MODULES:
-                model_backend_type_crosswalk[backend_type].insert(0, backend_name)
-            else:
-                model_backend_type_crosswalk[backend_type].append(backend_name)
+            model_backend_type_crosswalk[backend_type].append(backend_name)
+            model_backend_type_crosswalk[backend_type] = list(sorted(
+                model_backend_type_crosswalk[backend_type],
+                key=lambda name: PRIORITIZED_BACKEND_MODULES.get(
+                    [mod for b_name, mod in model_backend_module_names.items() if b_name == name][0],
+                    0
+                ),
+                reverse=True
+            ))
         else:
             model_backend_type_crosswalk[backend_type] = [backend_name]
 
@@ -7791,9 +7799,16 @@ def UI_2_update_tokens(data):
 def UI_2_privacy_mode(data):
     if data['enabled']:
         koboldai_vars.privacy_mode = True
+        return
+
+    if data['password'] == koboldai_vars.privacy_password:
+        koboldai_vars.privacy_mode = False
     else:
-        if data['password'] == koboldai_vars.privacy_password:
-            koboldai_vars.privacy_mode = False
+        logger.warning("Watch out! Someone tried to unlock your instance with an incorrect password! Stay on your toes...")
+        show_error_notification(
+            title="Invalid password",
+            text="The password you provided was incorrect. Please try again."
+        )
 
 #==================================================================#
 # Genres

@@ -46,5 +46,9 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
+    - git+https://github.com/0cc4m/hf_bleeding_edge/
+    - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
+    - einops
     - peft==0.3.0
     - scipy

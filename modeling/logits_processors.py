@@ -233,6 +233,8 @@ class PhraseBiasLogitsProcessor:
             token_seqs = self._get_token_sequence(phrase)
             variant_deltas = {}
             for token_seq in token_seqs:
+                if not token_seq:
+                    continue
                 bias_index = self._find_intersection(input_ids, token_seq)
 
                 # Ensure completion after completion_threshold tokens
@@ -267,6 +269,14 @@ class PhraseBiasLogitsProcessor:
 
         for batch in range(scores_shape[0]):
             for token, bias in self._get_biased_tokens(input_ids[batch]).items():
-                scores[batch][token] += bias
+                if bias > 0 and bool(scores[batch][token].isneginf()):
+                    # Adding bias to -inf will do NOTHING!!! So just set it for
+                    # now. There may be more mathishly correct way to do this
+                    # but it'll work. Also, make sure the bias is actually
+                    # positive. Don't give a -inf token more chance by setting
+                    # it to -0.5!
+                    scores[batch][token] = bias
+                else:
+                    scores[batch][token] += bias
 
         return scores
