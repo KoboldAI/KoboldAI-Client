@@ -3279,7 +3279,10 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     # Ignore new submissions if the AI is currently busy
     if(koboldai_vars.aibusy):
         return
-    
+
+    # Open up token stream
+    emit("stream_tokens", True, broadcast=True, room="UI_2")
+
     while(True):
         set_aibusy(1)
         koboldai_vars.actions.clear_unused_options()
@@ -3471,6 +3474,8 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 set_aibusy(0)
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
+    # Clean up token stream
+    emit("stream_tokens", None, broadcast=True, room="UI_2")
 
 def apiactionsubmit_generate(txt, minimum, maximum):
     koboldai_vars.generated_tkns = 0
