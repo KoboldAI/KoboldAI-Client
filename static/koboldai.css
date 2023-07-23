@@ -1457,6 +1457,30 @@ td.server_vars {
 	line-height: 2;
 }
 
+/* Privacy Mode (Lock Screen) */
+#privacy_mode {
+	height: unset;
+	width: unset;
+	position: relative;
+	top: unset;
+	left: unset;
+}
+
+#privacy_mode .popup_list_area {
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	padding-left: 15px;
+	padding-right: 15px;
+}
+
+#privacy_mode input {
+	margin-top: 15px;
+	width: 85%;
+}
+
 /* ---------------------------- OVERALL PAGE CONFIG ------------------------------*/
 body {
 	background-color: var(--background);
@@ -1962,6 +1986,7 @@ body {
 	color: var(--popup_title_bar_color_text);
 	text-align: center;
 	font-size: calc(1.3em + var(--font_size_adjustment));
+	user-select: none;
 }
 
 .popup .action_button {
@@ -2848,6 +2873,7 @@ body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	pointer-events: none;
 }
 
 #welcome-text-content {

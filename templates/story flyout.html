@@ -50,6 +50,14 @@
 			<label for="authors_notes">Author's Notes:</label><br/>
 			<textarea autocomplete="off" rows=16 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" oninput="autoResize(this)" onchange='sync_to_server(this);'></textarea><br/>
 
+			<div class="setting_tile_area">
+				{% with menu='author_notes' %}
+					{% with sub_path='' %}
+						{% include 'settings item.html' %}
+					{% endwith %}
+				{% endwith %}
+			</div>
+
 			<h4 class="section_header">Genre</h4>
 			<div class="help_text">Styles the AI will attempt to imitate. Effectiveness depends on model.</div>
 			<input id="genre-input" class="fullwidth" placeholder="Fantasy" autocomplete="off" spellcheck="false">
@@ -74,14 +82,6 @@
 						anAttn.innerText = val;
 					}
 				</script>
-			</div>
-
-			<div class="setting_tile_area">
-				{% with menu='author_notes' %}
-					{% with sub_path='' %}
-						{% include 'settings item.html' %}
-					{% endwith %}
-				{% endwith %}
 			</div>
 		</div>
 	</div>
