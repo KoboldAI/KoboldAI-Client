@@ -58,7 +58,7 @@ class model_backend(HFTorchInferenceModel):
                                             "unit": "text",
                                             "label": "Quantization",
                                             "id": "quantization",
-                                            "default": temp['quantization'] if 'quantization' in temp else 'none',
+                                            "default": temp['quantization'] if 'quantization' in temp else '4bit' if dependency_exists else '16-bit',
                                             "tooltip": "Whether or not to use BnB's 4-bit or 8-bit mode",
                                             "menu_path": "Layers",
                                             "children": [{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': '8bit'}, {'text': '16-bit', 'value':'16-bit'}],
@@ -66,7 +66,7 @@ class model_backend(HFTorchInferenceModel):
                                             "refresh_model_inputs": False
                                         })
         else:
-            logger.warning("Bitsandbytes is not installed, you can not use Huggingface models in 4-bit")
+            logger.warning("Bitsandbytes is not installed, you can not use Quantization for Huggingface models")
         return requested_parameters
  
     def set_input_parameters(self, parameters):
