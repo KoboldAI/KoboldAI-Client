@@ -56,7 +56,7 @@ def load_model_gptq_settings(path):
     gptq_file = False
     gptq_version = -1
 
-    gptq_legacy_files = glob.glob(os.path.join(path, "4bit*.pt")) + glob.glob(os.path.join(path, "4bit*.safetensors"))
+    gptq_legacy_files = glob.glob(os.path.join(path, "*4bit*.pt")) + glob.glob(os.path.join(path, "*4bit*.safetensors"))
     if "gptq_bits" in js:
         gptq_model = True
         gptq_bits = js["gptq_bits"]
@@ -70,7 +70,7 @@ def load_model_gptq_settings(path):
         gptq_bits = 4
         gptq_file = gptq_legacy_files[0]
         fname = Path(gptq_file).parts[-1]
-        g = re.findall("^(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
+        g = re.findall("(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
         gptq_groupsize = int(g[0]) if g else -1
         gptq_version = -1
 
