@@ -9,13 +9,6 @@ import shutil
 import sys
 from typing import Union
 
-from transformers import GPTNeoForCausalLM, AutoTokenizer, LlamaTokenizer
-try:
-    import hf_bleeding_edge
-    from hf_bleeding_edge import AutoModelForCausalLM
-except ImportError:
-    from transformers import AutoModelForCausalLM
-
 import utils
 import modeling.lazy_loader as lazy_loader
 import koboldai_settings
@@ -24,23 +17,7 @@ from logger import logger, set_logger_verbosity
 from modeling.inference_models.hf_torch import HFTorchInferenceModel
 from modeling.tokenizer import GenericTokenizer
 
-# 4-bit dependencies
-import gptq
 from pathlib import Path
-from gptq.gptj import load_quant as gptj_load_quant
-from gptq.gptneox import load_quant as gptneox_load_quant
-from gptq.llama import load_quant as llama_load_quant
-from gptq.opt import load_quant as opt_load_quant
-from gptq.bigcode import load_quant as bigcode_load_quant
-from gptq.mpt import load_quant as mpt_load_quant
-from gptq.offload import load_quant_offload
-
-autogptq_support = True
-try:
-    import auto_gptq
-    from auto_gptq import AutoGPTQForCausalLM
-except ImportError:
-    autogptq_support = False
 
 
 model_backend_type = "GPTQ"
@@ -185,6 +162,15 @@ class model_backend(HFTorchInferenceModel):
         utils.koboldai_vars.modeldim = self.get_hidden_size()
 
     def _get_model(self, location: str, tf_kwargs: Dict):
+        import gptq
+        from gptq.gptj import load_quant as gptj_load_quant
+        from gptq.gptneox import load_quant as gptneox_load_quant
+        from gptq.llama import load_quant as llama_load_quant
+        from gptq.opt import load_quant as opt_load_quant
+        from gptq.bigcode import load_quant as bigcode_load_quant
+        from gptq.mpt import load_quant as mpt_load_quant
+        from gptq.offload import load_quant_offload
+
         gptq_model, gptq_bits, gptq_groupsize, gptq_file, gptq_version = load_model_gptq_settings(location)
         v2_bias = False
 
@@ -207,7 +193,19 @@ class model_backend(HFTorchInferenceModel):
             model = load_quant_offload(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
         elif model_type == "gpt_bigcode":
             model = load_quant_offload(bigcode_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias).half()
-        elif autogptq_support:
+        else:
+            try:
+                import auto_gptq
+                from auto_gptq import AutoGPTQForCausalLM
+            except ImportError:
+                raise RuntimeError(f"4-bit load failed. Model type {model_type} not supported in 4-bit")
+
+            try:
+                import hf_bleeding_edge
+                from hf_bleeding_edge import AutoModelForCausalLM
+            except ImportError:
+                from transformers import AutoModelForCausalLM
+
             # Monkey patch in hf_bleeding_edge to avoid having to trust remote code
             auto_gptq.modeling._utils.AutoConfig = hf_bleeding_edge.AutoConfig
             auto_gptq.modeling._base.AutoConfig = hf_bleeding_edge.AutoConfig
@@ -227,12 +225,12 @@ class model_backend(HFTorchInferenceModel):
                     return self.model.generate(*args, **kwargs)
 
             type(model).generate = generate
-        else:
-            raise RuntimeError(f"4-bit load failed. Model type {model_type} not supported in 4-bit")
 
         return model
 
     def _get_tokenizer(self, location: str):
+        from transformers import AutoTokenizer, LlamaTokenizer
+
         model_type = self.get_model_type()
         if model_type == "llama":
             tokenizer = LlamaTokenizer.from_pretrained(location)
