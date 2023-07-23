@@ -37,6 +37,7 @@ socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
 socket.on("generated_wi", showGeneratedWIData);
+socket.on("stream_tokens", stream_tokens);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -84,6 +85,16 @@ var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
 var selected_model_data;
 var privacy_mode_enabled = false;
+
+var streaming = {
+	windowOpen: false,
+	buffer: "",
+	time: {
+		msBuffer: [10],
+		preTime: null,
+	},
+	typeyTimeout: null,
+};
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -518,6 +529,7 @@ function process_actions_data(data) {
 	game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
 	clearTimeout(auto_loader_timeout);
 	
+	streaming.windowOpen = true;
 	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
@@ -3346,6 +3358,77 @@ function update_game_text(id, new_text) {
 		}
 	}
 	
+}
+
+function stream_tokens(tokens) {
+	// NOTE: This is only for genamt/batch size 1.
+	const smoothStreamingEnabled = $el("#user_smooth_streaming").checked;
+
+	let streamBuffer = $el("#token-stream-buffer");
+
+	if (!streaming.windowOpen) {
+		// Reject tokens sent after the streaming window is closed
+		return;
+	}
+
+	if (!tokens) {
+		// Server told us to close up shop!
+		streaming.windowOpen = false;
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+		if (streamBuffer) streamBuffer.remove();
+		return;
+	}
+
+	if (!streamBuffer) {
+		// This should happen once at the beginning of the stream
+		streamBuffer = $e("span", $el(".gametext"), {
+			id: "token-stream-buffer",
+			classes: ["within_max_length"]
+		});
+	}
+
+	if (!smoothStreamingEnabled && streaming.typeyTimeout) {
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+	}
+
+	if (!streaming.typeyTimeout && smoothStreamingEnabled) {
+		function _char() {
+			const times = streaming.time.msBuffer;
+			const avg = times.reduce((a, b) => a + b) / times.length;
+			// Get the average time (ms) it took the last 5 tokens to generate
+
+			if (!streaming.typeyTimeout) return;
+			if (!smoothStreamingEnabled) return;
+			streaming.typeyTimeout = setTimeout(_char, avg);
+
+			if (!streaming.buffer.length) return;
+
+			streamBuffer.textContent += streaming.buffer[0];
+			streaming.buffer = streaming.buffer.slice(1);
+		}
+
+		streaming.typeyTimeout = setTimeout(_char, 10);
+	}
+
+	if (!streaming.time.preTime) streaming.time.preTime = new Date();
+
+	streaming.time.msBuffer.push(
+		(new Date().getTime() - streaming.time.preTime.getTime()) / 5
+		// 5 chosen because Concedo said something about 5 this morning and it seems to work
+	);
+
+	if (streaming.time.msBuffer.length > 5) streaming.time.msBuffer.shift();
+	streaming.time.preTime = new Date();
+
+	if (smoothStreamingEnabled) {
+		streaming.buffer += tokens[0];
+	} else {
+		streamBuffer.textContent += tokens[0];
+	}
 }
 
 function save_preset() {
