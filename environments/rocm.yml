@@ -41,4 +41,6 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
+    - git+https://github.com/0cc4m/hf_bleeding_edge/
+    - einops
     - peft==0.3.0
