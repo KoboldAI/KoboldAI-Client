@@ -126,8 +126,13 @@ class HFTorchInferenceModel(HFInferenceModel):
         return ret
 
     def get_auxilary_device(self) -> Union[str, int, torch.device]:
-        return self.breakmodel_config.primary_device
-
+        if self.breakmodel:
+            return self.breakmodel_config.primary_device
+        if self.usegpu:
+            return "cuda:0"
+        else:
+            return "cpu"
+        
     def _get_target_dtype(self) -> Union[torch.float16, torch.float32]:
         if self.breakmodel_config.primary_device == "cpu":
             return torch.float32
