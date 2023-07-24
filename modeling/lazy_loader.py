@@ -358,7 +358,6 @@ def safetensors_load_tensor_independently(
 ) -> torch.Tensor:
     """A hacky way to load a tensor by itself and not mmap every single tensor
     or whatever is causing that big memory spike"""
-    print("[ld]", tensor_key)
 
     with safetensors.safe_open(checkpoint_file, framework="pt", device=device) as f:
         return f.get_tensor(tensor_key)
@@ -379,7 +378,7 @@ def patch_safetensors(callback):
             # (70 tensors/s -> 65 tensor/s). The memory savings probably
             # shouldn't be the happening, maybe there's a memory leak
             # somewhere in our pipeline with CPU tensors.
-            intermediary_device = "cuda"
+            intermediary_device = "cuda:0"
         else:
             intermediary_device = "cpu"
 

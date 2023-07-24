@@ -7,7 +7,7 @@ import torch
 import re
 import shutil
 import sys
-from typing import Union
+from typing import Dict, Union
 
 import utils
 import modeling.lazy_loader as lazy_loader
@@ -167,6 +167,25 @@ class model_backend(HFTorchInferenceModel):
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
 
+    def _patch_quant(self) -> None:
+        # QuantLinear loads on the CPU by default, using a lot of RAM! If we
+        # load it to the same device that the weights are gonna be on, it
+        # mysteriously uses no additional VRAM
+
+        from gptq import quant_v3
+        from gptq import quant_v2
+        from gptq import quant_v1
+
+        def _ql_init_(self, *args, **kwargs):
+            ret = type(self)._unpatched_init(self, *args, **kwargs)
+            self.to("cuda:0")
+            return ret
+
+        for quant_module in [quant_v3, quant_v2, quant_v1]:
+            quant_module.QuantLinear._unpatched_init = quant_module.QuantLinear.__init__
+            quant_module.QuantLinear.__init__ = _ql_init_
+
+
     def _get_model(self, location: str, tf_kwargs: Dict):
         import gptq
         from gptq.gptj import load_quant as gptj_load_quant
@@ -176,6 +195,8 @@ class model_backend(HFTorchInferenceModel):
         from gptq.bigcode import load_quant as bigcode_load_quant
         from gptq.mpt import load_quant as mpt_load_quant
         from gptq.offload import load_quant_offload
+
+        self._patch_quant()
 
         gptq_model, gptq_bits, gptq_groupsize, gptq_file, gptq_version = load_model_gptq_settings(location)
         v2_bias = False
