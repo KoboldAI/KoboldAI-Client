@@ -776,7 +776,6 @@ function update_status_bar(data) {
 }
 
 function do_ai_busy(data) {
-	console.log("AIBUSY", data.value)
 	ai_busy = data.value;
 	// Don't allow editing while Mr. Kobold is thinking
 	document.getElementById("Selected Text").contentEditable = !ai_busy;
