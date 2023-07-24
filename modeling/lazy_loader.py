@@ -176,9 +176,6 @@ class TorchLazyTensor(LazyTensor):
             CheckpointChunkCache.key = self.key
             ziproot = checkpoint.namelist()[0].split("/")[0]
             CheckpointChunkCache.handle = checkpoint.open(f"{ziproot}/data/{self.key}", "r")
-
-                
-                                
         else:
             # Cache hit. Hip hip hooray! :^)
             # print(".", end="", flush=True)
@@ -318,7 +315,6 @@ class _LazyUnpickler(RestrictedUnpickler):
     lazy_loaded_storages: Dict[str, LazyTensor]
 
     def __init__(self, *args, **kwargs):
-        # print(args, kwargs)
         self.lazy_loaded_storages = {}
         return super().__init__(*args, **kwargs)
 
@@ -364,12 +360,10 @@ def safetensors_load_tensor_independently(
 
 
 def patch_safetensors(callback):
-    print("Hi! We are patching safetensors")
     # Safetensors load patch
     import transformers
 
     def safetensors_load(checkpoint_file: str) -> dict:
-        print("LOAD NOW", safetensors_load)
         # Monkeypatch applied to safetensors.torch.load_file
 
         if utils.koboldai_vars.hascuda:
@@ -523,7 +517,6 @@ def use_lazy_load(
         old_torch_load = torch.load
 
         def torch_load(f, map_location=None, pickle_module=pickle, **pickle_load_args):
-            print("TORCHLOAD", f)
             model_dict = old_torch_load(
                 f=f,
                 map_location=map_location,
