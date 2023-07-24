@@ -6292,7 +6292,7 @@ def UI_2_select_model(data):
                 #so we'll just go through all the possible loaders
                 for model_backend in sorted(
                     model_backends,
-                    key=lambda x: model_backend_module_names[x] in PRIORITIZED_BACKEND_MODULES,
+                    key=lambda x: PRIORITIZED_BACKEND_MODULES.get(model_backend_module_names[x], 0),
                     reverse=True,
                 ):
                     if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
