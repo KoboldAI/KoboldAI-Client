@@ -631,8 +631,8 @@ model_backend_module_names = {}
 model_backend_type_crosswalk = {}
 
 PRIORITIZED_BACKEND_MODULES = {
-    "gptq_hf_torch": 1,
-    "generic_hf_torch": 2
+    "gptq_hf_torch": 2,
+    "generic_hf_torch": 1
 }
 
 for module in os.listdir("./modeling/inference_models"):
