@@ -632,7 +632,10 @@ model_backends = {}
 model_backend_module_names = {}
 model_backend_type_crosswalk = {}
 
-PRIORITIZED_BACKEND_MODULES = ["generic_hf_torch"]
+PRIORITIZED_BACKEND_MODULES = {
+    "gptq_hf_torch": 1,
+    "generic_hf_torch": 2
+}
 
 for module in os.listdir("./modeling/inference_models"):
     if module == '__pycache__':
@@ -668,10 +671,15 @@ for module in os.listdir("./modeling/inference_models"):
         model_backend_module_names[backend_name] = module
 
         if backend_type in model_backend_type_crosswalk:
-            if module in PRIORITIZED_BACKEND_MODULES:
-                model_backend_type_crosswalk[backend_type].insert(0, backend_name)
-            else:
-                model_backend_type_crosswalk[backend_type].append(backend_name)
+            model_backend_type_crosswalk[backend_type].append(backend_name)
+            model_backend_type_crosswalk[backend_type] = list(sorted(
+                model_backend_type_crosswalk[backend_type],
+                key=lambda name: PRIORITIZED_BACKEND_MODULES.get(
+                    [mod for b_name, mod in model_backend_module_names.items() if b_name == name][0],
+                    0
+                ),
+                reverse=True
+            ))
         else:
             model_backend_type_crosswalk[backend_type] = [backend_name]
 
@@ -1897,6 +1905,7 @@ def load_model(model_backend, initial_load=False):
         logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
         logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
         logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
+
 
 # Setup IP Whitelisting
 # Define a function to check if IP is allowed
@@ -3283,7 +3292,10 @@ def actionsubmit(
     # Ignore new submissions if the AI is currently busy
     if(koboldai_vars.aibusy):
         return
-    
+
+    # Open up token stream
+    emit("stream_tokens", True, broadcast=True, room="UI_2")
+
     while(True):
         set_aibusy(1)
         koboldai_vars.actions.clear_unused_options()
@@ -3475,6 +3487,8 @@ def actionsubmit(
                 set_aibusy(0)
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
+    # Clean up token stream
+    emit("stream_tokens", None, broadcast=True, room="UI_2")
 
 def apiactionsubmit_generate(txt, minimum, maximum):
     koboldai_vars.generated_tkns = 0
@@ -7804,9 +7818,16 @@ def UI_2_update_tokens(data):
 def UI_2_privacy_mode(data):
     if data['enabled']:
         koboldai_vars.privacy_mode = True
+        return
+
+    if data['password'] == koboldai_vars.privacy_password:
+        koboldai_vars.privacy_mode = False
     else:
-        if data['password'] == koboldai_vars.privacy_password:
-            koboldai_vars.privacy_mode = False
+        logger.warning("Watch out! Someone tried to unlock your instance with an incorrect password! Stay on your toes...")
+        show_error_notification(
+            title="Invalid password",
+            text="The password you provided was incorrect. Please try again."
+        )
 
 #==================================================================#
 # Genres
@@ -10922,13 +10943,14 @@ def run():
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI is available at the following link : " + cloudflare)
                 logger.init_ok("Webserver", status="OK")
-                if not koboldai_vars.use_colab_tpu:
+                if not koboldai_vars.use_colab_tpu and args.model:
                     # If we're using a TPU our UI will freeze during the connection to the TPU. To prevent this from showing to the user we 
                     # delay the display of this message until after that step
-                    logger.message(f"KoboldAI is available at the following link for UI 1: {cloudflare}")
-                    logger.message(f"KoboldAI is available at the following link for UI 2: {cloudflare}/new_ui")
-                    logger.message(f"KoboldAI is available at the following link for KoboldAI Lite: {cloudflare}/lite")
-                    logger.message(f"KoboldAI is available at the following link for the API: {cloudflare}/api")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for UI 1: {cloudflare}")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for KoboldAI Lite: {cloudflare}/lite")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for the API: [Loading Model...]")
+                    logger.message(f"While the model loads you can use the above links to begin setting up your session, for generations you must wait until after its done loading.")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")

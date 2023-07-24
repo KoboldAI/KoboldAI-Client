@@ -6,7 +6,13 @@ import torch
 import shutil
 from typing import Union
 
-from transformers import AutoModelForCausalLM, GPTNeoForCausalLM, GPT2LMHeadModel, BitsAndBytesConfig
+from transformers import GPTNeoForCausalLM, GPT2LMHeadModel, BitsAndBytesConfig
+try:
+    from hf_bleeding_edge import AutoModelForCausalLM
+except ImportError:
+    from transformers import AutoModelForCausalLM
+
+from transformers.utils import WEIGHTS_NAME, WEIGHTS_INDEX_NAME, TF2_WEIGHTS_NAME, TF2_WEIGHTS_INDEX_NAME, TF_WEIGHTS_NAME, FLAX_WEIGHTS_NAME, FLAX_WEIGHTS_INDEX_NAME, SAFE_WEIGHTS_NAME, SAFE_WEIGHTS_INDEX_NAME
 
 import utils
 import modeling.lazy_loader as lazy_loader
@@ -21,7 +27,19 @@ model_backend_name = "Huggingface"
 model_backend_type = "Huggingface" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 class model_backend(HFTorchInferenceModel):
-        
+    def is_valid(self, model_name, model_path, menu_path):
+        base_is_valid = super().is_valid(model_name, model_path, menu_path)
+        path = False
+        gen_path = "models/{}".format(model_name.replace('/', '_'))
+        if model_path is not None and os.path.exists(model_path):
+            path = model_path
+        elif os.path.exists(gen_path):
+            path = gen_path
+
+        fnames = [WEIGHTS_NAME, WEIGHTS_INDEX_NAME, TF2_WEIGHTS_NAME, TF2_WEIGHTS_INDEX_NAME, TF_WEIGHTS_NAME, FLAX_WEIGHTS_NAME, FLAX_WEIGHTS_INDEX_NAME, SAFE_WEIGHTS_NAME, SAFE_WEIGHTS_INDEX_NAME]
+
+        return base_is_valid and any(os.path.exists(os.path.join(path, fname)) for fname in fnames)
+
     def _initialize_model(self):
         return
 
@@ -40,15 +58,15 @@ class model_backend(HFTorchInferenceModel):
                                             "unit": "text",
                                             "label": "Quantization",
                                             "id": "quantization",
-                                            "default": temp['quantization'] if 'quantization' in temp else 'none',
+                                            "default": temp['quantization'] if 'quantization' in temp else '4bit' if dependency_exists else '16-bit',
                                             "tooltip": "Whether or not to use BnB's 4-bit or 8-bit mode",
                                             "menu_path": "Layers",
-                                            "children": [{'text': 'None', 'value':'none'},{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': '8bit'}],
+                                            "children": [{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': '8bit'}, {'text': '16-bit', 'value':'16-bit'}],
                                             "extra_classes": "",
                                             "refresh_model_inputs": False
                                         })
         else:
-            logger.warning("Bitsandbytes is not installed, you can not use Huggingface models in 4-bit")
+            logger.warning("Bitsandbytes is not installed, you can not use Quantization for Huggingface models")
         return requested_parameters
  
     def set_input_parameters(self, parameters):
@@ -106,10 +124,16 @@ class model_backend(HFTorchInferenceModel):
             # We must disable low_cpu_mem_usage and if using a GPT-2 model
             # because GPT-2 is not compatible with this feature yet.
             tf_kwargs.pop("low_cpu_mem_usage", None)
-
+            tf_kwargs.pop("quantization_config", None)
+            
             # Also, lazy loader doesn't support GPT-2 models
             self.lazy_load = False
 
+        if self.model_type == "llama":
+            tf_kwargs.update({
+                "pretraining_tp": 1 # Workaround recommended by HF to fix their mistake on the config.json tuners adopted
+            })
+        
         logger.debug(
             "lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(
                 self.lazy_load,

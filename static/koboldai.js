@@ -37,6 +37,7 @@ socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
 socket.on("generated_wi", showGeneratedWIData);
+socket.on("stream_tokens", stream_tokens);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -84,6 +85,17 @@ var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
 var selected_model_data;
 var supported_gen_modes = [];
+var privacy_mode_enabled = false;
+
+var streaming = {
+	windowOpen: false,
+	buffer: "",
+	time: {
+		msBuffer: [10],
+		preTime: null,
+	},
+	typeyTimeout: null,
+};
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -191,7 +203,7 @@ const shortcuts = [
 	{mod: "ctrl", key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
 	{mod: "ctrl", key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
 	{mod: "ctrl", key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
-	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
+	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: maybe_enable_privacy_mode},
 	{mod: "ctrl", key: "k", desc: "Finder", func: open_finder},
 	{mod: "ctrl", key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
 ]
@@ -554,7 +566,6 @@ function process_actions_data(data) {
 	game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
 	clearTimeout(auto_loader_timeout);
 	
-	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 	
@@ -634,13 +645,11 @@ function do_story_text_updates(action) {
 				story_area.append(item);
 			}
 		}
-		
-		
-		if (action.action['Selected Text'].charAt(0) == ">") {
-			item.classList.add("action_mode_input");
-		} else {
-			item.classList.remove("action_mode_input");
-		}
+
+		item.classList.toggle(
+			"action_mode_input",
+			action.action['Selected Text'].replaceAll("\n", "")[0] === ">"
+		);
 
 		if ('wi_highlighted_text' in action.action) {
 			for (chunk of action.action['wi_highlighted_text']) {
@@ -2448,12 +2457,12 @@ function world_info_entry(data) {
 	comment.setAttribute("uid", data.uid);
 	comment.value = data.comment;
 	comment.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['comment'] = this.textContent;
-							send_world_info(this.getAttribute('uid'));
+							world_info_data[data.uid].comment = this.value;
+							send_world_info(data.uid);
 							this.classList.add("pulse");
 						}
 	comment.classList.remove("pulse");
-						
+
 	//Let's figure out the order to insert this card
 	var found = false;
 	var moved = false;
@@ -3386,7 +3395,83 @@ function update_game_text(id, new_text) {
 			socket.emit("Set Selected Text", {"id": id, "text": ""});
 		}
 	}
-	
+}
+
+function stream_tokens(tokens) {
+	// NOTE: This is only for genamt/batch size 1.
+	const smoothStreamingEnabled = $el("#user_smooth_streaming").checked;
+
+	let streamBuffer = $el("#token-stream-buffer");
+
+	if (tokens === true) {
+		streaming.windowOpen = true;
+		return;
+	}
+
+	if (!streaming.windowOpen) {
+		// Reject tokens sent after the streaming window is closed
+		return;
+	}
+
+	if (!tokens) {
+		// Server told us to close up shop!
+		streaming.windowOpen = false;
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+		if (streamBuffer) streamBuffer.remove();
+		return;
+	}
+
+	if (!streamBuffer) {
+		// This should happen once at the beginning of the stream
+		streamBuffer = $e("span", $el(".gametext"), {
+			id: "token-stream-buffer",
+			classes: ["within_max_length"]
+		});
+	}
+
+	if (!smoothStreamingEnabled && streaming.typeyTimeout) {
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+	}
+
+	if (!streaming.typeyTimeout && smoothStreamingEnabled) {
+		function _char() {
+			const times = streaming.time.msBuffer;
+			const avg = times.reduce((a, b) => a + b) / times.length;
+			// Get the average time (ms) it took the last 5 tokens to generate
+
+			if (!streaming.typeyTimeout) return;
+			if (!streaming.windowOpen) return;
+			if (!smoothStreamingEnabled) return;
+			streaming.typeyTimeout = setTimeout(_char, avg);
+
+			if (!streaming.buffer.length) return;
+
+			streamBuffer.textContent += streaming.buffer[0];
+			streaming.buffer = streaming.buffer.slice(1);
+		}
+
+		streaming.typeyTimeout = setTimeout(_char, 10);
+	}
+
+	if (!streaming.time.preTime) streaming.time.preTime = new Date();
+
+	streaming.time.msBuffer.push(
+		(new Date().getTime() - streaming.time.preTime.getTime()) / 5
+		// 5 chosen because Concedo said something about 5 this morning and it seems to work
+	);
+
+	if (streaming.time.msBuffer.length > 5) streaming.time.msBuffer.shift();
+	streaming.time.preTime = new Date();
+
+	if (smoothStreamingEnabled) {
+		streaming.buffer += tokens[0];
+	} else {
+		streamBuffer.textContent += tokens[0];
+	}
 }
 
 function save_preset() {
@@ -3444,16 +3529,36 @@ function update_story_picture(chunk_id) {
 	image.setAttribute("chunk", chunk_id);
 }
 
+function maybe_enable_privacy_mode() {
+	const password = document.getElementById("user_privacy_password").value;
+
+	if (!password) {
+		showNotification(
+			"Lock Failed",
+			"Please set a password before locking KoboldAI.",
+			"error"
+		)
+		return;
+	}
+
+	socket.emit("privacy_mode", {'enabled': true})
+}
+
 function privacy_mode(enabled) {
+	privacy_mode_enabled = enabled;
+	updateTitle();
+
+	const sideMenu = document.getElementById("SideMenu");
+	const mainGrid = document.getElementById("main-grid");
+	const rightSideMenu = document.getElementById("rightSideMenu");
+
+	for (const menu of [sideMenu, mainGrid, rightSideMenu]) {
+		menu.classList.toggle("superblur", enabled);
+	}
+
 	if (enabled) {
-		document.getElementById('SideMenu').classList.add("superblur");
-		document.getElementById('main-grid').classList.add("superblur");
-		document.getElementById('rightSideMenu').classList.add("superblur");
 		openPopup("privacy_mode");
 	} else {
-		document.getElementById('SideMenu').classList.remove("superblur");
-		document.getElementById('main-grid').classList.remove("superblur");
-		document.getElementById('rightSideMenu').classList.remove("superblur");
 		if (!$el("#privacy_mode").classList.contains("hidden")) closePopups();
 		document.getElementById('privacy_password').value = "";
 	}
@@ -4750,7 +4855,7 @@ function close_menus() {
 	document.getElementById("main-grid").classList.remove("story_menu-open");
 	
 	//close popup menus
-	closePopups();
+	closePopups(true);
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
@@ -5864,8 +5969,15 @@ function position_context_menu(contextMenu, x, y) {
 
 function updateTitle() {
 	const titleInput = $el(".var_sync_story_story_name");
-	if (!titleInput.innerText) return;
-	document.title = `${titleInput.innerText} - KoboldAI Client`;
+	let titleText = "Story";
+
+	if (!privacy_mode_enabled && titleInput.innerText) {
+		titleText = titleInput.innerText;
+	} else {
+		titleText = "[🔒]"
+	}
+
+	document.title = `${titleText} - KoboldAI Client`;
 }
 
 function openClubImport() {
@@ -5900,17 +6012,27 @@ function openPopup(id) {
 	}
 }
 
-function closePopups() {
+function closePopups(userAction=false) {
+	// userAction specifies if a user tried to close the popup by normal means
+	// (ESC, clicking outside the menu, etc).
 	const container = $el("#popup-container");
-	container.classList.add("hidden");
+	let allHidden = true;
 
 	for (const popupWindow of container.children) {
+		// Do not let the user close windows they shouldn't be! Sneaky devils!
+		if (userAction && popupWindow.getAttribute("allow-close") === "false") {
+			allHidden = false;
+			continue;
+		}
+
 		popupWindow.classList.add("hidden");
 	}
+
+	if (allHidden) container.classList.add("hidden");
 }
 
 $el("#popup-container").addEventListener("click", function(event) {
-	if (event.target === this) closePopups();
+	if (event.target === this) closePopups(true);
 });
 
 /* -- Colab Cookie Handling -- */

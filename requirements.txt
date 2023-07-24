@@ -1,4 +1,4 @@
-transformers==4.30.*
+transformers==4.31.*
 huggingface_hub==0.15.1
 Flask==2.2.3
 Flask-SocketIO==5.3.2
@@ -38,5 +38,7 @@ pytest-html==3.2.0
 pytest-metadata==2.0.4
 requests-mock==1.10.0
 safetensors==0.3.1
+git+https://github.com/0cc4m/hf_bleeding_edge/
+einops
 peft==0.3.0
 scipy
