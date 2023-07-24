@@ -103,7 +103,6 @@ def load_quant_offload_device_map(
     print(device_map)
 
     m, layers, remaining = find_layers(model)
-
     type(m).non_offload_forward = type(m).forward
 
     # Hook offload_forward into found model
