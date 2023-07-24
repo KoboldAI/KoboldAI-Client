@@ -1155,6 +1155,7 @@ class user_settings(settings):
         self.nogenmod    = False
         self.debug       = False    # If set to true, will send debug information to the client for display
         self.output_streaming = True
+        self.smooth_streaming = True
         self.show_probs = False # Whether or not to show token probabilities
         self.beep_on_complete = False
         self.img_gen_priority = 1
@@ -1889,34 +1890,19 @@ class KoboldStoryRegister(object):
                     process_variable_changes(self._socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
             #We're streaming single options so our output is our selected
-            #First we need to see if this is actually the prompt. If so we'll just not do streaming:
-            if self.story_settings.prompt != "":
-                if self.action_count+1 in self.actions:
-                    if self._koboldai_vars.tokenizer is not None:
-                        selected_text_length = len(self._koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
-                    else:
-                        selected_text_length = 0
-                    self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
-                    self.actions[self.action_count+1]['Selected Text Length'] = selected_text_length
-                else:
-                    if self._koboldai_vars.tokenizer is not None:
-                        selected_text_length = len(self._koboldai_vars.tokenizer.encode(text_list[0]))
-                    else:
-                        selected_text_length = 0
-                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": [], "Time": int(time.time())}
-                
-                
-                
-                if self._koboldai_vars.tokenizer is not None:
-                    if len(self._koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self._koboldai_vars.genamt:
-                        #ui1
-                        if queue is not None:
-                            queue.put(["from_server", {"cmd": "streamtoken", "data": [{
-                                "decoded": text_list[0],
-                                "probabilities": self.probability_buffer
-                            }]}, {"broadcast":True, "room":"UI_1"}])
-                        #process_variable_changes(self._socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
-                        process_variable_changes(self._socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+            queue.put(["stream_tokens", text_list, {"broadcast": True, "room": "UI_2"}])
+
+            # UI1
+            queue.put([
+                "from_server", {
+                    "cmd": "streamtoken",
+                    "data": [{
+                        "decoded": text_list[0],
+                        "probabilities": self.probability_buffer
+                    }],
+                },
+                {"broadcast":True, "room": "UI_1"}
+            ])
     
     def set_probabilities(self, probabilities, action_id=None):
         self.probability_buffer = probabilities
