@@ -144,7 +144,6 @@ class LazyloadPatches:
             LazyloadPatches._load_state_dict_into_meta_model
         )
         torch.nn.Module._load_from_state_dict = LazyloadPatches._torch_load_from_state_dict
-        # torch.nn.Module._load_from_state_dict = _agn
 
     def __exit__(exc_type, exc_value, exc_traceback) -> None:
         transformers.modeling_utils._load_state_dict_into_meta_model = LazyloadPatches.old_load_state_dict
