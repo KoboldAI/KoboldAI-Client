@@ -3280,9 +3280,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     if(koboldai_vars.aibusy):
         return
 
-    # Open up token stream
-    emit("stream_tokens", True, broadcast=True, room="UI_2")
-
     while(True):
         set_aibusy(1)
         koboldai_vars.actions.clear_unused_options()
@@ -3474,8 +3471,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 set_aibusy(0)
                 emit('from_server', {'cmd': 'scrolldown', 'data': ''}, broadcast=True, room="UI_1")
                 break
-    # Clean up token stream
-    emit("stream_tokens", None, broadcast=True, room="UI_2")
 
 def apiactionsubmit_generate(txt, minimum, maximum):
     koboldai_vars.generated_tkns = 0
@@ -3903,7 +3898,10 @@ class HordeException(Exception):
 # Send text to generator and deal with output
 #==================================================================#
 
-def generate(txt, minimum, maximum, found_entries=None):    
+def generate(txt, minimum, maximum, found_entries=None):
+    # Open up token stream
+    emit("stream_tokens", True, broadcast=True, room="UI_2")
+
     koboldai_vars.generated_tkns = 0
 
     if(found_entries is None):
@@ -3940,7 +3938,10 @@ def generate(txt, minimum, maximum, found_entries=None):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
             logger.error(traceback.format_exc().replace("\033", ""))
             socketio.emit("error", str(e), broadcast=True, room="UI_2")
+
         set_aibusy(0)
+        # Clean up token stream
+        emit("stream_tokens", None, broadcast=True, room="UI_2")
         return
 
     for i in range(koboldai_vars.numseqs):
@@ -3972,7 +3973,10 @@ def generate(txt, minimum, maximum, found_entries=None):
         del genout
         gc.collect()
         torch.cuda.empty_cache()
-    
+
+    # Clean up token stream
+    emit("stream_tokens", None, broadcast=True, room="UI_2")
+
     maybe_review_story()
 
     set_aibusy(0)
