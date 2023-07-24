@@ -89,6 +89,12 @@ class model_backend(HFTorchInferenceModel):
         return bool(gptq_model)
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
+        try:
+            import hf_bleeding_edge
+            from hf_bleeding_edge import AutoModelForCausalLM
+        except ImportError:
+            from transformers import AutoModelForCausalLM
+
         # Make model path the same as the model name to make this consistent
         # with the other loading method if it isn't a known model type. This
         # code is not just a workaround for below, it is also used to make the
@@ -98,7 +104,7 @@ class model_backend(HFTorchInferenceModel):
 
         self.init_model_config()
 
-        self.lazy_load = False
+        self.lazy_load = True
 
         gpulayers = self.breakmodel_config.gpu_blocks
 
@@ -181,50 +187,60 @@ class model_backend(HFTorchInferenceModel):
         model_type = self.get_model_type()
 
         logger.info(f"Using GPTQ file: {gptq_file}, {gptq_bits}-bit model, type {model_type}, version {gptq_version}{' (with bias)' if v2_bias else ''}, groupsize {gptq_groupsize}")
-        if model_type == "gptj":
-            model = load_quant_offload(gptj_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
-        elif model_type == "gpt_neox":
-            model = load_quant_offload(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
-        elif model_type == "llama":
-            model = load_quant_offload(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
-        elif model_type == "opt":
-            model = load_quant_offload(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
-        elif model_type == "mpt":
-            model = load_quant_offload(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
-        elif model_type == "gpt_bigcode":
-            model = load_quant_offload(bigcode_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias).half()
-        else:
-            try:
-                import auto_gptq
-                from auto_gptq import AutoGPTQForCausalLM
-            except ImportError:
-                raise RuntimeError(f"4-bit load failed. Model type {model_type} not supported in 4-bit")
 
-            try:
-                import hf_bleeding_edge
-                from hf_bleeding_edge import AutoModelForCausalLM
-            except ImportError:
-                from transformers import AutoModelForCausalLM
 
-            # Monkey patch in hf_bleeding_edge to avoid having to trust remote code
-            auto_gptq.modeling._utils.AutoConfig = hf_bleeding_edge.AutoConfig
-            auto_gptq.modeling._base.AutoConfig = hf_bleeding_edge.AutoConfig
-            auto_gptq.modeling._base.AutoModelForCausalLM = hf_bleeding_edge.AutoModelForCausalLM
-            model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"))
+        with lazy_loader.use_lazy_load(
+            enable=self.lazy_load,
+            dematerialized_modules=False,
+        ):
+            print(self.lazy_load)
+            if model_type == "gptj":
+                model = load_quant_offload(gptj_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
+            elif model_type == "gpt_neox":
+                model = load_quant_offload(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
+            elif model_type == "llama":
+                print("LLLLLAAAMMMAA")
+                print(torch.load)
+                model = load_quant_offload(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
+            elif model_type == "opt":
+                model = load_quant_offload(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
+            elif model_type == "mpt":
+                model = load_quant_offload(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
+            elif model_type == "gpt_bigcode":
+                model = load_quant_offload(bigcode_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias).half()
+            else:
+                try:
+                    import auto_gptq
+                    from auto_gptq import AutoGPTQForCausalLM
+                except ImportError:
+                    raise RuntimeError(f"4-bit load failed. Model type {model_type} not supported in 4-bit")
 
-            # Patch in embeddings function
-            def get_input_embeddings(self):
-                return self.model.get_input_embeddings()
+                try:
+                    import hf_bleeding_edge
+                    from hf_bleeding_edge import AutoModelForCausalLM
+                except ImportError:
+                    from transformers import AutoModelForCausalLM
 
-            type(model).get_input_embeddings = get_input_embeddings
+                # Monkey patch in hf_bleeding_edge to avoid having to trust remote code
+                auto_gptq.modeling._utils.AutoConfig = hf_bleeding_edge.AutoConfig
+                auto_gptq.modeling._base.AutoConfig = hf_bleeding_edge.AutoConfig
+                auto_gptq.modeling._base.AutoModelForCausalLM = hf_bleeding_edge.AutoModelForCausalLM
 
-            # Patch in args support..
-            def generate(self, *args, **kwargs):
-                """shortcut for model.generate"""
-                with torch.inference_mode(), torch.amp.autocast(device_type=self.device.type):
-                    return self.model.generate(*args, **kwargs)
+                model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"))
 
-            type(model).generate = generate
+                # Patch in embeddings function
+                def get_input_embeddings(self):
+                    return self.model.get_input_embeddings()
+
+                type(model).get_input_embeddings = get_input_embeddings
+
+                # Patch in args support..
+                def generate(self, *args, **kwargs):
+                    """shortcut for model.generate"""
+                    with torch.inference_mode(), torch.amp.autocast(device_type=self.device.type):
+                        return self.model.generate(*args, **kwargs)
+
+                type(model).generate = generate
 
         return model
 
