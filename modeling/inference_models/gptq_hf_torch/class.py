@@ -90,7 +90,6 @@ class model_backend(HFTorchInferenceModel):
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         try:
-            import hf_bleeding_edge
             from hf_bleeding_edge import AutoModelForCausalLM
         except ImportError:
             from transformers import AutoModelForCausalLM
