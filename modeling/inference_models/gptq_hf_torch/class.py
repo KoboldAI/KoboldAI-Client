@@ -208,19 +208,15 @@ class model_backend(HFTorchInferenceModel):
 
         logger.info(f"Using GPTQ file: {gptq_file}, {gptq_bits}-bit model, type {model_type}, version {gptq_version}{' (with bias)' if v2_bias else ''}, groupsize {gptq_groupsize}")
 
-
         with lazy_loader.use_lazy_load(
             enable=self.lazy_load,
             dematerialized_modules=False,
         ):
-            print(self.lazy_load)
             if model_type == "gptj":
                 model = load_quant_offload(gptj_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
             elif model_type == "gpt_neox":
                 model = load_quant_offload(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
             elif model_type == "llama":
-                print("LLLLLAAAMMMAA")
-                print(torch.load)
                 model = load_quant_offload(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
             elif model_type == "opt":
                 model = load_quant_offload(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, self.gpu_layers_list, force_bias=v2_bias)
