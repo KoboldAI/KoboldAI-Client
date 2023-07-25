@@ -1116,10 +1116,11 @@ def load_model(path: str, model_type: str, badwordsids=koboldai_settings.badword
     thread_resources_env = maps.ResourceEnv(maps.Mesh(devices, ('dp', 'mp')), ())
     maps.thread_resources.env = thread_resources_env
     if initial_load:
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
+        logger.message(f"KoboldAI has still loading your model but available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
+        logger.message(f"KoboldAI has still loading your model but available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+        logger.message(f"KoboldAI has still loading your model but available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
+        logger.message(f"KoboldAI has still loading your model but available at the following link for the API: [Loading Model...]")
+        logger.message(f"While the model loads you can use the above links to begin setting up your session, for generations you must wait until after its done loading.")
 
     global badwords
     # These are the tokens that we don't want the AI to ever write

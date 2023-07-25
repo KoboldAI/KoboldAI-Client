@@ -86,6 +86,7 @@ var initial_socketio_connection_occured = false;
 var selected_model_data;
 var supported_gen_modes = [];
 var privacy_mode_enabled = false;
+var ai_busy = false;
 
 var streaming = {
 	windowOpen: false,
@@ -812,6 +813,10 @@ function update_status_bar(data) {
 }
 
 function do_ai_busy(data) {
+	ai_busy = data.value;
+	// Don't allow editing while Mr. Kobold is thinking
+	document.getElementById("Selected Text").contentEditable = !ai_busy;
+
 	if (data.value) {
 		ai_busy_start = Date.now();
 		favicon.start_swap()
@@ -3305,6 +3310,11 @@ function fix_dirty_game_text() {
 	//This should get fired if we have deleted chunks or have added text outside of a node.
 	//We wait until after the game text has lost focus to fix things otherwise it messes with typing
 	var game_text = document.getElementById("Selected Text");
+
+	// Fix stray stream
+	const streamBufferEl = document.getElementById("#token-stream-buffer");
+	if (streamBufferEl) streamBufferEl.remove();
+
 	//Fix missing story prompt
 	if (dirty_chunks.includes("-1")) {
 		if (!document.getElementById("story_prompt")) {
@@ -3317,6 +3327,7 @@ function fix_dirty_game_text() {
 			game_text.prepend(story_prompt);
 		}
 	}
+
 	if (dirty_chunks.includes("game_text")) {
 		dirty_chunks = dirty_chunks.filter(item => item != "game_text");
 		console.log("Firing Fix messed up text");
@@ -3352,7 +3363,7 @@ function fix_dirty_game_text() {
 
 function savegametextchanges() {
 	fix_dirty_game_text();
-	for (item of document.getElementsByClassName("editing")) {
+	for (const item of document.getElementsByClassName("editing")) {
 		item.classList.remove("editing");
 	}
 	if (dirty_chunks.length > 0) {
@@ -7695,4 +7706,32 @@ $el("#gamescreen").addEventListener("paste", function(event) {
 		false,
 		event.clipboardData.getData("text/plain")
 	);
+});
+
+const gameText = document.getElementById("Selected Text");
+gameText.addEventListener("click", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	set_edit(event);
+});
+
+gameText.addEventListener("focusout", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	savegametextchanges();
+});
+
+gameText.addEventListener("paste", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	check_game_after_paste();
 });
