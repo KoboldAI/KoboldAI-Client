@@ -100,8 +100,6 @@ def load_quant_offload_device_map(
     from transformers.models.gpt_bigcode.modeling_gpt_bigcode import GPTBigCodeModel
     model = load_quant_func(model, checkpoint, wbits, groupsize, force_bias=force_bias)
 
-    print(device_map)
-
     m, layers, remaining = find_layers(model)
     type(m).non_offload_forward = type(m).forward
 
@@ -120,7 +118,6 @@ def load_quant_offload_device_map(
         raise RuntimeError(f"Model type {type(m)} not supported by CPU offloader")
 
     layers_done = len([1 for v in device_map.values() if v != "cpu"])
-    print("LDone", layers_done)
 
     m.cpu_device = torch.device("cpu")
     m.fast_offload = layers_done > len(layers) // 2
@@ -134,10 +131,6 @@ def load_quant_offload_device_map(
     if "layers" not in dir(m):
         m.layers = layers
 
-    print(len(layers))
-    print(len(device_map))
-
-    print(m.primary_gpu)
     for i in range(len(layers)):
         dev = None
         for key, device in device_map.items():
@@ -184,10 +177,6 @@ class model_backend(HFTorchInferenceModel):
         except (ValueError, AttributeError):
             self.gpu_layers_list = [utils.num_layers(self.model_config)]
 
-        tf_kwargs = {
-            "low_cpu_mem_usage": True,
-        }
-
         # If we're using torch_lazy_loader, we need to get breakmodel config
         # early so that it knows where to load the individual model tensors
         logger.debug("lazy_load: {} hascuda: {} breakmodel: {} nobreakmode: {}".format(self.lazy_load, utils.koboldai_vars.hascuda, self.breakmodel, self.nobreakmodel))
@@ -200,9 +189,6 @@ class model_backend(HFTorchInferenceModel):
             self.breakmodel_device_config(self.model_config)
 
         if self.lazy_load:
-            # torch_lazy_loader.py and low_cpu_mem_usage can't be used at the same time
-            tf_kwargs.pop("low_cpu_mem_usage", None)
-
             # If we're using lazy loader, we need to figure out what the model's hidden layers are called
             with lazy_loader.use_lazy_load(dematerialized_modules=True):
                 try:
@@ -218,7 +204,7 @@ class model_backend(HFTorchInferenceModel):
 
         if self.get_local_model_path():
             # Model is stored locally, load it.
-            self.model = self._get_model(self.get_local_model_path(), tf_kwargs)
+            self.model = self._get_model(self.get_local_model_path())
             self.tokenizer = self._get_tokenizer(self.get_local_model_path())
         else:
             raise NotImplementedError("GPTQ Model downloading not implemented")
@@ -238,17 +224,9 @@ class model_backend(HFTorchInferenceModel):
         self.model.kai_model = self
         utils.koboldai_vars.modeldim = self.get_hidden_size()
 
-    def _patch_quant(self, device_map) -> None:
-        # QuantLinear loads on the CPU by default, using a lot of RAM! If we
-        # load it to the same device that the weights are gonna be on, it
-        # mysteriously uses no additional VRAM
-
-        from gptq import quant_v3
-        from gptq import quant_v2
-        from gptq import quant_v1
-
-        def make_quant(module, names, bits, groupsize, name='', force_bias=False):
-            if isinstance(module, quant_v3.QuantLinear):
+    def _patch_quant(self, device_map, quant_module) -> None:
+        def make_quant(module, names, bits, groupsize, name='', force_bias=False, **kwargs):
+            if isinstance(module, quant_module.QuantLinear):
                 return
 
             for attr in dir(module):
@@ -264,19 +242,17 @@ class model_backend(HFTorchInferenceModel):
                             break
 
                     if device is None:
-                        print(name1)
-                        print(device_map)
-                        raise ValueError
+                        raise ValueError(f"No device for {name1}")
 
-                    print("[ql]", name1, device)
                     delattr(module, attr)
 
-                    ql = quant_v3.QuantLinear(
+                    ql = quant_module.QuantLinear(
                         bits,
                         groupsize,
                         tmp.in_features,
                         tmp.out_features,
-                        force_bias or tmp.bias is not None
+                        force_bias or tmp.bias is not None,
+                        **kwargs,
                     )
                     ql = ql.to(device)
 
@@ -285,19 +261,21 @@ class model_backend(HFTorchInferenceModel):
             for name1, child in module.named_children():
                 make_quant(child, names, bits, groupsize, name + '.' + name1 if name != '' else name1, force_bias=force_bias)
 
-        quant_v3.make_quant = make_quant
-
-        # def _ql_init_(self, *args, **kwargs):
-        #     ret = type(self)._unpatched_init(self, *args, **kwargs)
-        #     self.to("cuda:0")
-        #     return ret
-
-        # for quant_module in [quant_v3, quant_v2, quant_v1]:
-        #     quant_module.QuantLinear._unpatched_init = quant_module.QuantLinear.__init__
-        #     quant_module.QuantLinear.__init__ = _ql_init_
+        quant_module.make_quant = make_quant
 
 
-    def _get_model(self, location: str, tf_kwargs: Dict):
+    def _patch_quants(self, device_map) -> None:
+        # Load QuantLinears on the device corresponding to the device map
+
+        from gptq import quant_v3
+        from gptq import quant_v2
+        from gptq import quant_v1
+
+        for quant_module in [quant_v3, quant_v2, quant_v1]:
+            self._patch_quant(device_map, quant_module)
+
+
+    def _get_model(self, location: str):
         import gptq
         from gptq.gptj import load_quant as gptj_load_quant
         from gptq.gptneox import load_quant as gptneox_load_quant
@@ -339,7 +317,7 @@ class model_backend(HFTorchInferenceModel):
                         metamodel
                     )
 
-        self._patch_quant(device_map)
+        self._patch_quants(device_map)
 
         with lazy_loader.use_lazy_load(
             enable=self.lazy_load,
@@ -350,9 +328,6 @@ class model_backend(HFTorchInferenceModel):
             elif model_type == "gpt_neox":
                 model = load_quant_offload_device_map(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
             elif model_type == "llama":
-                print("YE LAMA")
-
-                # model = llama_load_quant(location, gptq_file, gptq_bits, gptq_groupsize, force_bias=v2_bias)
                 model = load_quant_offload_device_map(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
             elif model_type == "opt":
                 model = load_quant_offload_device_map(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
