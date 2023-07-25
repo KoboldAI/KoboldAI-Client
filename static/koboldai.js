@@ -58,7 +58,6 @@ var rename_return_emit_name = "popup_rename";
 var popup_rows = [];
 var popup_style = "";
 var popup_sort = {};
-var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
@@ -4925,46 +4924,41 @@ function getCookie(cname, default_return=null) {
 }
 
 function detect_enter_submit(e) {
-	if (((e.code == "Enter") || (e.code == "NumpadEnter")) && !(shift_down)) {
-		if (typeof e.stopPropagation != "undefined") {
-			e.stopPropagation();
-		} else {
-			e.cancelBubble = true;
-		}
-		//console.log("submitting");
-		document.getElementById("btnsubmit").onclick();
-		setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
+	if (e.shiftKey) return;
+	if (!["Enter", "NumpadEnter"].includes(e.key)) return;
+
+	if (typeof e.stopPropagation != "undefined") {
+		e.stopPropagation();
+	} else {
+		e.cancelBubble = true;
 	}
+
+	//console.log("submitting");
+	document.getElementById("btnsubmit").onclick();
+	setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
 }
 
 function detect_enter_text(e) {
-	if (((e.code == "Enter") || (e.code == "NumpadEnter")) && !(shift_down)) {
-		if (typeof e.stopPropagation != "undefined") {
-			e.stopPropagation();
-		} else {
-			e.cancelBubble = true;
-		}
-		//get element
-		//console.log("Doing Text Enter");
-		//console.log(e.currentTarget.activeElement);
-		if (e.currentTarget.activeElement != undefined) {
-			var item = $(e.currentTarget.activeElement);
-			item.onchange();
-		}
+	if (e.shiftKey) return;
+	if (!["Enter", "NumpadEnter"].includes(e.key)) return;
+
+	if (typeof e.stopPropagation != "undefined") {
+		e.stopPropagation();
+	} else {
+		e.cancelBubble = true;
+	}
+	//get element
+	//console.log("Doing Text Enter");
+	//console.log(e.currentTarget.activeElement);
+	if (e.currentTarget.activeElement != undefined) {
+		var item = $(e.currentTarget.activeElement);
+		item.onchange();
 	}
 }
 
 function detect_key_down(e) {
-	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
-		shift_down = true;
-	} else if (e.code == "Escape") {
+	if (e.code == "Escape") {
 		close_menus();
-	}
-}
-
-function detect_key_up(e) {
-	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
-		shift_down = false;
 	}
 }
 
@@ -5935,7 +5929,6 @@ function openClubImport() {
 //// INIT ////
 
 document.onkeydown = detect_key_down;
-document.onkeyup = detect_key_up;
 document.getElementById("input_text").onkeydown = detect_enter_submit;
 
 /* -- Popups -- */
