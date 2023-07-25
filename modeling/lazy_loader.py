@@ -176,9 +176,6 @@ class TorchLazyTensor(LazyTensor):
             CheckpointChunkCache.key = self.key
             ziproot = checkpoint.namelist()[0].split("/")[0]
             CheckpointChunkCache.handle = checkpoint.open(f"{ziproot}/data/{self.key}", "r")
-
-                
-                                
         else:
             # Cache hit. Hip hip hooray! :^)
             # print(".", end="", flush=True)
@@ -318,7 +315,6 @@ class _LazyUnpickler(RestrictedUnpickler):
     lazy_loaded_storages: Dict[str, LazyTensor]
 
     def __init__(self, *args, **kwargs):
-        # print(args, kwargs)
         self.lazy_loaded_storages = {}
         return super().__init__(*args, **kwargs)
 
@@ -376,7 +372,7 @@ def patch_safetensors(callback):
             # (70 tensors/s -> 65 tensor/s). The memory savings probably
             # shouldn't be the happening, maybe there's a memory leak
             # somewhere in our pipeline with CPU tensors.
-            intermediary_device = "cuda"
+            intermediary_device = "cuda:0"
         else:
             intermediary_device = "cpu"
 
@@ -409,6 +405,7 @@ def patch_safetensors(callback):
         return tensors
 
     transformers.modeling_utils.safe_load_file = safetensors_load
+    safetensors.torch.load_file = safetensors_load
 
 
 @contextlib.contextmanager
