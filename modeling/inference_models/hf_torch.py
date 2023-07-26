@@ -325,7 +325,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         with torch.no_grad():
             start_time = time.time()
             genout = self.model.generate(
-                gen_in,
+                input_ids=gen_in,
                 do_sample=True,
                 max_length=min(
                     len(prompt_tokens) + max_new, utils.koboldai_vars.max_length
