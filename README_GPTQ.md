@@ -8,7 +8,7 @@ For Nvidia users everything is automatically installed when you install the requ
   ```
   ./install_requirements.sh rocm
   ./commandline-rocm.sh
-  pip install git+https://github.com/0cc4m/GPTQ-for-LLaMa@c884b421a233f9603d8224c9b22c2d83dd2c1fc4
+  pip install git+https://github.com/0cc4m/GPTQ-for-LLaMa
   ```
   * If you get error missing hip/hip_runtime_xxx.h you dont have proper rocm & hip pkg installed
   * If you get CUDA_HOME envar is not set run in env: 
