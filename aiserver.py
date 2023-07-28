@@ -71,7 +71,7 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForToken
 import transformers
 import ipaddress
 from functools import wraps
-from modeling.inference_models.utils import RestrictedUnpickler, use_custom_unpickler
+from modeling.pickling import RestrictedUnpickler, use_custom_unpickler
 
 try:
     from transformers.models.opt.modeling_opt import OPTDecoder
