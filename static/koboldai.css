@@ -2730,13 +2730,14 @@ body {
 #context-menu > hr {
 	/* Division Color*/
 	border-top: 2px solid var(--context_menu_division);
-	margin: 5px 5px;
+	margin: 3px 5px;
 }
 
 .context-menu-item {
-	padding: 5px;
+	padding: 4px;
 	padding-right: 25px;
 	min-width: 100px;
+	white-space: nowrap;
 }
 
 .context-menu-item:hover {
@@ -2747,9 +2748,14 @@ body {
 
 .context-menu-item > .material-icons-outlined {
 	position: relative;
-	top: 2px;
+	top: 3px;
 	font-size: 15px;
 	margin-right: 5px;
+}
+
+.context-menu-item > .context-menu-label {
+	position: relative;
+	top: 1px;
 }
 
 /* Substitutions */

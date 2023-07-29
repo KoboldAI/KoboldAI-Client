@@ -85,6 +85,7 @@ let story_id = -1;
 var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
 var selected_model_data;
+var supported_gen_modes = [];
 var privacy_mode_enabled = false;
 var ai_busy = false;
 var can_show_options = false;
@@ -162,7 +163,36 @@ const context_menu_actions = {
 	"wi-img-upload-button": [
 		{label: "Upload Image", icon: "file_upload", enabledOn: "ALWAYS", click: wiImageReplace},
 		{label: "Use Generated Image", icon: "image", enabledOn: "GENERATED-IMAGE", click: wiImageUseGeneratedImage},
-	]
+	],
+	"submit-button": [
+		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: () => storySubmit()},
+		null,
+		{
+			label: "Generate Forever",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("forever"),
+			click: () => storySubmit("forever")
+		},
+		{
+			label: "Generate Until EOS",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_eos"),
+			click: () => storySubmit("until_eos")
+		},
+		null,
+		{
+			label: "Finish Line",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_newline"),
+			click: () => storySubmit("until_newline")
+		},
+		{
+			label: "Finish Sentence",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_sentence_end"),
+			click: () => storySubmit("until_sentence_end")
+		},
+	],
 };
 
 let context_menu_cache = [];
@@ -254,10 +284,17 @@ function disconnect() {
 	document.getElementById("disconnect_message").classList.remove("hidden");
 }
 
-function storySubmit() {
+function storySubmit(genMode=null) {
+	const textInput = document.getElementById("input_text");
+	const themeInput = document.getElementById("themetext");
 	disruptStoryState();
-	socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});
-	document.getElementById('input_text').value = '';
+	socket.emit('submit', {
+		data: textInput.value,
+		theme: themeInput.value,
+		gen_mode: genMode,
+	});
+
+	textInput.value = '';
 	document.getElementById('themetext').value = '';
 }
 
@@ -1009,6 +1046,9 @@ function var_changed(data) {
 	//special case for welcome text since we want to allow HTML
 	} else if (data.classname == 'model' && data.name == 'welcome') {
 		document.getElementById('welcome_text').innerHTML = data.value;
+	//Special case for permitted generation modes
+	} else if (data.classname == 'model' && data.name == 'supported_gen_modes') {
+		supported_gen_modes = data.value;
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -5976,8 +6016,21 @@ function position_context_menu(contextMenu, x, y) {
 		right: x + width,
 	};
 
+	// Slide over if running against the window bounds.
 	if (farMenuBounds.right > bounds.right) x -= farMenuBounds.right - bounds.right;
-	if (farMenuBounds.bottom > bounds.bottom) y -= farMenuBounds.bottom - bounds.bottom;
+
+	if (farMenuBounds.bottom > bounds.bottom) {
+		// We've hit the bottom.
+
+		// The old algorithm pushed the menu against the wall, similar to what's
+		// done on the x-axis:
+		// y -= farMenuBounds.bottom - bounds.bottom;
+		// But now, we make the box change its emission direction from the cursor:
+		y -= (height + 5);
+		// The main advantage of this approach is that the cursor is never directly
+		// placed above a context menu item immediately after activating the context
+		// menu. (Thus the 5px offset also added)
+	}
 
 	contextMenu.style.left = `${x}px`;
 	contextMenu.style.top = `${y}px`;
@@ -6252,21 +6305,23 @@ process_cookies();
 				continue;
 			}
 
+			const enableCriteriaIsFunction = typeof action.enabledOn === "function"
 
-			let item = $e("div", contextMenu, {
+			const itemEl = $e("div", contextMenu, {
 				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
-				"enabled-on": action.enabledOn,
+				"enabled-on": enableCriteriaIsFunction ? "CALLBACK" : action.enabledOn,
 				"cache-index": context_menu_cache.length
 			});
+			itemEl.enabledOnCallback = action.enabledOn;
 
 			context_menu_cache.push({shouldShow: action.shouldShow});
 
-			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
-			item.append(action.label);
+			const icon = $e("span", itemEl, {classes: ["material-icons-outlined"], innerText: action.icon});
+			$e("span", itemEl, {classes: ["context-menu-label"], innerText: action.label});
 
-			item.addEventListener("mousedown", e => e.preventDefault());
+			itemEl.addEventListener("mousedown", e => e.preventDefault());
 			// Expose the "summonEvent" to enable access to original context menu target.
-			item.addEventListener("click", () => action.click(summonEvent));
+			itemEl.addEventListener("click", () => action.click(summonEvent));
 		}
 	}
 
@@ -6289,6 +6344,10 @@ process_cookies();
 
 		// Show only applicable actions in the context menu
 		let contextMenuType = target.getAttribute("context-menu");
+
+		// If context menu is not present, return
+		if (!context_menu_actions[contextMenuType]) return;
+
 		for (const contextMenuItem of contextMenu.childNodes) {
 			let shouldShow = contextMenuItem.classList.contains(`context-menu-${contextMenuType}`);
 
@@ -6316,10 +6375,10 @@ process_cookies();
 
 		// Disable non-applicable items
 		$(".context-menu-item").addClass("disabled");
-		
+
 		// A selection is made
 		if (getSelectionText()) $(".context-menu-item[enabled-on=SELECTION]").removeClass("disabled");
-		
+
 		// The caret is placed
 		if (get_caret_position(target) !== null) $(".context-menu-item[enabled-on=CARET]").removeClass("disabled");
 
@@ -6327,6 +6386,11 @@ process_cookies();
 		if ($el(".action_image")) $(".context-menu-item[enabled-on=GENERATED-IMAGE]").removeClass("disabled");
 
 		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
+
+		for (const contextMenuItem of document.querySelectorAll(".context-menu-item[enabled-on=CALLBACK]")) {
+			if (!contextMenuItem.enabledOnCallback()) continue;
+			contextMenuItem.classList.remove("disabled");
+		}
 
 		// Make sure hr isn't first or last visible element
 		let visibles = [];
