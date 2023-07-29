@@ -1756,11 +1756,15 @@ class KoboldStoryRegister(object):
     
     def go_forward(self):
         action_step = self.action_count+1
-        if action_step in self.actions:
-            if len(self.get_current_options()) == 1:
-                logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
-                self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
-    
+        if action_step not in self.actions:
+            return
+
+        self.show_options(len(self.get_current_options()) > 1)
+
+        if len(self.get_current_options()) == 1:
+            logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
+            self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
+
     def use_option(self, option_number, action_step=None):
         if action_step is None:
             action_step = self.action_count+1
@@ -1797,6 +1801,16 @@ class KoboldStoryRegister(object):
                 del self.actions[action_step]['Options'][option_number]
                 process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
+    
+    def show_options(
+        self,
+        should_show: bool,
+        force: bool = False,
+
+    ) -> None:
+        if self._koboldai_vars.aibusy and not force:
+            return
+        self._socketio.emit("show_options", should_show, broadcast=True, room="UI_2")
     
     def delete_action(self, action_id, keep=True):
         if action_id in self.actions:

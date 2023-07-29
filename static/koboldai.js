@@ -38,6 +38,7 @@ socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
 socket.on("generated_wi", showGeneratedWIData);
 socket.on("stream_tokens", stream_tokens);
+socket.on("show_options", show_options);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -86,6 +87,7 @@ var initial_socketio_connection_occured = false;
 var selected_model_data;
 var privacy_mode_enabled = false;
 var ai_busy = false;
+var can_show_options = false;
 
 var streaming = {
 	windowOpen: false,
@@ -309,7 +311,7 @@ function reset_story() {
 	}
 	
 	//clear any options
-	var option_area = document.getElementById("Select Options");
+	var option_area = document.getElementById("option-container");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
@@ -341,7 +343,7 @@ function reset_story() {
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 		
 	}
-	document.getElementById('main-grid').setAttribute('option_length', 0);
+	document.getElementById('main-grid').setAttribute("hide-options", true);
 
 	$(".chat-message").remove();
 	addInitChatMessage();
@@ -361,22 +363,143 @@ function fix_text(val) {
 	}
 }
 
+function create_option_element(text, optionId, actionId, type, itemPinned=false) {
+	// Type must be "gen" or "history"
+	const optionContainer = $el("#option-container");
+	const row = $e("div", optionContainer, {
+		classes: ["sequence_row"],
+		"option_id": optionId,
+		"action_id": actionId,
+	});
+
+	const textcell = document.createElement("span");
+	textcell.textContent = text;
+	textcell.classList.add("sequence");
+	textcell.setAttribute("option_id", optionId);
+	textcell.setAttribute("option_chunk", actionId);
+
+	const iconcell = document.createElement("span");
+	iconcell.setAttribute("option_id", optionId);
+	iconcell.setAttribute("option_chunk", actionId);
+	iconcell.classList.add("sequnce_icon");
+
+	const icon = document.createElement("span");
+	icon.id = "Pin_"+optionId;
+	icon.classList.add("material-icons-outlined");
+	icon.classList.add("option_icon");
+	icon.classList.add("cursor");
+
+	if (type === "gen") {
+		icon.classList.add("pin");
+		icon.textContent = "push_pin";
+
+		if (itemPinned) {
+			icon.classList.add('rotate_45');
+		} else {
+			icon.setAttribute('style', "filter: brightness(50%);");
+		}
+
+		iconcell.addEventListener("click", function() {
+			socket.emit("Pinning", {
+				chunk: actionId,
+				option: optionId
+			});
+		});
+	} else if (type === "history") {
+		icon.textContent = "cached";
+
+		const delete_icon = $e("span", iconcell, {
+			classes: ["material-icons-outlined", "cursor", 'option_icon'],
+			tooltip: "Delete Option",
+			option_id: optionId,
+			option_chunk: actionId,
+			textContent: 'delete'
+		});
+
+		delete_icon.addEventListener("click", function() {
+			socket.emit("delete_option", {
+				chunk: actionId,
+				option: optionId
+			});
+		});
+	}
+
+
+	iconcell.append(icon);
+
+	textcell.addEventListener("click", function() {
+		socket.emit("Use Option Text", {
+			chunk: actionId,
+			option: optionId,
+		});
+	});
+
+	row.append(textcell);
+	row.append(iconcell);
+	optionContainer.append(row);
+	return row;
+}
+
+function action_count_changed() {
+	// Delete all options before the next chunk to hidden
+	const option_container = document.getElementById("option-container");
+	const current_chunk = parseInt(document.getElementById("action_count").textContent) + 1;
+
+	for (const chunk of Array.from(option_container.children)) {
+		if (parseInt(chunk.getAttribute("action_id")) === current_chunk) {
+			// good
+		} else {
+			chunk.remove();
+		}
+	}
+}
+
+function visible_options_present() {
+	const optionContainer = $el("#option-container");
+	for (const el of optionContainer.childNodes) {
+		if (el.classList.contains("hidden")) continue;
+		return true;
+	}
+	return false;
+}
+
+function show_options(doShow) {
+	can_show_options = doShow;
+	let show = doShow;// && visible_options_present();
+	$el("#option-container").classList.toggle("hidden", !show);
+	$el("#main-grid").setAttribute("hide-options", !show);
+
+	if (show) {
+		const action = actions_data[current_action + 1];
+		if (!action) return;
+
+		create_options({
+			id: current_action+1,
+			action: action
+		});
+	}
+}
+
 function create_options(action) {
 	//Set all options before the next chunk to hidden
-	if (action.id  != current_action+1) {
+	if (action.id != current_action+1) {
 		return;
 	}
-	var option_chunk = document.getElementById("Select Options");
-	
-	//first, let's clear out our existing data
-	while (option_chunk.firstChild) {
-		option_chunk.removeChild(option_chunk.firstChild);
+
+	if (!can_show_options) {
+		return;
 	}
-	
+
+	// First, let's clear out our existing data. Note: use querySelectorAll to
+	// iterate for deletion because other methods resize the list during iteration
+	for (const option of document.querySelectorAll(".sequence_row")) {
+		option.remove();
+	}
+
 	//Let's check if we only have a single redo option. In that case we din't show as the user can use the redo button
-	seen_prev_selection = false;
-	show_options = false;
-	for (item of action.action.Options) {
+	let seen_prev_selection = false;
+	let show_options = false;
+	for (const item of action.action.Options) {
 		if (!(item['Previous Selection']) && !(item['Edited'])) {
 			show_options = true;
 			break;
@@ -389,100 +512,46 @@ function create_options(action) {
 			}
 		}
 	}
-	if (!(show_options)) {
-		document.getElementById('main-grid').setAttribute('option_length', 0);
+
+	const mainGrid = $el("#main-grid");
+	const optionContainer = $el("#option-container");
+
+	if (!show_options) {
+		mainGrid.setAttribute("hide-options", true);
+		optionContainer.classList.add("hidden");
 		return;
 	}
-	
-	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
-	
-	var table = document.createElement("div");
-	table.classList.add("sequences");
-	//Add Redo options
-	let added_options=0;
-	i=0;
-	for (item of action.action.Options) {
-		if ((item['Previous Selection']) && (item.text != "")) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", action.id);
-			var iconcell = document.createElement("span");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", action.id);
-			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("material-icons-outlined");
-			icon.classList.add("option_icon");
-			icon.classList.add("cursor");
-			icon.textContent = "cached";
-			iconcell.append(icon);
-			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'option_icon'], 
-												"tooltip": "Delete Option", 'option_id': i,
-												'option_chunk': action.id, 'textContent': 'delete'});
-			delete_icon.onclick = function () {
-									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			textcell.onclick = function () {
-									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-			added_options+=1;
-		}
-		i+=1;
+
+	// mainGrid.setAttribute("hide-options", false);
+	// optionContainer.classList.toggle("hidden", action.action.Options.length < 1);
+
+	// Gens
+	let optionId = 0;
+	for (const item of action.action.Options) {
+		if (!item.text) continue;
+		if (item.Edited) continue;
+		if (item["Previous Selection"]) continue;
+
+		create_option_element(item.text, optionId, action.id, "gen", item.Pinned);
+		optionId++;
 	}
-	//Add general options
-	i=0;
-	for (item of action.action.Options) {
-		if (!(item.Edited) && !(item['Previous Selection']) && (item.text != "")) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", action.id);
-			var iconcell = document.createElement("span");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", action.id);
-			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("material-icons-outlined");
-			icon.classList.add("option_icon");
-			icon.classList.add("cursor");
-			icon.classList.add("pin");
-			icon.textContent = "push_pin";
-			if (!(item.Pinned)) {
-				icon.setAttribute('style', "filter: brightness(50%);");
-			} else {
-				icon.classList.add('rotate_45');
-			}
-			iconcell.append(icon);
-			iconcell.onclick = function () {
-									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							   };
-			textcell.onclick = function () {
-									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-			added_options+=1;
-		}
-		i+=1;
+
+
+	// History
+	optionId = 0;
+	for (const item of action.action.Options) {
+		if (!item.text) continue;
+		if (!item["Previous Selection"]) continue;
+
+		create_option_element(item.text, optionId, action.id, "history");
+		optionId++;
 	}
-	if (added_options > 0) {
-		option_chunk.append(table);
-	}
-	
-	
+
+	let anyOptions = visible_options_present();
+
+	$el("#option-container").classList.toggle("hidden", !anyOptions);
+	$el("#main-grid").setAttribute("hide-options", !anyOptions);
+
 	//make sure our last updated chunk is in view
 	//option_chunk.scrollIntoView();
 }
@@ -520,7 +589,8 @@ function process_actions_data(data) {
 		//update
 		action_type = "update";
 	}
-	for (action of actions) {
+
+	for (const action of actions) {
 		actions_data[parseInt(action.id)] = action.action;
 		do_story_text_updates(action);
 		create_options(action);
@@ -1029,20 +1099,8 @@ function var_changed(data) {
 	//	Change_Theme(getCookie("theme", "Monochrome"));
 	//}
 	
-	//Set all options before the next chunk to hidden
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
-		var option_container = document.getElementById("Select Options");
-		var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
-		
-		var children = option_container.children;
-		for (var i = 0; i < children.length; i++) {
-			var chunk = children[i];
-			if (chunk.id == "Select Options Chunk " + current_chunk) {
-				chunk.classList.remove("hidden");
-			} else {
-				chunk.classList.add("hidden");
-			}
-		}
+		action_count_changed();
 	}
 	
 	

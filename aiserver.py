@@ -3836,6 +3836,10 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Open up token stream
     emit("stream_tokens", True, broadcast=True, room="UI_2")
 
+    # HACK: Show options when streaming more than 1 sequence
+    if utils.koboldai_vars.output_streaming:
+        koboldai_vars.actions.show_options(koboldai_vars.numseqs > 1, force=True)
+
     koboldai_vars.generated_tkns = 0
 
     if(found_entries is None):
@@ -6100,6 +6104,7 @@ def UI_2_Set_Selected_Text(data):
 @socketio.on('Use Option Text')
 @logger.catch
 def UI_2_Use_Option_Text(data):
+    koboldai_vars.actions.show_options(False)
     if koboldai_vars.prompt == "":
         koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
         koboldai_vars.actions.clear_unused_options()
