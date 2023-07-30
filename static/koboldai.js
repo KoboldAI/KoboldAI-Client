@@ -37,6 +37,8 @@ socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
 socket.on("generated_wi", showGeneratedWIData);
+socket.on("stream_tokens", stream_tokens);
+socket.on("show_options", show_options);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -83,8 +85,21 @@ let story_id = -1;
 var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
 var selected_model_data;
+var supported_gen_modes = [];
 var privacy_mode_enabled = false;
 var attention_wanting_wi_bar = null;
+var ai_busy = false;
+var can_show_options = false;
+
+var streaming = {
+	windowOpen: false,
+	buffer: "",
+	time: {
+		msBuffer: [10],
+		preTime: null,
+	},
+	typeyTimeout: null,
+};
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -149,7 +164,36 @@ const context_menu_actions = {
 	"wi-img-upload-button": [
 		{label: "Upload Image", icon: "file_upload", enabledOn: "ALWAYS", click: wiImageReplace},
 		{label: "Use Generated Image", icon: "image", enabledOn: "GENERATED-IMAGE", click: wiImageUseGeneratedImage},
-	]
+	],
+	"submit-button": [
+		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: () => storySubmit()},
+		null,
+		{
+			label: "Generate Forever",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("forever"),
+			click: () => storySubmit("forever")
+		},
+		{
+			label: "Generate Until EOS",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_eos"),
+			click: () => storySubmit("until_eos")
+		},
+		null,
+		{
+			label: "Finish Line",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_newline"),
+			click: () => storySubmit("until_newline")
+		},
+		{
+			label: "Finish Sentence",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_sentence_end"),
+			click: () => storySubmit("until_sentence_end")
+		},
+	],
 };
 
 let context_menu_cache = [];
@@ -241,10 +285,17 @@ function disconnect() {
 	document.getElementById("disconnect_message").classList.remove("hidden");
 }
 
-function storySubmit() {
+function storySubmit(genMode=null) {
+	const textInput = document.getElementById("input_text");
+	const themeInput = document.getElementById("themetext");
 	disruptStoryState();
-	socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});
-	document.getElementById('input_text').value = '';
+	socket.emit('submit', {
+		data: textInput.value,
+		theme: themeInput.value,
+		gen_mode: genMode,
+	});
+
+	textInput.value = '';
 	document.getElementById('themetext').value = '';
 }
 
@@ -298,7 +349,7 @@ function reset_story() {
 	}
 	
 	//clear any options
-	var option_area = document.getElementById("Select Options");
+	var option_area = document.getElementById("option-container");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
@@ -330,7 +381,7 @@ function reset_story() {
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 		
 	}
-	document.getElementById('main-grid').setAttribute('option_length', 0);
+	document.getElementById('main-grid').setAttribute("hide-options", true);
 
 	$(".chat-message").remove();
 	addInitChatMessage();
@@ -350,22 +401,143 @@ function fix_text(val) {
 	}
 }
 
+function create_option_element(text, optionId, actionId, type, itemPinned=false) {
+	// Type must be "gen" or "history"
+	const optionContainer = $el("#option-container");
+	const row = $e("div", optionContainer, {
+		classes: ["sequence_row"],
+		"option_id": optionId,
+		"action_id": actionId,
+	});
+
+	const textcell = document.createElement("span");
+	textcell.textContent = text;
+	textcell.classList.add("sequence");
+	textcell.setAttribute("option_id", optionId);
+	textcell.setAttribute("option_chunk", actionId);
+
+	const iconcell = document.createElement("span");
+	iconcell.setAttribute("option_id", optionId);
+	iconcell.setAttribute("option_chunk", actionId);
+	iconcell.classList.add("sequnce_icon");
+
+	const icon = document.createElement("span");
+	icon.id = "Pin_"+optionId;
+	icon.classList.add("material-icons-outlined");
+	icon.classList.add("option_icon");
+	icon.classList.add("cursor");
+
+	if (type === "gen") {
+		icon.classList.add("pin");
+		icon.textContent = "push_pin";
+
+		if (itemPinned) {
+			icon.classList.add('rotate_45');
+		} else {
+			icon.setAttribute('style', "filter: brightness(50%);");
+		}
+
+		iconcell.addEventListener("click", function() {
+			socket.emit("Pinning", {
+				chunk: actionId,
+				option: optionId
+			});
+		});
+	} else if (type === "history") {
+		icon.textContent = "cached";
+
+		const delete_icon = $e("span", iconcell, {
+			classes: ["material-icons-outlined", "cursor", 'option_icon'],
+			tooltip: "Delete Option",
+			option_id: optionId,
+			option_chunk: actionId,
+			textContent: 'delete'
+		});
+
+		delete_icon.addEventListener("click", function() {
+			socket.emit("delete_option", {
+				chunk: actionId,
+				option: optionId
+			});
+		});
+	}
+
+
+	iconcell.append(icon);
+
+	textcell.addEventListener("click", function() {
+		socket.emit("Use Option Text", {
+			chunk: actionId,
+			option: optionId,
+		});
+	});
+
+	row.append(textcell);
+	row.append(iconcell);
+	optionContainer.append(row);
+	return row;
+}
+
+function action_count_changed() {
+	// Delete all options before the next chunk to hidden
+	const option_container = document.getElementById("option-container");
+	const current_chunk = parseInt(document.getElementById("action_count").textContent) + 1;
+
+	for (const chunk of Array.from(option_container.children)) {
+		if (parseInt(chunk.getAttribute("action_id")) === current_chunk) {
+			// good
+		} else {
+			chunk.remove();
+		}
+	}
+}
+
+function visible_options_present() {
+	const optionContainer = $el("#option-container");
+	for (const el of optionContainer.childNodes) {
+		if (el.classList.contains("hidden")) continue;
+		return true;
+	}
+	return false;
+}
+
+function show_options(doShow) {
+	can_show_options = doShow;
+	let show = doShow;// && visible_options_present();
+	$el("#option-container").classList.toggle("hidden", !show);
+	$el("#main-grid").setAttribute("hide-options", !show);
+
+	if (show) {
+		const action = actions_data[current_action + 1];
+		if (!action) return;
+
+		create_options({
+			id: current_action+1,
+			action: action
+		});
+	}
+}
+
 function create_options(action) {
 	//Set all options before the next chunk to hidden
-	if (action.id  != current_action+1) {
+	if (action.id != current_action+1) {
 		return;
 	}
-	var option_chunk = document.getElementById("Select Options");
-	
-	//first, let's clear out our existing data
-	while (option_chunk.firstChild) {
-		option_chunk.removeChild(option_chunk.firstChild);
+
+	if (!can_show_options) {
+		return;
 	}
-	
+
+	// First, let's clear out our existing data. Note: use querySelectorAll to
+	// iterate for deletion because other methods resize the list during iteration
+	for (const option of document.querySelectorAll(".sequence_row")) {
+		option.remove();
+	}
+
 	//Let's check if we only have a single redo option. In that case we din't show as the user can use the redo button
-	seen_prev_selection = false;
-	show_options = false;
-	for (item of action.action.Options) {
+	let seen_prev_selection = false;
+	let show_options = false;
+	for (const item of action.action.Options) {
 		if (!(item['Previous Selection']) && !(item['Edited'])) {
 			show_options = true;
 			break;
@@ -378,100 +550,46 @@ function create_options(action) {
 			}
 		}
 	}
-	if (!(show_options)) {
-		document.getElementById('main-grid').setAttribute('option_length', 0);
+
+	const mainGrid = $el("#main-grid");
+	const optionContainer = $el("#option-container");
+
+	if (!show_options) {
+		mainGrid.setAttribute("hide-options", true);
+		optionContainer.classList.add("hidden");
 		return;
 	}
-	
-	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
-	
-	var table = document.createElement("div");
-	table.classList.add("sequences");
-	//Add Redo options
-	let added_options=0;
-	i=0;
-	for (item of action.action.Options) {
-		if ((item['Previous Selection']) && (item.text != "")) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", action.id);
-			var iconcell = document.createElement("span");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", action.id);
-			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("material-icons-outlined");
-			icon.classList.add("option_icon");
-			icon.classList.add("cursor");
-			icon.textContent = "cached";
-			iconcell.append(icon);
-			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'option_icon'], 
-												"tooltip": "Delete Option", 'option_id': i,
-												'option_chunk': action.id, 'textContent': 'delete'});
-			delete_icon.onclick = function () {
-									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			textcell.onclick = function () {
-									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-			added_options+=1;
-		}
-		i+=1;
+
+	// mainGrid.setAttribute("hide-options", false);
+	// optionContainer.classList.toggle("hidden", action.action.Options.length < 1);
+
+	// Gens
+	let optionId = 0;
+	for (const item of action.action.Options) {
+		if (!item.text) continue;
+		if (item.Edited) continue;
+		if (item["Previous Selection"]) continue;
+
+		create_option_element(item.text, optionId, action.id, "gen", item.Pinned);
+		optionId++;
 	}
-	//Add general options
-	i=0;
-	for (item of action.action.Options) {
-		if (!(item.Edited) && !(item['Previous Selection']) && (item.text != "")) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", action.id);
-			var iconcell = document.createElement("span");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", action.id);
-			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("material-icons-outlined");
-			icon.classList.add("option_icon");
-			icon.classList.add("cursor");
-			icon.classList.add("pin");
-			icon.textContent = "push_pin";
-			if (!(item.Pinned)) {
-				icon.setAttribute('style', "filter: brightness(50%);");
-			} else {
-				icon.classList.add('rotate_45');
-			}
-			iconcell.append(icon);
-			iconcell.onclick = function () {
-									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							   };
-			textcell.onclick = function () {
-									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-			added_options+=1;
-		}
-		i+=1;
+
+
+	// History
+	optionId = 0;
+	for (const item of action.action.Options) {
+		if (!item.text) continue;
+		if (!item["Previous Selection"]) continue;
+
+		create_option_element(item.text, optionId, action.id, "history");
+		optionId++;
 	}
-	if (added_options > 0) {
-		option_chunk.append(table);
-	}
-	
-	
+
+	let anyOptions = visible_options_present();
+
+	$el("#option-container").classList.toggle("hidden", !anyOptions);
+	$el("#main-grid").setAttribute("hide-options", !anyOptions);
+
 	//make sure our last updated chunk is in view
 	//option_chunk.scrollIntoView();
 }
@@ -509,7 +627,8 @@ function process_actions_data(data) {
 		//update
 		action_type = "update";
 	}
-	for (action of actions) {
+
+	for (const action of actions) {
 		actions_data[parseInt(action.id)] = action.action;
 		do_story_text_updates(action);
 		create_options(action);
@@ -518,7 +637,6 @@ function process_actions_data(data) {
 	clearTimeout(game_text_scroll_timeout);
 	game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
 	clearTimeout(auto_loader_timeout);
-	
 	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
@@ -766,6 +884,10 @@ function update_status_bar(data) {
 }
 
 function do_ai_busy(data) {
+	ai_busy = data.value;
+	// Don't allow editing while Mr. Kobold is thinking
+	document.getElementById("Selected Text").contentEditable = !ai_busy;
+
 	if (data.value) {
 		ai_busy_start = Date.now();
 		favicon.start_swap()
@@ -925,6 +1047,9 @@ function var_changed(data) {
 	//special case for welcome text since we want to allow HTML
 	} else if (data.classname == 'model' && data.name == 'welcome') {
 		document.getElementById('welcome_text').innerHTML = data.value;
+	//Special case for permitted generation modes
+	} else if (data.classname == 'model' && data.name == 'supported_gen_modes') {
+		supported_gen_modes = data.value;
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -1015,20 +1140,8 @@ function var_changed(data) {
 	//	Change_Theme(getCookie("theme", "Monochrome"));
 	//}
 	
-	//Set all options before the next chunk to hidden
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
-		var option_container = document.getElementById("Select Options");
-		var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
-		
-		var children = option_container.children;
-		for (var i = 0; i < children.length; i++) {
-			var chunk = children[i];
-			if (chunk.id == "Select Options Chunk " + current_chunk) {
-				chunk.classList.remove("hidden");
-			} else {
-				chunk.classList.add("hidden");
-			}
-		}
+		action_count_changed();
 	}
 	
 	
@@ -3268,6 +3381,11 @@ function fix_dirty_game_text() {
 	//This should get fired if we have deleted chunks or have added text outside of a node.
 	//We wait until after the game text has lost focus to fix things otherwise it messes with typing
 	var game_text = document.getElementById("Selected Text");
+
+	// Fix stray stream
+	const streamBufferEl = document.getElementById("#token-stream-buffer");
+	if (streamBufferEl) streamBufferEl.remove();
+
 	//Fix missing story prompt
 	if (dirty_chunks.includes("-1")) {
 		if (!document.getElementById("story_prompt")) {
@@ -3280,6 +3398,7 @@ function fix_dirty_game_text() {
 			game_text.prepend(story_prompt);
 		}
 	}
+
 	if (dirty_chunks.includes("game_text")) {
 		dirty_chunks = dirty_chunks.filter(item => item != "game_text");
 		console.log("Firing Fix messed up text");
@@ -3315,7 +3434,7 @@ function fix_dirty_game_text() {
 
 function savegametextchanges() {
 	fix_dirty_game_text();
-	for (item of document.getElementsByClassName("editing")) {
+	for (const item of document.getElementsByClassName("editing")) {
 		item.classList.remove("editing");
 	}
 	if (dirty_chunks.length > 0) {
@@ -3358,7 +3477,83 @@ function update_game_text(id, new_text) {
 			socket.emit("Set Selected Text", {"id": id, "text": ""});
 		}
 	}
-	
+}
+
+function stream_tokens(tokens) {
+	// NOTE: This is only for genamt/batch size 1.
+	const smoothStreamingEnabled = $el("#user_smooth_streaming").checked;
+
+	let streamBuffer = $el("#token-stream-buffer");
+
+	if (tokens === true) {
+		streaming.windowOpen = true;
+		return;
+	}
+
+	if (!streaming.windowOpen) {
+		// Reject tokens sent after the streaming window is closed
+		return;
+	}
+
+	if (!tokens) {
+		// Server told us to close up shop!
+		streaming.windowOpen = false;
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+		if (streamBuffer) streamBuffer.remove();
+		return;
+	}
+
+	if (!streamBuffer) {
+		// This should happen once at the beginning of the stream
+		streamBuffer = $e("span", $el(".gametext"), {
+			id: "token-stream-buffer",
+			classes: ["within_max_length"]
+		});
+	}
+
+	if (!smoothStreamingEnabled && streaming.typeyTimeout) {
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+	}
+
+	if (!streaming.typeyTimeout && smoothStreamingEnabled) {
+		function _char() {
+			const times = streaming.time.msBuffer;
+			const avg = times.reduce((a, b) => a + b) / times.length;
+			// Get the average time (ms) it took the last 5 tokens to generate
+
+			if (!streaming.typeyTimeout) return;
+			if (!streaming.windowOpen) return;
+			if (!smoothStreamingEnabled) return;
+			streaming.typeyTimeout = setTimeout(_char, avg);
+
+			if (!streaming.buffer.length) return;
+
+			streamBuffer.textContent += streaming.buffer[0];
+			streaming.buffer = streaming.buffer.slice(1);
+		}
+
+		streaming.typeyTimeout = setTimeout(_char, 10);
+	}
+
+	if (!streaming.time.preTime) streaming.time.preTime = new Date();
+
+	streaming.time.msBuffer.push(
+		(new Date().getTime() - streaming.time.preTime.getTime()) / 5
+		// 5 chosen because Concedo said something about 5 this morning and it seems to work
+	);
+
+	if (streaming.time.msBuffer.length > 5) streaming.time.msBuffer.shift();
+	streaming.time.preTime = new Date();
+
+	if (smoothStreamingEnabled) {
+		streaming.buffer += tokens[0];
+	} else {
+		streamBuffer.textContent += tokens[0];
+	}
 }
 
 function save_preset() {
@@ -5812,8 +6007,21 @@ function position_context_menu(contextMenu, x, y) {
 		right: x + width,
 	};
 
+	// Slide over if running against the window bounds.
 	if (farMenuBounds.right > bounds.right) x -= farMenuBounds.right - bounds.right;
-	if (farMenuBounds.bottom > bounds.bottom) y -= farMenuBounds.bottom - bounds.bottom;
+
+	if (farMenuBounds.bottom > bounds.bottom) {
+		// We've hit the bottom.
+
+		// The old algorithm pushed the menu against the wall, similar to what's
+		// done on the x-axis:
+		// y -= farMenuBounds.bottom - bounds.bottom;
+		// But now, we make the box change its emission direction from the cursor:
+		y -= (height + 5);
+		// The main advantage of this approach is that the cursor is never directly
+		// placed above a context menu item immediately after activating the context
+		// menu. (Thus the 5px offset also added)
+	}
 
 	contextMenu.style.left = `${x}px`;
 	contextMenu.style.top = `${y}px`;
@@ -6088,21 +6296,23 @@ process_cookies();
 				continue;
 			}
 
+			const enableCriteriaIsFunction = typeof action.enabledOn === "function"
 
-			let item = $e("div", contextMenu, {
+			const itemEl = $e("div", contextMenu, {
 				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
-				"enabled-on": action.enabledOn,
+				"enabled-on": enableCriteriaIsFunction ? "CALLBACK" : action.enabledOn,
 				"cache-index": context_menu_cache.length
 			});
+			itemEl.enabledOnCallback = action.enabledOn;
 
 			context_menu_cache.push({shouldShow: action.shouldShow});
 
-			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
-			item.append(action.label);
+			const icon = $e("span", itemEl, {classes: ["material-icons-outlined"], innerText: action.icon});
+			$e("span", itemEl, {classes: ["context-menu-label"], innerText: action.label});
 
-			item.addEventListener("mousedown", e => e.preventDefault());
+			itemEl.addEventListener("mousedown", e => e.preventDefault());
 			// Expose the "summonEvent" to enable access to original context menu target.
-			item.addEventListener("click", () => action.click(summonEvent));
+			itemEl.addEventListener("click", () => action.click(summonEvent));
 		}
 	}
 
@@ -6125,6 +6335,10 @@ process_cookies();
 
 		// Show only applicable actions in the context menu
 		let contextMenuType = target.getAttribute("context-menu");
+
+		// If context menu is not present, return
+		if (!context_menu_actions[contextMenuType]) return;
+
 		for (const contextMenuItem of contextMenu.childNodes) {
 			let shouldShow = contextMenuItem.classList.contains(`context-menu-${contextMenuType}`);
 
@@ -6152,10 +6366,10 @@ process_cookies();
 
 		// Disable non-applicable items
 		$(".context-menu-item").addClass("disabled");
-		
+
 		// A selection is made
 		if (getSelectionText()) $(".context-menu-item[enabled-on=SELECTION]").removeClass("disabled");
-		
+
 		// The caret is placed
 		if (get_caret_position(target) !== null) $(".context-menu-item[enabled-on=CARET]").removeClass("disabled");
 
@@ -6163,6 +6377,11 @@ process_cookies();
 		if ($el(".action_image")) $(".context-menu-item[enabled-on=GENERATED-IMAGE]").removeClass("disabled");
 
 		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
+
+		for (const contextMenuItem of document.querySelectorAll(".context-menu-item[enabled-on=CALLBACK]")) {
+			if (!contextMenuItem.enabledOnCallback()) continue;
+			contextMenuItem.classList.remove("disabled");
+		}
 
 		// Make sure hr isn't first or last visible element
 		let visibles = [];
@@ -7536,4 +7755,32 @@ $el("#gamescreen").addEventListener("paste", function(event) {
 		false,
 		event.clipboardData.getData("text/plain")
 	);
+});
+
+const gameText = document.getElementById("Selected Text");
+gameText.addEventListener("click", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	set_edit(event);
+});
+
+gameText.addEventListener("focusout", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	savegametextchanges();
+});
+
+gameText.addEventListener("paste", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	check_game_after_paste();
 });

@@ -34,6 +34,7 @@ from modeling.stoppers import Stoppers
 from modeling.post_token_hooks import PostTokenHooks
 from modeling.inference_models.hf import HFInferenceModel
 from modeling.inference_model import (
+    GenerationMode,
     GenerationResult,
     GenerationSettings,
     ModelCapabilities,
@@ -126,8 +127,13 @@ class HFTorchInferenceModel(HFInferenceModel):
         return ret
 
     def get_auxilary_device(self) -> Union[str, int, torch.device]:
-        return self.breakmodel_config.primary_device
-
+        if self.breakmodel:
+            return self.breakmodel_config.primary_device
+        if self.usegpu:
+            return "cuda:0"
+        else:
+            return "cpu"
+        
     def _get_target_dtype(self) -> Union[torch.float16, torch.float32]:
         if self.breakmodel_config.primary_device == "cpu":
             return torch.float32
@@ -248,7 +254,10 @@ class HFTorchInferenceModel(HFInferenceModel):
             assert kwargs.pop("logits_warper", None) is not None
             kwargs["logits_warper"] = KoboldLogitsWarperList()
 
-            if utils.koboldai_vars.newlinemode in ["s", "ns"]:
+            if (
+                utils.koboldai_vars.newlinemode in ["s", "ns"]
+                and not m_self.gen_state["allow_eos"]
+            ):
                 kwargs["eos_token_id"] = -1
                 kwargs.setdefault("pad_token_id", 2)
             return new_sample.old_sample(self, *args, **kwargs)
@@ -320,7 +329,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         with torch.no_grad():
             start_time = time.time()
             genout = self.model.generate(
-                gen_in,
+                input_ids=gen_in,
                 do_sample=True,
                 max_length=min(
                     len(prompt_tokens) + max_new, utils.koboldai_vars.max_length
@@ -599,3 +608,9 @@ class HFTorchInferenceModel(HFInferenceModel):
             self.breakmodel = False
             self.usegpu = False
             return
+
+    def get_supported_gen_modes(self) -> List[GenerationMode]:
+        # This changes a torch patch to disallow eos as a bad word.
+        return super().get_supported_gen_modes() + [
+            GenerationMode.UNTIL_EOS
+        ]

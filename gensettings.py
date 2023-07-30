@@ -414,6 +414,23 @@ gensettingstf = [
     "ui_level": 2
  	},
     {
+    "UI_V2_Only": True,
+ 	"uitype": "toggle",
+ 	"unit": "bool",
+ 	"label": "Smooth Streaming",
+ 	"id": "smoothstreaming",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 0,
+	"tooltip": "Makes Token Streaming type in characters, not tokens. Note that this is purely visual, and will likely increase delay in seeing the tokens.",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "user",
+    "name": "smooth_streaming",
+    "ui_level": 1
+ 	},
+    {
  	"uitype": "toggle",
  	"unit": "bool",
  	"label": "Alt Text Gen",

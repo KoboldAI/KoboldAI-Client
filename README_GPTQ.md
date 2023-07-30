@@ -2,31 +2,13 @@
 (This guide is for both Linux and Windows and assumes user has git installed and a basic grasp of command line use)
 
 #### Installation
-In the command prompt/command line navigate to where you want the KoboldAI subfolder to be created.
+For Nvidia users everything is automatically installed when you install the requirements, you merely need a compatible GPTQ model for it to show up.
 
-Note: do not run your command prompt as administrator/with elevated priviledges, reports suggest this leads to problems.
-
-`git clone https://github.com/0cc4m/KoboldAI -b latestgptq --recurse-submodules`
-
-`cd KoboldAI`
-
-Next step, (Windows) subfolder mode or B: option doesn't matter choose either
-
-* [if on Windows]
-  ```
-  install_requirements.bat
-  ```
-  * if it closes the window when it finishes, reopen a command prompt and navigate back to your KoboldAI directory.
-
-* [if on Linux with Nvidia] 
-  ```
-  ./install_requirements.sh
-  ```
 * [if on Linux with AMD]
   ```
   ./install_requirements.sh rocm
   ./commandline-rocm.sh
-  pip install git+https://github.com/0cc4m/GPTQ-for-LLaMa@c884b421a233f9603d8224c9b22c2d83dd2c1fc4
+  pip install git+https://github.com/0cc4m/GPTQ-for-LLaMa
   ```
   * If you get error missing hip/hip_runtime_xxx.h you dont have proper rocm & hip pkg installed
   * If you get CUDA_HOME envar is not set run in env: 
@@ -46,5 +28,5 @@ If you haven't done so already, exit the command prompt/leave KAI's conda env. (
 
 Run `play.bat` [windows], `play.sh` [linux Nvidia], or `play-rocm.sh` [linux AMD]
 
-Switch to UI2, then load your model.
+Load your model using Huggingface GPTQ as the backend option (This will show up when a valid GPTQ model is detected).
 
