@@ -1288,7 +1288,7 @@ function redrawPopup() {
 			delete_icon.setAttribute("tooltip", "Delete");
 			delete_icon.id = row.path;
 			delete_icon.setAttribute("folder", row.isFolder);
-			delete_icon.onclick = function () {
+			delete_icon.addEventListener("click", function(event) {
 				const message = this.getAttribute("folder") == "true" ?  "Do you really want to delete this folder and ALL files under it?" : "Do you really want to delete this file?";
 				const delId = this.id;
 
@@ -1298,9 +1298,11 @@ function redrawPopup() {
 					denyText="I've changed my mind!",
 					confirmCallback=function() {
 						socket.emit("popup_delete", delId);
-					}
+					},
+					null,
+					event.shiftKey
 				);
-			};
+			});
 		}
 		icon_area.append(delete_icon);
 		tr.append(icon_area);
@@ -2248,10 +2250,11 @@ function world_info_entry(data) {
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
 	delete_icon.setAttribute("wi-title", data.title);
-	delete_icon.onclick = function () {
+	delete_icon.addEventListener("click", function (event) {
 		const wiTitle = this.getAttribute("wi-title");
 		const wiUid = parseInt(this.getAttribute("uid"));
 		const wiElement = this.parentElement.parentElement;
+
 		deleteConfirmation([
 				{text: "You're about to delete World Info entry "},
 				{text: wiTitle, format: "bold"},
@@ -2265,9 +2268,11 @@ function world_info_entry(data) {
 				} else {
 					socket.emit("delete_world_info", wiUid);
 				}
-			}
+			},
+			null,
+			event.shiftKey
 		);
-	}
+	});
 
 	const wiImgContainer = world_info_card.querySelector(".world_info_image_container");
 	const wiImg = wiImgContainer.querySelector(".world_info_image");
@@ -2742,8 +2747,9 @@ function world_info_folder(data) {
 			delete_button.classList.add("cursor");
 			delete_button.setAttribute("folder", folder_name);
 			delete_button.textContent = "delete";
-			delete_button.onclick = function () {
+			delete_button.addEventListener("click", function (event) {
 				const folderName = this.getAttribute("folder");
+
 				deleteConfirmation([
 						{text: "You're about to delete World Info folder "},
 						{text: folderName, format: "bold"},
@@ -2753,9 +2759,11 @@ function world_info_folder(data) {
 					],
 					confirmText="Go for it.",
 					denyText="I've changed my mind!",
-					confirmCallback=function() { socket.emit("delete_wi_folder", folderName); }
+					confirmCallback=function() { socket.emit("delete_wi_folder", folderName); },
+					null,
+					event.shiftKey
 				);
-			};
+			});
 			delete_button.classList.add("delete");
 			title.append(delete_button);
 			
@@ -6946,9 +6954,13 @@ function sFormatted2HTML(sFormatted) {
 	return outHTML;
 }
 
-function deleteConfirmation(sFormatted, confirmText, denyText, confirmCallback, denyCallback) {
+function deleteConfirmation(sFormatted, confirmText, denyText, confirmCallback, denyCallback=null, bypass=false) {
+	if (bypass) {
+		confirmCallback();
+		return;
+	}
+
 	$el("#confirm-text").innerHTML = sFormatted2HTML(sFormatted);
-	
 	$el("#confirm-confirm-button > .text").innerText = confirmText;
 	$el("#confirm-deny-button > .text").innerText = denyText;
 
