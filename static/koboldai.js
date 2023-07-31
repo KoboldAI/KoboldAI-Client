@@ -23,7 +23,13 @@ socket.on('error_popup', function(data){error_popup(data);});
 socket.on("world_info_entry", function(data){process_world_info_entry(data);});
 socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_in_game(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
-socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
+socket.on("delete_new_world_info_entry", function(data) {
+	const card = $el("#world_info_-1");
+	// Prevent weird race condition/strange event call order where blur event
+	// fires before removal is finished on Chrome
+	card.removing = true
+	card.remove();
+});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("delete_world_info_folder", function(data){document.getElementById("world_info_folder_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
@@ -3254,6 +3260,8 @@ function upload_file_without_save(file_box) {
 }
 
 function send_world_info(uid) {
+	const cardEl = document.getElementById(`world_info_${uid}`);
+	if (cardEl.removing) return;
 	socket.emit("edit_world_info", world_info_data[uid]);
 }
 
