@@ -6096,7 +6096,7 @@ function closePopups(userAction=false) {
 
 	for (const popupWindow of container.children) {
 		// Do not let the user close windows they shouldn't be! Sneaky devils!
-		if (userAction && popupWindow.getAttribute("allow-close") === "false") {
+		if (userAction && popupWindow.getAttribute("allow-close") === "false" && !popupWindow.classList.contains("hidden")) {
 			allHidden = false;
 			continue;
 		}
