@@ -1259,17 +1259,46 @@ td.server_vars {
 .world_info_label_container > .generate-button:hover { opacity: 1.0; }
 
 .tag {
+	display: inline-block;
 	background-color: var(--wi_tag_color);
 	color: var(--wi_tag_text_color);
+
+	margin-right: 3px;
+	margin-top: 3px;
+
 	padding: 2px;
-	margin-right: 2px;
+	padding-left: 3px;
+	padding-right: 3px;
+
 	border-radius: var(--radius_wi_card);
-	border: solid;
-	border-color: var(--wi_tag_color);
+}
+
+.tag .tag_button {
+	cursor: pointer;
+	opacity: 0.4;
+	font-size: 16px;
+	position: relative;
 }
 
 .tag .delete_icon {
-	cursor: pointer;
+	top: 3px;
+	right: 3px;
+}
+
+.tag .add_icon {
+	top: 3px;
+	right: 3px;
+}
+
+.tag .tag_text {
+	display: inline-block;
+	outline: none;
+	position: relative;
+	right: 3px;
+}
+
+.placeholder_tag .tag_text:empty {
+	opacity: 0.4;
 }
 
 .oi[folder] {
@@ -2851,6 +2880,10 @@ body {
 	height: 100%;
 }
 
+#welcome_text a {
+	text-decoration: underline;
+}
+
 .welcome_text {
 	display: flex;
 	height: 100%;
@@ -3569,8 +3602,13 @@ h2 .material-icons-outlined {
 }
 
 .section_header {
+	font-weight: bold;
 	margin-left: 2px;
 	margin-bottom: 2px;
+}
+
+.story_category_area > * > label {
+	user-select: none
 }
 
 .help_text {
