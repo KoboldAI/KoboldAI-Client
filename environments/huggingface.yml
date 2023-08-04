@@ -41,8 +41,8 @@ dependencies:
     - ansi2html
     - flask_compress
     - ijson
-    - bitsandbytes==0.40.0.post4; sys_platform == 'linux'
-    - https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.40.0.post4-py3-none-win_amd64.whl; sys_platform == 'win32'
+    - bitsandbytes==0.41.0; sys_platform == 'linux'
+    - https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.41.0-py3-none-win_amd64.whl; sys_platform == 'win32'
     - ftfy
     - pydub
     - diffusers
