@@ -653,7 +653,7 @@ class model_settings(settings):
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
                          'badwordsids', 'uid_presets', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
     settings_name = "model"
-    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
+    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 1.0, "rep_pen_range": 2048, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
         self.enable_whitelist = False
@@ -691,13 +691,13 @@ class model_settings(settings):
         self.simple_randomness = 0 #Set first as this affects other outputs
         self.simple_creativity = 0 #Set first as this affects other outputs
         self.simple_repitition = 0 #Set first as this affects other outputs
-        self.max_length  = 1024    # Maximum number of tokens to submit per action
+        self.max_length  = 2048    # Maximum number of tokens to submit per action
         self.ikmax       = 3000    # Maximum number of characters to submit to InferKit
-        self.genamt      = 80      # Amount of text for each action to generate
+        self.genamt      = 200      # Amount of text for each action to generate
         self.ikgen       = 200     # Number of characters for InferKit to generate
         self.rep_pen     = 1.1     # Default generator repetition_penalty
-        self.rep_pen_slope = 0.7   # Default generator repetition penalty slope
-        self.rep_pen_range = 1024  # Default generator repetition penalty range
+        self.rep_pen_slope = 1.0   # Default generator repetition penalty slope
+        self.rep_pen_range = 2048  # Default generator repetition penalty range
         self.temp        = 0.5     # Default generator temperature
         self.top_p       = 0.9     # Default generator top_p
         self.top_k       = 0       # Default generator top_k
