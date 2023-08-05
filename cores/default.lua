@@ -1,34 +1,34 @@
--- Default core script
--- Runs all generation modifiers and output modifiers in forward order, and
--- runs all input modifiers in reverse order
+import sagemaker
+import boto3
+from sagemaker.huggingface import HuggingFaceModel
 
-kobold, koboldcore = require("bridge")()  -- This line is optional and is only for EmmyLua type annotations
+try:
+	role = sagemaker.get_execution_role()
+except ValueError:
+	iam = boto3.client('iam')
+	role = iam.get_role(RoleName='sagemaker_execution_role')['Role']['Arn']
 
----@class KoboldCoreScript
-local corescript = {}
+# Hub Model configuration. https://huggingface.co/models
+hub = {
+	'HF_MODEL_ID':'KoboldAI/OPT-13B-Erebus',
+	'HF_TASK':'text-generation'
+}
 
+# create Hugging Face Model Class
+huggingface_model = HuggingFaceModel(
+	transformers_version='4.26.0',
+	pytorch_version='1.13.1',
+	py_version='py39',
+	env=hub,
+	role=role, 
+)
 
--- Run all the input modifiers from bottom to top
-function corescript.inmod()
-    for i = #koboldcore.userscripts, 1, -1 do
-        local userscript = koboldcore.userscripts[i]
-        userscript.inmod()
-    end
-end
+# deploy model to SageMaker Inference
+predictor = huggingface_model.deploy(
+	initial_instance_count=1, # number of instances
+	instance_type='ml.m5.xlarge' # ec2 instance type
+)
 
--- Run all the generation modifiers from top to bottom
-function corescript.genmod()
-    for i, userscript in ipairs(koboldcore.userscripts) do
-        userscript.genmod()
-    end
-end
-
--- Run all the generation modifiers from top to bottom
-function corescript.outmod()
-    for i, userscript in ipairs(koboldcore.userscripts) do
-        userscript.outmod()
-    end
-end
-
-
-return corescript
+predictor.predict({
+	"inputs": "Can you please let us know more details about your ",
+})
