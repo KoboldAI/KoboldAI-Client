@@ -3,7 +3,7 @@
 
 <!-- 
 An embedded version of Kobold Lite for use in koboldcpp and KoboldAI United Client
-Current version: 50
+Current version: 54
 Please go to https://github.com/LostRuins/lite.koboldai.net for updates on Kobold Lite.
 Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and KoboldAI United Client. Please do not remove this line.
 
@@ -60,22 +60,23 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 		.settinglabel input {
 			width: 6ch;
-			background-color: inherit;
-			border: none;
+			background-color: #1a3364;
+			/* border: none; */
 			outline: none;
 		}
 		.settinglabel input[type=checkbox] {
 			width: 3ch;
 		}
 
-		.settinglabel.mininiput {
+
+		.settinglabel.miniinput {
 			background-color: #ffffff;
 			color:#555;
 			border:0px solid #ccc;
 			border-radius: 4px;
 			width: 100%;
 		}
-		.settinglabel.mininiput:focus {
+		.settinglabel.miniinput:focus {
 			color:#555;
 		}
 
@@ -1276,7 +1277,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		{
 			background-color: #434343;
 			overflow-y: auto;
-			max-height: 250px;
+			max-height: 320px;
 			min-height: 60px;
 		}
 		.witoggleroff,.witoggleroff:hover,.witoggleroff:focus
@@ -2151,7 +2152,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			formatted = JSON.stringify(data);
 			if(formatted && formatted!="")
 			{
-				formatted = formatted.substring(0,400);
+				formatted = formatted.substring(0,500);
 			}
 			else
 			{
@@ -3811,6 +3812,36 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		render_gametext();
 	}
 
+	function load_tavern_wi(obj,chatopponent,myname)
+	{
+		console.log("Append Tavern WI");
+		current_wi = [];
+		for (let key in obj.entries) {
+			var itm = obj.entries[key];
+			var karr = itm.key;
+			if(!karr)
+			{
+				karr = itm.keys;
+			}
+			var ksarr = itm.keysecondary;
+			if(!ksarr)
+			{
+				ksarr = itm.secondary_keys;
+			}
+			let nwi = {
+				"key": karr.join(","),
+				"keysecondary": (ksarr.length > 0 ? ksarr.join(",") : ""),
+				"content": itm.content,
+				"comment": itm.comment,
+				"folder": null,
+				"selective": itm.selective,
+				"constant": itm.constant
+			};
+			nwi.content = replaceAll(nwi.content,"{{char}}",chatopponent,true);
+			nwi.content = replaceAll(nwi.content,"{{user}}",myname,true);
+			current_wi.push(nwi);
+		}
+	}
 	function load_tavern_obj(obj)
 	{
 		console.log("Loading tavern obj");
@@ -3825,6 +3856,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		let scenario = obj.scenario?obj.scenario:"";
 		let examplemsg = obj.mes_example?obj.mes_example:"";
 		let greeting = obj.first_mes?obj.first_mes:"";
+
 		//post process
 		memory = replaceAll(memory,"{{char}}",chatopponent,true);
 		scenario = replaceAll(scenario,"{{char}}",chatopponent,true);
@@ -3846,21 +3878,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		//check if it's a world info only card, if so, do not restart game
 		if(combinedmem.trim()=="" && greeting=="" && obj.entries)
 		{
-			console.log("Append Tavern WI");
-			current_wi = [];
-			for (let key in obj.entries) {
-				var itm = obj.entries[key];
-				let nwi = {
-					"key": itm.key.join(","),
-					"keysecondary": (itm.keysecondary.length > 0 ? itm.keysecondary.join(",") : ""),
-					"content": itm.content,
-					"comment": itm.comment,
-					"folder": null,
-					"selective": itm.selective,
-					"constant": itm.constant
-				};
-				current_wi.push(nwi);
-			}
+			load_tavern_wi(obj,chatopponent,myname);
 		}
 		else
 		{
@@ -3870,6 +3888,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			gametext_arr.push("\n"+chatopponent+": "+greeting);
 			current_memory = combinedmem + "\n<START>";
 			localsettings.opmode = 3;
+			//handle character book
+			if(obj.character_book && obj.character_book.entries && obj.character_book.entries.length>0)
+			{
+				load_tavern_wi(obj.character_book,chatopponent,myname);
+			}
 		}
 		render_gametext();
 	}
@@ -5928,7 +5951,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			if (current_memory == null || current_memory.trim() == "")
 			{
 				//if there is no memory, then we can be a lot of lenient with the character counts since the backend will truncate excess anyway
-				max_allowed_characters = Math.floor(maxctxlen * 6);
+				max_allowed_characters = Math.floor(maxctxlen * 4.6);
 			}
 
 			let truncated_context = concat_gametext(true, ""); //no need to truncate if memory is empty
@@ -6050,7 +6073,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			let max_mem_anote_len = Math.floor(max_allowed_characters*0.9);
 			let truncated_memory = current_memory.substring(current_memory.length - max_mem_anote_len);
 			if (truncated_memory != null && truncated_memory != "") {
-				truncated_memory += "\n";
+				const nomemorynewline = urlParams.get('nomemorynewline');
+				if(nomemorynewline!=1)
+				{
+					truncated_memory += "\n";
+				}
 			}
 
 			//if world info exists, we inject it right after the memory
@@ -6215,7 +6242,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					}
 					if (localsettings.opmode == 3) //stop on selfname found
 					{
-						submit_payload.stop_sequence = [localsettings.chatname + "\:"];
+						submit_payload.stop_sequence = [localsettings.chatname + "\:",("\n"+localsettings.chatname+" ")];
 						//for multichat, everyone else becomes a stopper token
 						if (localsettings.chatopponent.includes("||$||")) {
 							let coarr = localsettings.chatopponent.split("||$||");
@@ -6385,7 +6412,25 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					"temperature": submit_payload.params.temperature,
 					"top_p": submit_payload.params.top_p,
 				}
+				if(document.getElementById("clauderenamecompat").checked)
+				{
+					if(!claude_payload.prompt.toLowerCase().trim().startsWith('human:'))
+					{
+						claude_payload.prompt = "Human: "+claude_payload.prompt;
+					}
+					if(!claude_payload.prompt.toLowerCase().trim().endsWith('assistant:'))
+					{
+						if(localsettings.opmode==1)
+						{
+							claude_payload.prompt = claude_payload.prompt + " \nAssistant: Here is a continuation of the story: \nAssistant:";
+						}
+						else
+						{
+							claude_payload.prompt = claude_payload.prompt + " (cont.) Assistant:";
+						}
 
+					}
+				}
 
 				fetch(targetep, {
 					method: 'POST',
@@ -7331,7 +7376,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			document.getElementById("btnmode").classList.add("hidden");
 		}
 
-		if (gametext_arr.length == 0 && !(synchro_pending_stream!="" && pending_response_id!="")) {
+		if (gametext_arr.length == 0 && synchro_pending_stream=="" && pending_response_id=="") {
 
 			if (perfdata == null) {
 				document.getElementById("gametext").innerHTML = "Welcome to <span class=\"color_cyan\">KoboldAI Lite</span>!<br>You are in <span class=\"color_red\">Offline Mode</span>.<br>You will still be able to load and edit stories, but not generate new text."
@@ -7377,7 +7422,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			}
 			if(synchro_pending_stream!="")
 			{
-				fulltxt += "<span class=\"color_yellow\">" + escapeHtml(pending_context_preinjection) + synchro_pending_stream + "</span>";
+				fulltxt += "<span class=\"color_yellow\">" + escapeHtml(pending_context_preinjection) + escapeHtml(synchro_pending_stream) + "</span>";
 			}
 
 			if(localsettings.opmode==4 && !document.getElementById("allowediting").checked)
@@ -7464,6 +7509,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			}
 
 			//console.log("FT:" + fulltxt);
+			if(fulltxt=="" && gametext_arr.length == 0 && synchro_pending_stream=="" && pending_response_id!="")
+			{
+				fulltxt = "Generating...";
+			}
 			document.getElementById("gametext").innerHTML = fulltxt;
 		}
 
@@ -7726,7 +7775,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		}
 		if(synchro_pending_stream!="")
 		{
-			newbodystr += `<div class="incoming_msg"><div class="chat_received_msg"><div class="chat_received_withd_msg"><p>`+"<span class=\"color_yellow\">" + escapeHtml(pending_context_preinjection) + synchro_pending_stream + "</span>"+`</p></div></div></div>`;
+			newbodystr += `<div class="incoming_msg"><div class="chat_received_msg"><div class="chat_received_withd_msg"><p>`+"<span class=\"color_yellow\">" + escapeHtml(pending_context_preinjection) + escapeHtml(synchro_pending_stream) + "</span>"+`</p></div></div></div>`;
 		}
 
 		chatbody.innerHTML = newbodystr;
@@ -7898,7 +7947,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		<input class="form-control wiinputkey" id="wikey`+ i + `" placeholder="Key(s)" value="` + winame + `">
 		<input class="form-control wiinputkey `+ (curr.selective ? `` : `hidden`) + `" id="wikeysec` + i + `" placeholder="Sec. Key(s)" value="` + wisec + `">` + `</td>
 		<td class="col-10">
-		<textarea class="form-control wiinputval" id="wival`+ i + `" placeholder="What To Remember" rows="1">` + witxt + `</textarea>
+		<textarea class="form-control wiinputval" style="line-height:1.1" id="wival`+ i + `" placeholder="What To Remember" rows="3">` + witxt + `</textarea>
 		</td>`+
 				`
 		<td>
@@ -8004,8 +8053,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	}
 
 	function btn_retry() {
-		//do not retry if story is only 1 part long
-		if (pending_response_id == "" && gametext_arr.length > 1) {
+		if (pending_response_id == "" && gametext_arr.length > 0) {
 			let boxtextstash = document.getElementById("input_text").value;
 			document.getElementById("input_text").value = "";
 			let temp = gametext_arr[gametext_arr.length-1];
@@ -8376,9 +8424,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					<option value="claude-instant-v1">claude-instant-v1</option>
 					<option value="claude-instant-v1-100k">claude-instant-v1-100k</option>
 					<option value="claude-2">claude-2</option>
+					<option value="claude-2.0">claude-2.0</option>
 				</select>
 				<input type="checkbox" id="clauderenamecompat" onchange="">
-				<div class="box-label" title="Rename User and Bot tags to work with claude">Claude Compatibility Rename Fix</div>
+				<div class="box-label" title="Rename User and Bot tags to work with claude, force inject them otherwise">Claude Compatibility Rename Fix</div>
 			</div>
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" onclick="connect_custom_endpoint()">Connect</button>
@@ -8494,7 +8543,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						<div class="settinglabel">
 							<div class="justifyleft settingsmall">Top p Sampling <span class="helpicon">?<span class="helptext">Used
 										to discard unlikely text in the sampling process. Lower values will make text
-										more predictable but can become repetitious.</span></span></div>
+										more predictable but can become repetitious. Set to 1 to deactivate it.</span></span></div>
 							<input inputmode="numeric" class="justifyright flex-push-right settingsmall" id="top_p" value=80 oninput="
 						   document.getElementById('top_p_slide').value = this.value;">
 						</div>
@@ -8567,7 +8616,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								id="rep_pen_range" title="Repetition Penalty Range"></td>
 								<td><input class="" type="text" placeholder="0" value="0"
 								id="rep_pen_slope" title="Repetition Penalty Slope"></td>
-								<td><input class="" type="text" placeholder="CSV" value="" id="sampler_order" style="width:80px;" title="Valid values are: 0=top_k, 1=top_a, 2=top_p, 3=tfs, 4=typ, 5=temp, 6=rep_pen" onblur="validate_samplers()"></td>
+								<td><input class="" type="text" placeholder="CSV" value="" id="sampler_order" style="width:70px;" title="Valid values are: 0=top_k, 1=top_a, 2=top_p, 3=tfs, 4=typ, 5=temp, 6=rep_pen" onblur="validate_samplers()"></td>
 								</tr>
 							  </table>
 						</div>
@@ -8635,8 +8684,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								  <th>AI Name <span class="helpicon">?<span class="helptext">The name of the person you want to chat with. Multiple opponents can be specified, creating a group chat, separate their names with ||$||</span></span></th>
 								</tr>
 								<tr>
-								<td><input class="settinglabel mininiput" type="text" placeholder="(Enter Name)" value="" id="chatname" title="The name that you will be chatting as"></td>
-								<td><input class="settinglabel mininiput" type="text" placeholder="(Auto)" value="" id="chatopponent"  title="The name of the person you want to chat with"></td>
+								<td><input class="settinglabel miniinput" type="text" placeholder="(Enter Name)" value="" id="chatname" title="The name that you will be chatting as"></td>
+								<td><input class="settinglabel miniinput" type="text" placeholder="(Auto)" value="" id="chatopponent"  title="The name of the person you want to chat with"></td>
 								</tr>
 							  </table>
 							<div class="settinglabel">
@@ -8666,8 +8715,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 									  <th>End Seq.<span class="helpicon">?<span class="helptext">The sequence to end an instruction prompt</span></span></th>
 									</tr>
 									<tr>
-									<td><input class="settinglabel mininiput" type="text" placeholder="\\n### Instruction:\\n" value="" id="instruct_starttag" title="The sequence to start an instruction prompt"></td>
-									<td><input class="settinglabel mininiput" type="text" placeholder="\\n### Response:\\n" value="" id="instruct_endtag"  title="The sequence to end an instruction prompt"></td>
+									<td><input class="settinglabel miniinput" type="text" placeholder="\\n### Instruction:\\n" value="" id="instruct_starttag" title="The sequence to start an instruction prompt"></td>
+									<td><input class="settinglabel miniinput" type="text" placeholder="\\n### Response:\\n" value="" id="instruct_endtag"  title="The sequence to end an instruction prompt"></td>
 									</tr>
 								</table>
 
@@ -8773,6 +8822,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					<option value="480">Weak</option>
 					<option value="320">Medium</option>
 					<option value="160">Strong</option>
+					<option value="0">Immediate</option>
 				</select>
 			<br><br>
 			<div class="justifyleft settinglabel">Extra Stopping Sequence (Kobold API Only) <span class="helpicon">?<span
