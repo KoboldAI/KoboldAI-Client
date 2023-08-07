@@ -1835,8 +1835,8 @@ def load_model(model_backend, initial_load=False):
         os.mkdir("./softprompts")
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
     if initial_load and koboldai_vars.cloudflare_link != "":
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+        logger.message(f"KoboldAI has finished loading and is available at the following link: {koboldai_vars.cloudflare_link}")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for the Classic UI: {koboldai_vars.cloudflare_link}/classic")
         logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
         logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
 
@@ -1868,8 +1868,7 @@ def require_allowed_ip(func):
 
 
 # Set up Flask routes
-@app.route('/')
-@app.route('/index')
+@app.route('/classic')
 @require_allowed_ip
 def index():
     if args.no_ui:
@@ -5532,6 +5531,7 @@ def lite_html():
 #==================================================================#
 # UI V2 CODE
 #==================================================================#
+@app.route('/')
 @app.route('/new_ui')
 @require_allowed_ip
 @logger.catch
@@ -10896,8 +10896,8 @@ def run():
                 if not koboldai_vars.use_colab_tpu and args.model:
                     # If we're using a TPU our UI will freeze during the connection to the TPU. To prevent this from showing to the user we 
                     # delay the display of this message until after that step
-                    logger.message(f"KoboldAI is still loading your model but available at the following link for UI 1: {cloudflare}")
-                    logger.message(f"KoboldAI is still loading your model but available at the following link for UI 2: {cloudflare}/new_ui")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link: {cloudflare}")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for the Classic UI: {cloudflare}/classic")
                     logger.message(f"KoboldAI is still loading your model but available at the following link for KoboldAI Lite: {cloudflare}/lite")
                     logger.message(f"KoboldAI is still loading your model but available at the following link for the API: [Loading Model...]")
                     logger.message(f"While the model loads you can use the above links to begin setting up your session, for generations you must wait until after its done loading.")
