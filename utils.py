@@ -184,7 +184,7 @@ def decodenewlines(txt):
 #  Returns number of layers given an HF model config
 #==================================================================#
 def num_layers(config):
-    return config["n_layer"] if isinstance(config, dict) else config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers if hasattr(config, 'num_hidden_layers') else None
+    return config["n_layer"] if isinstance(config, dict) else config.num_layers if hasattr(config, "num_layers") else config.n_layer if hasattr(config, "n_layer") else config.num_hidden_layers if hasattr(config, 'num_hidden_layers') else config.n_layers if hasattr(config, "n_layers") else None
 
 #==================================================================#
 #  Downloads huggingface checkpoints using aria2c if possible
@@ -703,7 +703,7 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
         txt = replaceblanklines(txt)
 
     # trim off starting new lines in replies if we're in chat mode
-    if koboldai_vars.chatmode and txt[0] == "\n":
+    if koboldai_vars.chatmode and txt and txt[0] == "\n":
         txt = txt[1:]
 
     # Remove special characters

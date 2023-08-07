@@ -1259,17 +1259,46 @@ td.server_vars {
 .world_info_label_container > .generate-button:hover { opacity: 1.0; }
 
 .tag {
+	display: inline-block;
 	background-color: var(--wi_tag_color);
 	color: var(--wi_tag_text_color);
+
+	margin-right: 3px;
+	margin-top: 3px;
+
 	padding: 2px;
-	margin-right: 2px;
+	padding-left: 3px;
+	padding-right: 3px;
+
 	border-radius: var(--radius_wi_card);
-	border: solid;
-	border-color: var(--wi_tag_color);
+}
+
+.tag .tag_button {
+	cursor: pointer;
+	opacity: 0.4;
+	font-size: 16px;
+	position: relative;
 }
 
 .tag .delete_icon {
-	cursor: pointer;
+	top: 3px;
+	right: 3px;
+}
+
+.tag .add_icon {
+	top: 3px;
+	right: 3px;
+}
+
+.tag .tag_text {
+	display: inline-block;
+	outline: none;
+	position: relative;
+	right: 3px;
+}
+
+.placeholder_tag .tag_text:empty {
+	opacity: 0.4;
 }
 
 .oi[folder] {
@@ -1457,6 +1486,30 @@ td.server_vars {
 	line-height: 2;
 }
 
+/* Privacy Mode (Lock Screen) */
+#privacy_mode {
+	height: unset;
+	width: unset;
+	position: relative;
+	top: unset;
+	left: unset;
+}
+
+#privacy_mode .popup_list_area {
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	padding-left: 15px;
+	padding-right: 15px;
+}
+
+#privacy_mode input {
+	margin-top: 15px;
+	width: 85%;
+}
+
 /* ---------------------------- OVERALL PAGE CONFIG ------------------------------*/
 body {
 	background-color: var(--background);
@@ -1504,7 +1557,7 @@ body {
 	grid-template-columns: 30px auto 30% 30px;
 	grid-template-rows: auto min-content min-content 100px;
 }
-.main-grid[option_length="0"][model_numseqs="1"] {
+.main-grid[hide-options="true"] {
 	grid-template-columns: 30px auto 0px 30px;
 }
 
@@ -1589,39 +1642,39 @@ body {
 	font-style: italic;
 }
 
-.sequence_area {
+#option-container {
 	margin-top: 10px;
 	grid-area: options;
 	background-color: var(--sequence_area_background);
 	overflow-y: scroll;
 }
 
-.sequence_area::-webkit-scrollbar {
+#option-container::-webkit-scrollbar {
 	display: none;
 }
 
 @media only screen and (max-aspect-ratio: 7/5) {
-.sequences {
-	margin-top: 5px;
-	width: 100%;
-	border: 0px;
-	border-spacing: 0;
-	display: flex;
-	flex-direction: row;
-	overflow-x: scroll;
-	scroll-snap-type: x mandatory;
-}
+	#option-container {
+		margin-top: 5px;
+		width: 100%;
+		border: 0px;
+		border-spacing: 0;
+		display: flex;
+		flex-direction: row;
+		overflow-x: scroll;
+		scroll-snap-type: x mandatory;
+	}
 }
 
 @media only screen and (min-aspect-ratio: 7/5) {
-.sequences {
-	margin-top: 5px;
-	width: 100%;
-	border: 0px;
-	border-spacing: 0;
-	display: flex;
-	flex-direction: column;
-}
+	#option-container {
+		margin-top: 5px;
+		width: 100%;
+		border: 0px;
+		border-spacing: 0;
+		display: flex;
+		flex-direction: column;
+	}
 }
 
 .sequence_row {
@@ -1962,6 +2015,7 @@ body {
 	color: var(--popup_title_bar_color_text);
 	text-align: center;
 	font-size: calc(1.3em + var(--font_size_adjustment));
+	user-select: none;
 }
 
 .popup .action_button {
@@ -2705,13 +2759,14 @@ body {
 #context-menu > hr {
 	/* Division Color*/
 	border-top: 2px solid var(--context_menu_division);
-	margin: 5px 5px;
+	margin: 3px 5px;
 }
 
 .context-menu-item {
-	padding: 5px;
+	padding: 4px;
 	padding-right: 25px;
 	min-width: 100px;
+	white-space: nowrap;
 }
 
 .context-menu-item:hover {
@@ -2722,9 +2777,14 @@ body {
 
 .context-menu-item > .material-icons-outlined {
 	position: relative;
-	top: 2px;
+	top: 3px;
 	font-size: 15px;
 	margin-right: 5px;
+}
+
+.context-menu-item > .context-menu-label {
+	position: relative;
+	top: 1px;
 }
 
 /* Substitutions */
@@ -2820,6 +2880,10 @@ body {
 	height: 100%;
 }
 
+#welcome_text a {
+	text-decoration: underline;
+}
+
 .welcome_text {
 	display: flex;
 	height: 100%;
@@ -2848,6 +2912,7 @@ body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	pointer-events: none;
 }
 
 #welcome-text-content {
@@ -3537,8 +3602,13 @@ h2 .material-icons-outlined {
 }
 
 .section_header {
+	font-weight: bold;
 	margin-left: 2px;
 	margin-bottom: 2px;
+}
+
+.story_category_area > * > label {
+	user-select: none
 }
 
 .help_text {

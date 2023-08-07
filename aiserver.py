@@ -12,6 +12,8 @@ import random
 import shutil
 import eventlet
 
+from modeling.inference_model import GenerationMode
+
 eventlet.monkey_patch(all=True, thread=False, os=False)
 import os, inspect, contextlib, pickle
 os.system("")
@@ -71,6 +73,8 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForToken
 import transformers
 import ipaddress
 from functools import wraps
+from modeling.pickling import RestrictedUnpickler, use_custom_unpickler
+
 try:
     from transformers.models.opt.modeling_opt import OPTDecoder
 except:
@@ -630,7 +634,10 @@ model_backends = {}
 model_backend_module_names = {}
 model_backend_type_crosswalk = {}
 
-PRIORITIZED_BACKEND_MODULES = ["generic_hf_torch"]
+PRIORITIZED_BACKEND_MODULES = {
+    "gptq_hf_torch": 2,
+    "generic_hf_torch": 1
+}
 
 for module in os.listdir("./modeling/inference_models"):
     if module == '__pycache__':
@@ -666,10 +673,15 @@ for module in os.listdir("./modeling/inference_models"):
         model_backend_module_names[backend_name] = module
 
         if backend_type in model_backend_type_crosswalk:
-            if module in PRIORITIZED_BACKEND_MODULES:
-                model_backend_type_crosswalk[backend_type].insert(0, backend_name)
-            else:
-                model_backend_type_crosswalk[backend_type].append(backend_name)
+            model_backend_type_crosswalk[backend_type].append(backend_name)
+            model_backend_type_crosswalk[backend_type] = list(sorted(
+                model_backend_type_crosswalk[backend_type],
+                key=lambda name: PRIORITIZED_BACKEND_MODULES.get(
+                    [mod for b_name, mod in model_backend_module_names.items() if b_name == name][0],
+                    0
+                ),
+                reverse=True
+            ))
         else:
             model_backend_type_crosswalk[backend_type] = [backend_name]
 
@@ -1670,75 +1682,7 @@ def unload_model():
     #Reload our badwords
     koboldai_vars.badwordsids = koboldai_settings.badwordsids_default
 
-class RestrictedUnpickler(pickle.Unpickler):
-    def original_persistent_load(self, saved_id):
-        return super().persistent_load(saved_id)
 
-    def forced_persistent_load(self, saved_id):
-        if saved_id[0] != "storage":
-            raise pickle.UnpicklingError("`saved_id[0]` must be 'storage'")
-        return self.original_persistent_load(saved_id)
-
-    def find_class(self, module, name):
-        if module == "collections" and name == "OrderedDict":
-            return collections.OrderedDict
-        elif module == "torch._utils" and name == "_rebuild_tensor_v2":
-            return torch._utils._rebuild_tensor_v2
-        elif module == "torch._tensor" and name == "_rebuild_from_type_v2":
-            return torch._tensor._rebuild_from_type_v2
-        elif module == "torch" and name in (
-            "DoubleStorage",
-            "FloatStorage",
-            "HalfStorage",
-            "LongStorage",
-            "IntStorage",
-            "ShortStorage",
-            "CharStorage",
-            "ByteStorage",
-            "BoolStorage",
-            "BFloat16Storage",
-            "Tensor",
-        ):
-            return getattr(torch, name)
-        elif module == "numpy.core.multiarray" and name == "scalar":
-            return np.core.multiarray.scalar
-        elif module == "numpy" and name == "dtype":
-            return np.dtype
-        elif module == "_codecs" and name == "encode":
-            return _codecs.encode
-        else:
-            # Forbid everything else.
-            qualified_name = name if module == "__builtin__" else f"{module}.{name}"
-            raise pickle.UnpicklingError(
-                f"`{qualified_name}` is forbidden; the model you are loading probably contains malicious code. If you think this is incorrect ask the developer to unban the ability for {module} to execute {name}"
-            )
-
-    def load(self, *args, **kwargs):
-        self.original_persistent_load = getattr(
-            self, "persistent_load", pickle.Unpickler.persistent_load
-        )
-        self.persistent_load = self.forced_persistent_load
-        return super().load(*args, **kwargs)
-    
-@contextlib.contextmanager
-def use_custom_unpickler(unpickler: Type[pickle.Unpickler] = RestrictedUnpickler):
-    try:
-        old_unpickler = pickle.Unpickler
-        pickle.Unpickler = unpickler
-
-        old_pickle_load = pickle.load
-
-        def new_pickle_load(*args, **kwargs):
-            return pickle.Unpickler(*args, **kwargs).load()
-
-        pickle.load = new_pickle_load
-
-        yield
-
-    finally:
-        pickle.Unpickler = old_unpickler
-        pickle.load = old_pickle_load
-    
 def load_model(model_backend, initial_load=False):
     global model
     global tokenizer
@@ -1785,7 +1729,9 @@ def load_model(model_backend, initial_load=False):
     
     with use_custom_unpickler(RestrictedUnpickler):
         model = model_backends[model_backend]
+        koboldai_vars.supported_gen_modes = [x.value for x in model.get_supported_gen_modes()]
         model.load(initial_load=initial_load, save_model=not (args.colab or args.cacheonly) or args.savemodel)
+
     koboldai_vars.model = model.model_name if "model_name" in vars(model) else model.id #Should have model_name, but it could be set to id depending on how it's setup
     if koboldai_vars.model in ("NeoCustom", "GPT2Custom", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"):
         koboldai_vars.model = os.path.basename(os.path.normpath(model.path))
@@ -1886,10 +1832,11 @@ def load_model(model_backend, initial_load=False):
         os.mkdir("./softprompts")
     koboldai_vars.splist = [[f, get_softprompt_desc(os.path.join("./softprompts", f),None,True)] for f in os.listdir("./softprompts") if os.path.isfile(os.path.join("./softprompts", f)) and valid_softprompt(os.path.join("./softprompts", f))]
     if initial_load and koboldai_vars.cloudflare_link != "":
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+        logger.message(f"KoboldAI has finished loading and is available at the following link: {koboldai_vars.cloudflare_link}")
+        logger.message(f"KoboldAI has finished loading and is available at the following link for the Classic UI: {koboldai_vars.cloudflare_link}/classic")
         logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
         logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
+
 
 # Setup IP Whitelisting
 # Define a function to check if IP is allowed
@@ -1918,8 +1865,7 @@ def require_allowed_ip(func):
 
 
 # Set up Flask routes
-@app.route('/')
-@app.route('/index')
+@app.route('/classic')
 @require_allowed_ip
 def index():
     if args.no_ui:
@@ -3263,7 +3209,16 @@ def check_for_backend_compilation():
             break
     koboldai_vars.checking = False
 
-def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False, disable_recentrng=False, no_generate=False, ignore_aibusy=False):
+def actionsubmit(
+    data,
+    actionmode=0,
+    force_submit=False,
+    force_prompt_gen=False,
+    disable_recentrng=False,
+    no_generate=False,
+    ignore_aibusy=False,
+    gen_mode=GenerationMode.STANDARD
+):
     # Ignore new submissions if the AI is currently busy
     if koboldai_vars.aibusy and not ignore_aibusy:
         return
@@ -3355,7 +3310,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 koboldai_vars.prompt = data
                 # Clear the startup text from game screen
                 emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True, room="UI_1")
-                calcsubmit("") # Run the first action through the generator
+                calcsubmit("", gen_mode=gen_mode) # Run the first action through the generator
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
@@ -3421,7 +3376,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
 
             if(not no_generate and not koboldai_vars.noai and koboldai_vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
-                calcsubmit("")
+                calcsubmit("", gen_mode=gen_mode)
                 if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
@@ -3776,7 +3731,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 #==================================================================#
 # Take submitted text and build the text to be given to generator
 #==================================================================#
-def calcsubmit(txt):
+def calcsubmit(txt, gen_mode=GenerationMode.STANDARD):
     anotetxt     = ""    # Placeholder for Author's Note text
     forceanote   = False # In case we don't have enough actions to hit A.N. depth
     anoteadded   = False # In case our budget runs out before we hit A.N. depth
@@ -3818,7 +3773,7 @@ def calcsubmit(txt):
         logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
         
         start_time = time.time()
-        generate(subtxt, min, max, found_entries)
+        generate(subtxt, min, max, found_entries, gen_mode=gen_mode)
         logger.debug("Submit: generate time {}s".format(time.time()-start_time))
         attention_bias.attention_bias = None
 
@@ -3886,7 +3841,14 @@ class HordeException(Exception):
 # Send text to generator and deal with output
 #==================================================================#
 
-def generate(txt, minimum, maximum, found_entries=None):    
+def generate(txt, minimum, maximum, found_entries=None, gen_mode=GenerationMode.STANDARD):
+    # Open up token stream
+    emit("stream_tokens", True, broadcast=True, room="UI_2")
+
+    # HACK: Show options when streaming more than 1 sequence
+    if utils.koboldai_vars.output_streaming:
+        koboldai_vars.actions.show_options(koboldai_vars.numseqs > 1, force=True)
+
     koboldai_vars.generated_tkns = 0
 
     if(found_entries is None):
@@ -3908,7 +3870,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Submit input text to generator
     try:
         start_time = time.time()
-        genout, already_generated = tpool.execute(model.core_generate, txt, found_entries)
+        genout, already_generated = tpool.execute(model.core_generate, txt, found_entries, gen_mode=gen_mode)
         logger.debug("Generate: core_generate time {}s".format(time.time()-start_time))
     except Exception as e:
         if(issubclass(type(e), lupa.LuaError)):
@@ -3923,7 +3885,10 @@ def generate(txt, minimum, maximum, found_entries=None):
             emit('from_server', {'cmd': 'errmsg', 'data': 'Error occurred during generator call; please check console.'}, broadcast=True, room="UI_1")
             logger.error(traceback.format_exc().replace("\033", ""))
             socketio.emit("error", str(e), broadcast=True, room="UI_2")
+
         set_aibusy(0)
+        # Clean up token stream
+        emit("stream_tokens", None, broadcast=True, room="UI_2")
         return
 
     for i in range(koboldai_vars.numseqs):
@@ -3955,7 +3920,10 @@ def generate(txt, minimum, maximum, found_entries=None):
         del genout
         gc.collect()
         torch.cuda.empty_cache()
-    
+
+    # Clean up token stream
+    emit("stream_tokens", None, broadcast=True, room="UI_2")
+
     maybe_review_story()
 
     set_aibusy(0)
@@ -4424,8 +4392,8 @@ def requestwi():
 #  and items in different folders are sorted based on the order of the folders
 #==================================================================#
 def stablesortwi():
-    mapping = {str(uid): index for index, uid in enumerate(koboldai_vars.wifolders_l)}
-    koboldai_vars.worldinfo.sort(key=lambda x: mapping[str(x["folder"])] if x["folder"] is not None else float("inf"))
+    mapping = {int(uid): index for index, uid in enumerate(koboldai_vars.wifolders_l)}
+    koboldai_vars.worldinfo.sort(key=lambda x: mapping[int(x["folder"])] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
     for i, wi in enumerate(koboldai_vars.worldinfo):
@@ -5564,6 +5532,7 @@ def lite_html():
 #==================================================================#
 # UI V2 CODE
 #==================================================================#
+@app.route('/')
 @app.route('/new_ui')
 @require_allowed_ip
 @logger.catch
@@ -6149,6 +6118,7 @@ def UI_2_Set_Selected_Text(data):
 @socketio.on('Use Option Text')
 @logger.catch
 def UI_2_Use_Option_Text(data):
+    koboldai_vars.actions.show_options(False)
     if koboldai_vars.prompt == "":
         koboldai_vars.prompt = koboldai_vars.actions.get_current_options()[int(data['option'])]['text']
         koboldai_vars.actions.clear_unused_options()
@@ -6169,23 +6139,31 @@ def UI_2_delete_option(data):
 @socketio.on('submit')
 @logger.catch
 def UI_2_submit(data):
-    if not koboldai_vars.noai and data['theme'] != "":
+    if not koboldai_vars.noai and data['theme']:
+        # Random prompt generation
         logger.debug("doing random prompt")
         memory = koboldai_vars.memory
         koboldai_vars.memory = "{}\n\nYou generate the following {} story concept :".format(koboldai_vars.memory, data['theme'])
         koboldai_vars.lua_koboldbridge.feedback = None
         actionsubmit("", force_submit=True, force_prompt_gen=True)
         koboldai_vars.memory = memory
-    else:
-        logger.debug("doing normal input")
-        koboldai_vars.actions.clear_unused_options()
-        koboldai_vars.lua_koboldbridge.feedback = None
-        koboldai_vars.recentrng = koboldai_vars.recentrngm = None
-        if koboldai_vars.actions.action_count == -1:
-            actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
-        else:
-            actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
- 
+        return
+
+    logger.debug("doing normal input")
+    koboldai_vars.actions.clear_unused_options()
+    koboldai_vars.lua_koboldbridge.feedback = None
+    koboldai_vars.recentrng = koboldai_vars.recentrngm = None
+
+    gen_mode_name = data.get("gen_mode", None) or "standard"
+    try:
+        gen_mode = GenerationMode(gen_mode_name)
+    except ValueError:
+        # Invalid enum lookup!
+        gen_mode = GenerationMode.STANDARD
+        logger.warning(f"Unknown gen_mode '{gen_mode_name}', using STANDARD! Report this!")
+
+    actionsubmit(data['data'], actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)
+
  #==================================================================#
 # Event triggered when user clicks the submit button
 #==================================================================#
@@ -6279,7 +6257,7 @@ def UI_2_select_model(data):
                 #so we'll just go through all the possible loaders
                 for model_backend in sorted(
                     model_backends,
-                    key=lambda x: model_backend_module_names[x] in PRIORITIZED_BACKEND_MODULES,
+                    key=lambda x: PRIORITIZED_BACKEND_MODULES.get(model_backend_module_names[x], 0),
                     reverse=True,
                 ):
                     if model_backends[model_backend].is_valid(data["name"], data["path"] if 'path' in data else None, data["menu"]):
@@ -6715,11 +6693,18 @@ def UI_2_set_wi_image(uid):
         except FileNotFoundError:
             pass
     else:
-        # Otherwise assign image
-        with open(path, "wb") as file:
-            file.write(data)
+        try:
+            # Otherwise assign image
+            with open(path, "wb") as file:
+                file.write(data)
+        except FileNotFoundError:
+            show_error_notification(
+                "Unable to write image",
+                "Please save the game before uploading images."
+            )
+            return ":(", 500
     koboldai_vars.gamesaved = False
-    return ":)"
+    return ":)", 200
 
 @app.route("/get_wi_image/<int(signed=True):uid>", methods=["GET"])
 @require_allowed_ip
@@ -7784,9 +7769,16 @@ def UI_2_update_tokens(data):
 def UI_2_privacy_mode(data):
     if data['enabled']:
         koboldai_vars.privacy_mode = True
+        return
+
+    if data['password'] == koboldai_vars.privacy_password:
+        koboldai_vars.privacy_mode = False
     else:
-        if data['password'] == koboldai_vars.privacy_password:
-            koboldai_vars.privacy_mode = False
+        logger.warning("Watch out! Someone tried to unlock your instance with an incorrect password! Stay on your toes...")
+        show_error_notification(
+            title="Invalid password",
+            text="The password you provided was incorrect. Please try again."
+        )
 
 #==================================================================#
 # Genres
@@ -10921,13 +10913,14 @@ def run():
             with open('cloudflare.log', 'w') as cloudflarelog:
                 cloudflarelog.write("KoboldAI is available at the following link : " + cloudflare)
                 logger.init_ok("Webserver", status="OK")
-                if not koboldai_vars.use_colab_tpu:
+                if not koboldai_vars.use_colab_tpu and args.model:
                     # If we're using a TPU our UI will freeze during the connection to the TPU. To prevent this from showing to the user we 
                     # delay the display of this message until after that step
-                    logger.message(f"KoboldAI is available at the following link for UI 1: {cloudflare}")
-                    logger.message(f"KoboldAI is available at the following link for UI 2: {cloudflare}/new_ui")
-                    logger.message(f"KoboldAI is available at the following link for KoboldAI Lite: {cloudflare}/lite")
-                    logger.message(f"KoboldAI is available at the following link for the API: {cloudflare}/api")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link: {cloudflare}")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for the Classic UI: {cloudflare}/classic")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for KoboldAI Lite: {cloudflare}/lite")
+                    logger.message(f"KoboldAI is still loading your model but available at the following link for the API: [Loading Model...]")
+                    logger.message(f"While the model loads you can use the above links to begin setting up your session, for generations you must wait until after its done loading.")
         else:
             logger.init_ok("Webserver", status="OK")
             logger.message(f"Webserver has started, you can now connect to this machine at port: {port}")
