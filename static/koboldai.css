@@ -1643,7 +1643,7 @@ body {
 }
 
 #token-stream-buffer {
-	white-space: pre;
+	white-space: pre-wrap;
 }
 
 #option-container {
