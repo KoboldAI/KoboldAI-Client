@@ -75,6 +75,10 @@ import ipaddress
 from functools import wraps
 from modeling.pickling import RestrictedUnpickler, use_custom_unpickler
 
+# Make settings folder early so we can depend on it anywhere
+if not os.path.exists("settings/"):
+    os.mkdir("settings")
+
 try:
     from transformers.models.opt.modeling_opt import OPTDecoder
 except:
