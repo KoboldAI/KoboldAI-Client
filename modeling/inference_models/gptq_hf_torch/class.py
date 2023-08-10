@@ -323,19 +323,22 @@ class model_backend(HFTorchInferenceModel):
             enable=self.lazy_load,
             dematerialized_modules=False,
         ):
-            if model_type == "gptj":
-                model = load_quant_offload_device_map(gptj_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
-            elif model_type == "gpt_neox":
-                model = load_quant_offload_device_map(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
-            elif model_type == "llama":
-                model = load_quant_offload_device_map(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
-            elif model_type == "opt":
-                model = load_quant_offload_device_map(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
-            elif model_type == "mpt":
-                model = load_quant_offload_device_map(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
-            elif model_type == "gpt_bigcode":
-                model = load_quant_offload_device_map(bigcode_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias).half()
-            else:
+            try:
+                if model_type == "gptj":
+                    model = load_quant_offload_device_map(gptj_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
+                elif model_type == "gpt_neox":
+                    model = load_quant_offload_device_map(gptneox_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
+                elif model_type == "llama":
+                    model = load_quant_offload_device_map(llama_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
+                elif model_type == "opt":
+                    model = load_quant_offload_device_map(opt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
+                elif model_type == "mpt":
+                    model = load_quant_offload_device_map(mpt_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias)
+                elif model_type == "gpt_bigcode":
+                    model = load_quant_offload_device_map(bigcode_load_quant, location, gptq_file, gptq_bits, gptq_groupsize, device_map, force_bias=v2_bias).half()
+                else:
+                    raise RuntimeError("Model not supported by Occam's GPTQ")
+            except:
                 try:
                     import auto_gptq
                     from auto_gptq import AutoGPTQForCausalLM
