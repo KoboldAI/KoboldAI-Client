@@ -1,10 +1,10 @@
 /*----------------Global Colors------------------*/
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 	:root {
 		--flyout_menu_width: 100%;
 	}
 }
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 	:root {
 		--flyout_menu_width: 402px;
 	}
@@ -448,19 +448,19 @@ border-top-right-radius: var(--tabs_rounding);
 	cursor: pointer;
 }
 
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 /* mobile */
 .menu_icon.hidden {
 	display: inline-block !important;
 }
 }
 
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 .menu_pin {
 	display: none;
 }
 }
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 .menu_pin {
 	position: absolute;
 	top:10px;
@@ -516,7 +516,7 @@ border-top-right-radius: var(--tabs_rounding);
 	will-change: transform;
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 .SideMenu.pinned {
 	right: calc(100% - var(--flyout_menu_width));
 	background-color: var(--flyout_background_pinned);
@@ -906,7 +906,7 @@ border-top-right-radius: var(--tabs_rounding);
 	grid-area: lefticon;
 }
 
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 /* mobile */
 .right_menu_icon.hidden {
 	display: inline-block !important;
@@ -937,7 +937,7 @@ border-top-right-radius: var(--tabs_rounding);
 	left: calc(100% - var(--flyout_menu_width));
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 /*  Desktop Mode  */
 .rightSideMenu.pinned {
 	left: calc(100% - var(--flyout_menu_width));
@@ -959,14 +959,14 @@ border-top-right-radius: var(--tabs_rounding);
 	filter: brightness(40%);
 }
 
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 /* mobile */
 .story_menu_pin {
 	display: none;
 }
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 .story_menu_pin {
 	position: absolute;
 	top:10px;
@@ -1542,7 +1542,7 @@ body {
 	background-color: #cacaca80;
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 /* ------------------- Desktop Mode --------------------------- */
 .main-grid {
 	transition: margin-left .5s, margin-right .5s;
@@ -1576,7 +1576,7 @@ body {
 
 }
 
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 /* mobile */
 .main-grid {
 	transition: margin-left .5s;
@@ -1657,7 +1657,7 @@ body {
 	display: none;
 }
 
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 	#option-container {
 		margin-top: 5px;
 		width: 100%;
@@ -1670,7 +1670,7 @@ body {
 	}
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 	#option-container {
 		margin-top: 5px;
 		width: 100%;
@@ -1964,7 +1964,7 @@ body {
 	overflow: hidden;
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 	.paddingimage {
 		grid-area: paddingimage;
 		margin: auto auto auto auto;
@@ -1972,14 +1972,14 @@ body {
 
 }
 
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 	.paddingimage {
 		visibility: hidden;
 	}
 }
 
 /*---------------------------------- Popups -------------------------------------------------*/
-@media only screen and (max-aspect-ratio: 7/5) {
+@media only screen and (max-aspect-ratio: 5/6) {
 	.popup {
 		position: absolute;
 		top: 10vh;
@@ -1996,7 +1996,7 @@ body {
 	}
 }
 
-@media only screen and (min-aspect-ratio: 7/5) {
+@media only screen and (min-aspect-ratio: 5/6) {
 	.popup {
 		position: absolute;
 		top: 10vh;
