@@ -41,14 +41,16 @@ dependencies:
     - ansi2html
     - flask_compress
     - ijson
-    - bitsandbytes==0.41.0; sys_platform == 'linux'
-    - https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.41.0-py3-none-win_amd64.whl; sys_platform == 'win32'
+    - bitsandbytes==0.40.0; sys_platform == 'linux'
+    - https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.40.0.post4-py3-none-win_amd64.whl; sys_platform == 'win32'
     - ftfy
     - pydub
     - diffusers
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
     - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
+    - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.0/auto_gptq-0.4.0+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.0/auto_gptq-0.4.0+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - einops
     - peft==0.3.0
     - scipy
