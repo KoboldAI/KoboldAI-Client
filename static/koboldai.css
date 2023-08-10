@@ -1642,6 +1642,10 @@ body {
 	font-style: italic;
 }
 
+#token-stream-buffer {
+	white-space: pre-wrap;
+}
+
 #option-container {
 	margin-top: 10px;
 	grid-area: options;
