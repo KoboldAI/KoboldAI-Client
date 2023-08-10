@@ -354,7 +354,10 @@ class model_backend(HFTorchInferenceModel):
                 auto_gptq.modeling._base.AutoConfig = hf_bleeding_edge.AutoConfig
                 auto_gptq.modeling._base.AutoModelForCausalLM = hf_bleeding_edge.AutoModelForCausalLM
 
-                model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map)
+                try:
+                    model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map)
+                except:
+                    model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map, disable_exllama=True)
 
                 # Patch in embeddings function
                 def get_input_embeddings(self):
