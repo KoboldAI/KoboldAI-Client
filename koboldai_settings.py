@@ -677,7 +677,7 @@ class model_settings(settings):
         <div id='welcome-logo-container'><img id='welcome-logo' src='static/Welcome_Logo.png' draggable='False'></div>
         <div class='welcome_text'>
             <div id="welcome-text-content">Please load a model from the left.<br/>
-                If you encounter any issues, please click the Download debug dump link in the Home tab on the left flyout and attach the downloaded file to your error report on <a href='https://github.com/ebolam/KoboldAI/issues'>Github</a>, <a href='https://www.reddit.com/r/KoboldAI/'>Reddit</a>, or <a href='https://discord.gg/XuQWadgU9k'>Discord</a>.
+                If you encounter any issues, please click the Download debug dump link in the Home tab on the left flyout and attach the downloaded file to your error report on <a href='https://github.com/ebolam/KoboldAI/issues'>Github</a>, <a href='https://www.reddit.com/r/KoboldAI/'>Reddit</a>, or <a href='https://koboldai.org/discord'>Discord</a>.
                 A redacted version (without story text) is available.
             </div>
         </div>""" # Custom Welcome Text
