@@ -460,14 +460,14 @@ def sample_func(data, key, numseqs_aux, badwords, repetition_penalty, generated_
     return carry
 
 class PenalizingCausalTransformer(CausalTransformer):
-    def __init__(self, config, **kwargs):
+    def __init__(self, badwordsids, config, **kwargs):
         # Initialize
         super().__init__(config, **kwargs)
         def generate_static(state, key, ctx, ctx_length, gen_length, numseqs_aux, sampler_options, soft_embeddings=None):
             compiling_callback()
             numseqs = numseqs_aux.shape[0]
             # These are the tokens that we don't want the AI to ever write
-            badwords = jnp.array(koboldai_vars.badwordsids).squeeze()
+            badwords = jnp.array(badwordsids).squeeze()
             @hk.transform
             def generate_sample(context, ctx_length):
                 # Give the initial context to the transformer
@@ -941,7 +941,9 @@ def read_neox_checkpoint(state, path, config, checkpoint_shards=2):
 
     koboldai_vars.status_message = ""
 
-def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
+import koboldai_settings
+
+def load_model(path: str, model_type: str, badwordsids=koboldai_settings.badwordsids_default, driver_version="tpu_driver_20221109", hf_checkpoint=False, socketio_queue=None, initial_load=False, logger=None, **kwargs) -> None:
     global thread_resources_env, seq, tokenizer, network, params, pad_token_id
 
     if kwargs.get("pad_token_id"):
@@ -989,9 +991,9 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
 
     # Try to convert HF config.json to MTJ config
     if hf_checkpoint:
-        spec_path = os.path.join("maps", koboldai_vars.model_type + ".json")
+        spec_path = os.path.join("maps", model_type + ".json")
         if not os.path.isfile(spec_path):
-            raise NotImplementedError(f"Unsupported model type {repr(koboldai_vars.model_type)}")
+            raise NotImplementedError(f"Unsupported model type {repr(model_type)}")
         with open(spec_path) as f:
             lazy_load_spec = json.load(f)
 
@@ -1114,17 +1116,20 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
     thread_resources_env = maps.ResourceEnv(maps.Mesh(devices, ('dp', 'mp')), ())
     maps.thread_resources.env = thread_resources_env
     if initial_load:
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 1: {koboldai_vars.cloudflare_link}")
-        logger.message(f"KoboldAI has finished loading and is available at the following link for UI 2: {koboldai_vars.cloudflare_link}/new_ui")
+        logger.message(f"KoboldAI has still loading your model but available at the following link: {koboldai_vars.cloudflare_link}")
+        logger.message(f"KoboldAI has still loading your model but available at the following link for the Classic UI: {koboldai_vars.cloudflare_link}/classic")
+        logger.message(f"KoboldAI has still loading your model but available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
+        logger.message(f"KoboldAI has still loading your model but available at the following link for the API: [Loading Model...]")
+        logger.message(f"While the model loads you can use the above links to begin setting up your session, for generations you must wait until after its done loading.")
 
     global badwords
     # These are the tokens that we don't want the AI to ever write
-    badwords = jnp.array(koboldai_vars.badwordsids).squeeze()
+    badwords = jnp.array(badwordsids).squeeze()
 
     if not path.endswith("/"):
         path += "/"
 
-    network = PenalizingCausalTransformer(params, dematerialized=True)
+    network = PenalizingCausalTransformer(badwordsids, params, dematerialized=True)
 
     if not hf_checkpoint and koboldai_vars.model != "TPUMeshTransformerGPTNeoX":
         network.state = read_ckpt_lowmem(network.state, path, devices.shape[1])
@@ -1167,135 +1172,118 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
         if callback.nested:
             return
         callback.nested = True
-        with zipfile.ZipFile(f, "r") as z:
-            try:
-                last_storage_key = None
-                zipfolder = os.path.basename(os.path.normpath(f)).split('.')[0]
-                f = None
-                current_offset = 0
-                if utils.current_shard == 0:
-                    print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
+        try:
+            if utils.current_shard == 0:
+                print("\n\n\nThis model has  ", f"{hk.data_structures.tree_size(network.state['params']):,d}".replace(",", " "), "  parameters.\n")
 
-                if utils.num_shards is None or utils.current_shard == 0:
-                    if utils.num_shards is not None:
-                        num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
-                    else:
-                        num_tensors = len(model_dict)
-
-                    if socketio is None:
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
-                    else:
-                        utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=utils.UIProgressBarFile(socketio.emit))
-                    koboldai_vars.status_message = "Loading model"
-                    koboldai_vars.loaded_layers = 0
-                    koboldai_vars.total_layers = num_tensors
-
+            if utils.num_shards is None or utils.current_shard == 0:
                 if utils.num_shards is not None:
-                    utils.current_shard += 1
-                for key in sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
-                    model_spec_key = max((k for k in model_spec.keys() if key.endswith(k)), key=len, default=None)
+                    num_tensors = len(utils.get_sharded_checkpoint_num_tensors(utils.from_pretrained_model_name, utils.from_pretrained_index_filename, **utils.from_pretrained_kwargs))
+                else:
+                    num_tensors = len(model_dict)
 
-                    # Some model weights are used by transformers but not by MTJ.
-                    # We have to materialize these weights anyways because
-                    # transformers will throw a tantrum otherwise.  To attain
-                    # the least possible memory usage, we create them as meta
-                    # tensors, which don't take up any actual CPU or TPU memory.
-                    if model_spec_key is None:
-                        model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].dtype, device="meta")
-                        utils.bar.update(1)
-                        koboldai_vars.loaded_layers += 1
-                        continue
+                if socketio is None:
+                    utils.bar = tqdm(total=num_tensors, desc="Loading model tensors")
+                else:
+                    utils.bar = tqdm(total=num_tensors, desc="Loading model tensors", file=utils.UIProgressBarFile(socketio.emit))
+                koboldai_vars.status_message = "Loading model"
+                koboldai_vars.loaded_layers = 0
+                koboldai_vars.total_layers = num_tensors
 
-                    storage_key = model_dict[key].key
-                    if storage_key != last_storage_key or model_dict[key].seek_offset < current_offset:
-                        last_storage_key = storage_key
-                        if isinstance(f, zipfile.ZipExtFile):
-                            f.close()
-                        try:
-                            f = z.open(f"archive/data/{storage_key}")
-                        except:
-                            f = z.open(f"{zipfolder}/data/{storage_key}")
-                        current_offset = 0
-                    if current_offset != model_dict[key].seek_offset:
-                        f.read(model_dict[key].seek_offset - current_offset)
-                        current_offset = model_dict[key].seek_offset
-                    spec = model_spec[model_spec_key]
-                    transforms = set(spec.get("transforms", ()))
-                    if not isinstance(model_dict[key], lazy_loader.LazyTensor):
-                        error = f"Duplicate key {repr(key)}"
-                        print("\n\nERROR:  " + error, file=sys.stderr)
-                        raise RuntimeError(error)
-                    size = functools.reduce(lambda x, y: x * y, model_dict[key].shape, 1)
-                    dtype = model_dict[key].dtype
-                    nbytes = size if dtype is torch.bool else size * ((torch.finfo if dtype.is_floating_point else torch.iinfo)(dtype).bits >> 3)
-                    tensor = model_dict[key].materialize(f, map_location="cpu")
-                    model_dict[key] = tensor.to("meta")
-                    current_offset += nbytes
+            if utils.num_shards is not None:
+                utils.current_shard += 1
 
-                    # MTJ requires certain mathematical operations to be performed
-                    # on tensors in order for them to be in the correct format
-                    if "remove_first_two_rows" in transforms:
-                        tensor = tensor[2:]
-                    if "divide_by_shards" in transforms:
-                        tensor /= params["cores_per_replica"]
-                    if "vocab_pad" in transforms:
-                        tensor = torch.nn.functional.pad(tensor, (0,) * (tensor.ndim * 2 - 1) + (params["n_vocab_padding"],))
-                    # We don't need to transpose linear module weights anymore because MTJ will do it for us if `transposed_linear` is set to True in the config
-                    #if "no_transpose" not in transforms and tensor.ndim == 2:
-                    #    tensor = tensor.T
-                    tensor.unsqueeze_(0)
-                    
+            for key in sorted(model_dict.keys(), key=lambda k: (model_dict[k].key, model_dict[k].seek_offset)):
+                model_spec_key = max((k for k in model_spec.keys() if key.endswith(k)), key=len, default=None)
 
-                    # Shard the tensor so that parts of the tensor can be used
-                    # on different TPU cores
-                    tensor = reshard_reverse(
-                        tensor,
-                        params["cores_per_replica"],
-                        network.state["params"][spec["module"]][spec["param"]].shape,
-                    )
-                    tensor = jnp.array(tensor.detach())
-                    if tensor.dtype is torch.float16 or tensor.dtype is torch.float32:
-                        tensor = tensor.bfloat16()
-                    network.state["params"][spec["module"]][spec["param"]] = move_xmap(
-                        tensor,
-                        np.empty(params["cores_per_replica"]),
-                    )
-                    
-                    koboldai_vars.loaded_layers += 1
-                    try:
-                        time.sleep(0.01)
-                    except:
-                        pass
+                # Some model weights are used by transformers but not by MTJ.
+                # We have to materialize these weights anyways because
+                # transformers will throw a tantrum otherwise.  To attain
+                # the least possible memory usage, we create them as meta
+                # tensors, which don't take up any actual CPU or TPU memory.
+                if model_spec_key is None:
+                    model_dict[key] = torch.empty(model_dict[key].shape, dtype=model_dict[key].dtype, device="meta")
                     utils.bar.update(1)
+                    koboldai_vars.loaded_layers += 1
+                    continue
 
-                if utils.num_shards is not None and utils.current_shard < utils.num_shards:
-                    return
+                spec = model_spec[model_spec_key]
+                transforms = set(spec.get("transforms", ()))
 
-                # Check for tensors that MTJ needs that were not provided in the
-                # HF model
-                for mk, mv in network.state["params"].items():
-                    for pk, pv in mv.items():
-                        if isinstance(pv, PlaceholderTensor):
-                            # The transformers GPT-J models apparently do not
-                            # have embedding bias, whereas MTJ GPT-J models do,
-                            # so we have to supplement an embedding bias tensor
-                            # by creating a tensor with the necessary shape, filled
-                            # with zeros.
-                            if mk == "causal_transformer_shard/~/embedding_shard/~/linear" and pk == "b":
-                                mv[pk] = move_xmap(jnp.zeros(mv[pk].shape, dtype=jnp.bfloat16), np.empty(params["cores_per_replica"]))
+                if not isinstance(model_dict[key], lazy_loader.LazyTensor):
+                    error = f"Duplicate key {repr(key)}"
+                    print("\n\nERROR:  " + error, file=sys.stderr)
+                    raise RuntimeError(error)
 
-                            else:
-                                error = f"{mk} {pk} could not be found in the model checkpoint"
-                                print("\n\nERROR:  " + error, file=sys.stderr)
-                                raise RuntimeError(error)
-            finally:
-                if utils.num_shards is None or utils.current_shard >= utils.num_shards:
-                    utils.bar.close()
-                    utils.bar = None
-                    koboldai_vars.status_message = ""
-                callback.nested = False
-                if isinstance(f, zipfile.ZipExtFile):
-                    f.close()
+                tensor = model_dict[key].materialize(map_location="cpu")
+                model_dict[key] = tensor.to("meta")
+
+                # MTJ requires certain mathematical operations to be performed
+                # on tensors in order for them to be in the correct format
+                if "remove_first_two_rows" in transforms:
+                    tensor = tensor[2:]
+                if "divide_by_shards" in transforms:
+                    tensor /= params["cores_per_replica"]
+                if "vocab_pad" in transforms:
+                    tensor = torch.nn.functional.pad(tensor, (0,) * (tensor.ndim * 2 - 1) + (params["n_vocab_padding"],))
+                # We don't need to transpose linear module weights anymore because MTJ will do it for us if `transposed_linear` is set to True in the config
+                #if "no_transpose" not in transforms and tensor.ndim == 2:
+                #    tensor = tensor.T
+                tensor.unsqueeze_(0)
+                
+
+                # Shard the tensor so that parts of the tensor can be used
+                # on different TPU cores
+                tensor = reshard_reverse(
+                    tensor,
+                    params["cores_per_replica"],
+                    network.state["params"][spec["module"]][spec["param"]].shape,
+                )
+                tensor = tensor.detach()
+                # numpy does not support bfloat16
+                if tensor.dtype is torch.bfloat16:
+                    tensor = tensor.to(torch.float32)
+                tensor = jnp.array(tensor)
+                if tensor.dtype is torch.float16 or tensor.dtype is torch.float32:
+                    tensor = tensor.bfloat16()
+                network.state["params"][spec["module"]][spec["param"]] = move_xmap(
+                    tensor,
+                    np.empty(params["cores_per_replica"]),
+                )
+                
+                koboldai_vars.loaded_layers += 1
+                try:
+                    time.sleep(0.01)
+                except:
+                    pass
+                utils.bar.update(1)
+
+            if utils.num_shards is not None and utils.current_shard < utils.num_shards:
+                return
+
+            # Check for tensors that MTJ needs that were not provided in the
+            # HF model
+            for mk, mv in network.state["params"].items():
+                for pk, pv in mv.items():
+                    if isinstance(pv, PlaceholderTensor):
+                        # The transformers GPT-J models apparently do not
+                        # have embedding bias, whereas MTJ GPT-J models do,
+                        # so we have to supplement an embedding bias tensor
+                        # by creating a tensor with the necessary shape, filled
+                        # with zeros.
+                        if mk == "causal_transformer_shard/~/embedding_shard/~/linear" and pk == "b":
+                            mv[pk] = move_xmap(jnp.zeros(mv[pk].shape, dtype=jnp.bfloat16), np.empty(params["cores_per_replica"]))
+
+                        else:
+                            error = f"{mk} {pk} could not be found in the model checkpoint"
+                            print("\n\nERROR:  " + error, file=sys.stderr)
+                            raise RuntimeError(error)
+        finally:
+            if utils.num_shards is None or utils.current_shard >= utils.num_shards:
+                utils.bar.close()
+                utils.bar = None
+                koboldai_vars.status_message = ""
+            callback.nested = False
     callback.nested = False
 
     if os.path.isdir(koboldai_vars.model.replace('/', '_')):
@@ -1315,7 +1303,7 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
                     except Exception as e:
                         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache", use_safetensors=False)
             except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.custmodpth, revision=koboldai_vars.revision, cache_dir="cache")
         elif(os.path.isdir("models/{}".format(koboldai_vars.model.replace('/', '_')))):
@@ -1330,7 +1318,7 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
                     except Exception as e:
                         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache", use_safetensors=False)
             except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(koboldai_vars.model.replace('/', '_')), revision=koboldai_vars.revision, cache_dir="cache")
         else:
@@ -1345,7 +1333,7 @@ def load_model(path: str, driver_version="tpu_driver_20221109", hf_checkpoint=Fa
                     except Exception as e:
                         tokenizer = GPT2Tokenizer.from_pretrained("gpt2", revision=koboldai_vars.revision, cache_dir="cache")
             try:
-                model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
+                model     = AutoModelForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache", use_safetensors=False)
             except Exception as e:
                 model     = GPTNeoForCausalLM.from_pretrained(koboldai_vars.model, revision=koboldai_vars.revision, cache_dir="cache")
 

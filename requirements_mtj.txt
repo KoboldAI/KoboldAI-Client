@@ -1,15 +1,15 @@
-torch >= 1.9, < 1.13
+torch == 2.0
 numpy
 tqdm
 requests
 dm-haiku==0.0.9
 jax==0.3.25
 jaxlib==0.3.25
-transformers == 4.28.0
+transformers==4.28.*
 chex == 0.1.5
-huggingface_hub==0.12.1
+huggingface_hub==0.15.1
 progressbar2
-git+https://github.com/VE-FORBRYDERNE/mesh-transformer-jax@ck
+git+https://github.com/Zurnaz/mesh-transformer-jax.git@llama_tpu
 Flask==2.2.3
 Flask-SocketIO==5.3.2
 python-socketio==5.7.2
@@ -33,3 +33,4 @@ flask_compress
 ijson
 ftfy
 pydub
+sentencepiece

@@ -46,35 +46,11 @@
 				<div id="model-spec-usage">Usage (VRAM)</div>
 			</span>
 		</span>
-		<div id="loadmodellistbreadcrumbs">
-			
-		</div>
+		<div id="loadmodellistbreadcrumbs"></div>
 		<div id="loadmodellistcontent" class="popup_list_area"></div>
+		<div id="loadmodelplugin" class="popup_load_cancel"><select id="modelplugin" class="settings_select hidden"></select></div>
+		<div id="loadmodelsettings" class="popup_load_cancel loadmodelsettings"></div>
 		<div class="popup_load_cancel">
-			<div>
-				<input class="hidden fullwidth" type="text" placeholder="key" id="modelkey" onchange="socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});">
-				<input class="hidden fullwidth" type="text" placeholder="Enter the URL of the server (For example a trycloudflare link)" id="modelurl" onchange="check_enable_model_load()">
-				<input class="hidden fullwidth" type="text" placeholder="Hugging Face Model Name" id="custommodelname" menu="" onblur="socket.emit('get_model_info', this.value);
-																																	   document.getElementById('btn_loadmodelaccept').setAttribute('selected_model', this.value);
-																																	   ">
-				<select class="hidden fullwidth settings_select" id="oaimodel"><option value="">Select OAI Model</option></select>
-			</div>
-			<div class="hidden" id=modellayers>
-				<div class="justifyleft">
-					GPU/Disk Layers<span class="material-icons-outlined helpicon" tooltip="Number of layers to assign to GPUs and to disk cache. Remaining layers will be put into CPU RAM.">help_icon</span>
-				</div>
-				<div class="justifyright"><span id="gpu_layers_current">0</span>/<span id="gpu_layers_max">0</span></div>
-				<div id=model_layer_bars style="color: white"></div>
-				<input type=hidden id='gpu_count' value=0/>
-			</div>
-			<div class="box flex-push-right hidden" id=use_gpu_div>
-				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_gpu" checked>
-				<div class="box-label">Use GPU</div>
-			</div>
-			<div class="box flex-push-right hidden" id=use_8_bit_div onclick="set_8_bit_mode()">
-				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="use_8_bit" checked>
-				<div class="box-label">Use 8 bit mode</div>
-			</div>
 			<button type="button" class="btn popup_load_cancel_button action_button disabled" onclick="load_model()" id="btn_loadmodelaccept" disabled>Load</button>
 			<button type="button" class="btn popup_load_cancel_button" onclick='closePopups();' id="btn_loadmodelclose">Cancel</button>
 		</div>
@@ -94,12 +70,12 @@
 		</div>
 	</div>
 	<!---------------- Private Mode Unlock screen ---------------------->
-	<div id="privacy_mode" class="popup-window popup">
+	<div id="privacy_mode" class="popup-window popup" allow-close="false">
 		<div class="title">
 			<div class="popuptitletext">Locked</div>
 		</div>
 		<div id="popup_list_area" class="popup_list_area">
-			This story is in private mode. Please enter password to unlock<br/>
+			This story is in private mode. Please enter the password to unlock it.<br/>
 			<input type="password" id="privacy_password"/>
 		</div>
 		<div class="popup_load_cancel">

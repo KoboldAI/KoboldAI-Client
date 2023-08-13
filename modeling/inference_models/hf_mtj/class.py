@@ -17,29 +17,40 @@ from modeling.inference_model import (
     ModelCapabilities,
 )
 from modeling.inference_models.hf import HFInferenceModel
+from modeling.tokenizer import GenericTokenizer
 
-# This file shouldn't be imported unless using the TPU
-assert utils.koboldai_vars.use_colab_tpu
-import tpu_mtj_backend
+model_backend_name = "Huggingface MTJ"
+model_backend_type = "Huggingface" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
 
-class HFMTJInferenceModel(HFInferenceModel):
+class model_backend(HFInferenceModel):
     def __init__(
         self,
-        model_name: str,
+        #model_name: str,
     ) -> None:
-        super().__init__(model_name)
-
-        self.model_config = None
-        self.capabilties = ModelCapabilities(
-            embedding_manipulation=False,
-            post_token_hooks=False,
-            stopper_hooks=False,
-            post_token_probs=False,
-            uses_tpu=True,
-        )
+        super().__init__()
+        import importlib
+        dependency_exists = importlib.util.find_spec("jax")
+        if dependency_exists:
+            self.hf_torch = False
+            self.model_config = None
+            self.capabilties = ModelCapabilities(
+                embedding_manipulation=False,
+                post_token_hooks=False,
+                stopper_hooks=False,
+                post_token_probs=False,
+                uses_tpu=True,
+            )
+        else:
+            logger.debug("Jax is not installed, hiding TPU backend")
+            self.disable = True
+        
+    def is_valid(self, model_name, model_path, menu_path):
+        # This file shouldn't be imported unless using the TPU
+        return utils.koboldai_vars.use_colab_tpu and super().is_valid(model_name, model_path, menu_path)
 
     def setup_mtj(self) -> None:
+        import tpu_mtj_backend
         def mtj_warper_callback(scores) -> "np.array":
             scores_shape = scores.shape
             scores_list = scores.tolist()
@@ -122,7 +133,8 @@ class HFMTJInferenceModel(HFInferenceModel):
             utils.koboldai_vars.compiling = True
 
         def mtj_stopped_compiling_callback() -> None:
-            print(Colors.GREEN + "TPU backend compilation stopped" + Colors.END)
+            if utils.koboldai_vars.compiling:
+                print(Colors.GREEN + "TPU backend compilation stopped" + Colors.END)
             utils.koboldai_vars.compiling = False
 
         def mtj_settings_callback() -> dict:
@@ -146,7 +158,7 @@ class HFMTJInferenceModel(HFInferenceModel):
 
         tpu_mtj_backend.socketio = utils.socketio
 
-        if utils.koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
+        if self.model_name == "TPUMeshTransformerGPTNeoX":
             utils.koboldai_vars.badwordsids = utils.koboldai_vars.badwordsids_neox
 
         print(
@@ -154,7 +166,7 @@ class HFMTJInferenceModel(HFInferenceModel):
                 Colors.PURPLE, Colors.END
             )
         )
-        if utils.koboldai_vars.model in (
+        if self.model_name in (
             "TPUMeshTransformerGPTJ",
             "TPUMeshTransformerGPTNeoX",
         ) and (
@@ -164,7 +176,7 @@ class HFMTJInferenceModel(HFInferenceModel):
             raise FileNotFoundError(
                 f"The specified model path {repr(utils.koboldai_vars.custmodpth)} is not the path to a valid folder"
             )
-        if utils.koboldai_vars.model == "TPUMeshTransformerGPTNeoX":
+        if self.model_name == "TPUMeshTransformerGPTNeoX":
             tpu_mtj_backend.pad_token_id = 2
 
         tpu_mtj_backend.koboldai_vars = utils.koboldai_vars
@@ -175,13 +187,15 @@ class HFMTJInferenceModel(HFInferenceModel):
         tpu_mtj_backend.settings_callback = mtj_settings_callback
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
+        import tpu_mtj_backend
         self.setup_mtj()
         self.init_model_config()
         utils.koboldai_vars.allowsp = True
 
+        logger.info(self.model_name)
         tpu_mtj_backend.load_model(
-            utils.koboldai_vars.model,
-            hf_checkpoint=utils.koboldai_vars.model
+            self.model_name,
+            hf_checkpoint=self.model_name
             not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")
             and utils.koboldai_vars.use_colab_tpu,
             socketio_queue=koboldai_settings.queue,
@@ -193,12 +207,11 @@ class HFMTJInferenceModel(HFInferenceModel):
         utils.koboldai_vars.modeldim = int(
             tpu_mtj_backend.params.get("d_embed", tpu_mtj_backend.params["d_model"])
         )
-
-        self.tokenizer = tpu_mtj_backend.tokenizer
+        self.tokenizer = GenericTokenizer(tpu_mtj_backend.tokenizer)
 
         if (
             utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
-            and utils.koboldai_vars.model_type not in ("gpt2", "gpt_neo", "gptj")
+            and self.model_type not in ("gpt2", "gpt_neo", "gptj")
         ):
             utils.koboldai_vars.badwordsids = [
                 [v]
@@ -207,6 +220,7 @@ class HFMTJInferenceModel(HFInferenceModel):
             ]
 
     def get_soft_tokens(self) -> np.array:
+        import tpu_mtj_backend
         soft_tokens = None
 
         if utils.koboldai_vars.sp is None:
@@ -258,6 +272,7 @@ class HFMTJInferenceModel(HFInferenceModel):
         seed: Optional[int] = None,
         **kwargs,
     ) -> GenerationResult:
+        import tpu_mtj_backend
         warpers.update_settings()
 
         soft_tokens = self.get_soft_tokens()

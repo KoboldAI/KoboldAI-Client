@@ -5,6 +5,8 @@ services:
     environment:
       - DISPLAY=${DISPLAY} 
     network_mode: "host"
+    security_opt:
+      - label:disable
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /etc/protocols:/etc/protocols:ro

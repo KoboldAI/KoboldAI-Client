@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import time
 from typing import List, Optional, Union
+
+from enum import Enum
 from logger import logger
 
 import torch
@@ -12,6 +14,7 @@ from transformers import (
     GPT2Tokenizer,
     AutoTokenizer,
 )
+from modeling.stoppers import Stoppers
 from modeling.tokenizer import GenericTokenizer
 from modeling import logits_processors
 
@@ -144,7 +147,10 @@ class GenerationSettings:
 class ModelCapabilities:
     embedding_manipulation: bool = False
     post_token_hooks: bool = False
+
+    # Used to gauge if manual stopping is possible
     stopper_hooks: bool = False
+
     # TODO: Support non-live probabilities from APIs
     post_token_probs: bool = False
 
@@ -154,6 +160,12 @@ class ModelCapabilities:
     # Some models need to warm up the TPU before use
     uses_tpu: bool = False
 
+class GenerationMode(Enum):
+    STANDARD = "standard"
+    FOREVER = "forever"
+    UNTIL_EOS = "until_eos"
+    UNTIL_NEWLINE = "until_newline"
+    UNTIL_SENTENCE_END = "until_sentence_end"
 
 class InferenceModel:
     """Root class for all models."""
@@ -169,6 +181,28 @@ class InferenceModel:
         ]
         self.tokenizer = None
         self.capabilties = ModelCapabilities()
+        self.model_name = "Not Defined"
+    
+    def is_valid(self, model_name, model_path, menu_path):
+        return True
+        
+    def requested_parameters(self, model_name, model_path, menu_path):
+        return {}
+        
+    def set_input_parameters(self, parameters):
+        for parameter in parameters:
+            setattr(self, parameter, parameters[parameter])
+        return
+
+    def get_auxilary_device(self) -> Union[str, int, torch.device]:
+        """Get device auxilary tensors like inputs should be stored on."""
+
+        # NOTE: TPU isn't a torch device, so TPU stuff gets sent to CPU.
+        if utils.koboldai_vars.hascuda and utils.koboldai_vars.usegpu:
+            return utils.koboldai_vars.gpu_device
+        elif utils.koboldai_vars.hascuda:
+            return "cuda"
+        return "cpu"
 
     def load(self, save_model: bool = False, initial_load: bool = False) -> None:
         """User-facing load function. Do not override this; try `_load()` instead."""
@@ -176,12 +210,19 @@ class InferenceModel:
         self._pre_load()
         self._load(save_model=save_model, initial_load=initial_load)
         self._post_load()
+        self._save_settings()
+
+    def unload(self):
+        return
 
     def _pre_load(self) -> None:
         """Pre load hook. Called before `_load()`."""
 
     def _post_load(self) -> None:
         """Post load hook. Called after `_load()`."""
+    
+    def _save_settings(self) -> None:
+        """Save settings hook. Called after `_post_load()`."""
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         """Main load method. All logic related to loading the model onto the
@@ -218,7 +259,7 @@ class InferenceModel:
             try:
                 return GenericTokenizer(try_get_tokenizer())
             except Exception as e:
-                logger.warning(f"Tokenizer falling back due to {e}")
+                logger.warning(f"Tokenizer falling back due to {e} (This can be normal behavior for some architectures that lack a slow tokenizer such as NeoX)")
                 # If we error on each attempt, raise the last one
                 if i == len(suppliers) - 1:
                     raise
@@ -227,6 +268,7 @@ class InferenceModel:
         self,
         text: list,
         found_entries: set,
+        gen_mode: GenerationMode = GenerationMode.STANDARD,
     ):
         """Generate story text. Heavily tied to story-specific parameters; if
         you are making a new generation-based feature, consider `generate_raw()`.
@@ -234,6 +276,7 @@ class InferenceModel:
         Args:
             text (list): Encoded input tokens
             found_entries (set): Entries found for Dynamic WI
+            gen_mode (GenerationMode): The GenerationMode to pass to raw_generate. Defaults to GenerationMode.STANDARD
 
         Raises:
             RuntimeError: if inconsistancies are detected with the internal state and Lua state -- sanity check
@@ -282,7 +325,7 @@ class InferenceModel:
         )
 
         start_time = time.time()
-        gen_in = gen_in.to(utils.get_auxilary_device())
+        gen_in = gen_in.to(self.get_auxilary_device())
 
         logger.debug(
             "core_generate: gen_in to device time {}s".format(time.time() - start_time)
@@ -329,6 +372,7 @@ class InferenceModel:
                         seed=utils.koboldai_vars.seed
                         if utils.koboldai_vars.full_determinism
                         else None,
+                        gen_mode=gen_mode
                     )
                     logger.debug(
                         "core_generate: run raw_generate pass {} {}s".format(
@@ -503,6 +547,7 @@ class InferenceModel:
         found_entries: set = (),
         tpu_dynamic_inference: bool = False,
         seed: Optional[int] = None,
+        gen_mode: GenerationMode = GenerationMode.STANDARD,
         **kwargs,
     ) -> GenerationResult:
         """A wrapper around `_raw_generate()` that handles gen_state and other stuff. Use this to generate text outside of the story.
@@ -518,6 +563,7 @@ class InferenceModel:
             is_core (bool, optional): Whether this generation is a core story generation. Defaults to False.
             single_line (bool, optional): Generate one line only.. Defaults to False.
             found_entries (set, optional): Entries found for Dynamic WI. Defaults to ().
+            gen_mode (GenerationMode): Special generation mode. Defaults to GenerationMode.STANDARD.
 
         Raises:
             ValueError: If prompt type is weird
@@ -538,6 +584,29 @@ class InferenceModel:
         self.gen_state["wi_scanner_excluded_keys"] = self.gen_state.get(
             "wi_scanner_excluded_keys", set()
         )
+
+        self.gen_state["allow_eos"] = False
+
+        temp_stoppers = []
+
+        if gen_mode not in self.get_supported_gen_modes():
+            gen_mode = GenerationMode.STANDARD
+            logger.warning(f"User requested unsupported GenerationMode '{gen_mode}'!")
+
+        if gen_mode == GenerationMode.FOREVER:
+            self.gen_state["stop_at_genamt"] = False
+            max_new = 1e7
+        elif gen_mode == GenerationMode.UNTIL_EOS:
+            self.gen_state["allow_eos"] = True
+            self.gen_state["stop_at_genamt"] = False
+            max_new = 1e7
+        elif gen_mode == GenerationMode.UNTIL_NEWLINE:
+            # TODO: Look into replacing `single_line` with `generation_mode`
+            temp_stoppers.append(Stoppers.newline_stopper)
+        elif gen_mode == GenerationMode.UNTIL_SENTENCE_END:
+            temp_stoppers.append(Stoppers.sentence_end_stopper)
+
+        self.stopper_hooks += temp_stoppers
 
         utils.koboldai_vars.inference_config.do_core = is_core
         gen_settings = GenerationSettings(*(generation_settings or {}))
@@ -568,12 +637,20 @@ class InferenceModel:
             )
 
         time_end = round(time.time() - time_start, 2)
-        tokens_per_second = round(len(result.encoded[0]) / time_end, 2)
+
+        try:
+            tokens_per_second = round(len(result.encoded[0]) / time_end, 2)
+        except ZeroDivisionError:
+            # Introducing KoboldAI's fastest model: ReadOnly!
+            tokens_per_second = 0
 
         if not utils.koboldai_vars.quiet:
             logger.info(
                 f"Generated {len(result.encoded[0])} tokens in {time_end} seconds, for an average rate of {tokens_per_second} tokens per second."
             )
+
+        for stopper in temp_stoppers:
+            self.stopper_hooks.remove(stopper)
 
         return result
 
@@ -591,3 +668,19 @@ class InferenceModel:
     def _post_token_gen(self, input_ids: torch.LongTensor) -> None:
         for hook in self.post_token_hooks:
             hook(self, input_ids)
+
+    def get_supported_gen_modes(self) -> List[GenerationMode]:
+        """Returns a list of compatible `GenerationMode`s for the current model.
+
+        Returns:
+            List[GenerationMode]: A list of compatible `GenerationMode`s.
+        """
+        ret = [GenerationMode.STANDARD]
+
+        if self.capabilties.stopper_hooks:
+            ret += [
+                GenerationMode.FOREVER,
+                GenerationMode.UNTIL_NEWLINE,
+                GenerationMode.UNTIL_SENTENCE_END,
+            ]
+        return ret

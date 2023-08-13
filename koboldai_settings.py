@@ -6,7 +6,7 @@ import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 import shutil
 from typing import List, Union
 from io import BytesIO
-from flask import has_request_context, session
+from flask import has_request_context, session, request
 from flask_socketio import join_room, leave_room
 from collections import OrderedDict
 import multiprocessing
@@ -130,11 +130,14 @@ class koboldai_vars(object):
         original_story_name = story_name
         if not multi_story:
             story_name = 'default'
-        #Leave the old room and join the new one
-        logger.debug("Leaving room {}".format(session['story']))
-        leave_room(session['story'])
-        logger.debug("Joining room {}".format(story_name))
-        join_room(story_name)
+
+        # Leave the old room and join the new one if in socket context
+        if hasattr(request, "sid"):
+            logger.debug("Leaving room {}".format(session['story']))
+            leave_room(session['story'])
+            logger.debug("Joining room {}".format(story_name))
+            join_room(story_name)
+
         session['story'] = story_name
         logger.debug("Sending story reset")
         self._story_settings[story_name]._socketio.emit("reset_story", {}, broadcast=True, room=story_name)
@@ -647,13 +650,13 @@ class settings(object):
                     raise
 
 class model_settings(settings):
-    local_only_variables = ['badwordsids', 'apikey', 'default_preset']
+    local_only_variables = ['apikey', 'default_preset']
     no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
                          'badwordsids', 'uid_presets', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
     settings_name = "model"
-    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
+    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 1.0, "rep_pen_range": 2048, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
         self.enable_whitelist = False
@@ -677,7 +680,7 @@ class model_settings(settings):
         <div id='welcome-logo-container'><img id='welcome-logo' src='static/Welcome_Logo.png' draggable='False'></div>
         <div class='welcome_text'>
             <div id="welcome-text-content">Please load a model from the left.<br/>
-                If you encounter any issues, please click the Download debug dump link in the Home tab on the left flyout and attach the downloaded file to your error report on <a href='https://github.com/ebolam/KoboldAI/issues'>Github</a>, <a href='https://www.reddit.com/r/KoboldAI/'>Reddit</a>, or <a href='https://discord.gg/XuQWadgU9k'>Discord</a>.
+                If you encounter any issues, please click the Download debug dump link in the Home tab on the left flyout and attach the downloaded file to your error report on <a href='https://github.com/ebolam/KoboldAI/issues'>Github</a>, <a href='https://www.reddit.com/r/KoboldAI/'>Reddit</a>, or <a href='https://koboldai.org/discord'>Discord</a>.
                 A redacted version (without story text) is available.
             </div>
         </div>""" # Custom Welcome Text
@@ -685,18 +688,19 @@ class model_settings(settings):
         self._koboldai_vars = koboldai_vars
         self.alt_multi_gen = False
         self.bit_8_available = None
+        self.supported_gen_modes = []
         
     def reset_for_model_load(self):
         self.simple_randomness = 0 #Set first as this affects other outputs
         self.simple_creativity = 0 #Set first as this affects other outputs
         self.simple_repitition = 0 #Set first as this affects other outputs
-        self.max_length  = 1024    # Maximum number of tokens to submit per action
+        self.max_length  = 2048    # Maximum number of tokens to submit per action
         self.ikmax       = 3000    # Maximum number of characters to submit to InferKit
-        self.genamt      = 80      # Amount of text for each action to generate
+        self.genamt      = 200      # Amount of text for each action to generate
         self.ikgen       = 200     # Number of characters for InferKit to generate
         self.rep_pen     = 1.1     # Default generator repetition_penalty
-        self.rep_pen_slope = 0.7   # Default generator repetition penalty slope
-        self.rep_pen_range = 1024  # Default generator repetition penalty range
+        self.rep_pen_slope = 1.0   # Default generator repetition penalty slope
+        self.rep_pen_range = 2048  # Default generator repetition penalty range
         self.temp        = 0.5     # Default generator temperature
         self.top_p       = 0.9     # Default generator top_p
         self.top_k       = 0       # Default generator top_k
@@ -710,7 +714,6 @@ class model_settings(settings):
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
         self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
-        self.lazy_load   = True # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
         self.uid_presets = []
@@ -1129,7 +1132,7 @@ class story_settings(settings):
                 
 class user_settings(settings):
     local_only_variables = ['importjs']
-    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid', "revision"]
+    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid', "revision", "model_selected"]
     settings_name = "user"
     def __init__(self, socketio):
         self._socketio = socketio
@@ -1156,6 +1159,7 @@ class user_settings(settings):
         self.nogenmod    = False
         self.debug       = False    # If set to true, will send debug information to the client for display
         self.output_streaming = True
+        self.smooth_streaming = True
         self.show_probs = False # Whether or not to show token probabilities
         self.beep_on_complete = False
         self.img_gen_priority = 1
@@ -1185,6 +1189,7 @@ class user_settings(settings):
         self.horde_api_key = "0000000000"
         self.horde_worker_name = "My Awesome Instance"
         self.horde_url = "https://horde.koboldai.net"
+        self.model_selected = ""
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -1202,17 +1207,16 @@ class undefined_settings(settings):
         super().__setattr__(name, value)
         logger.error("{} just set {} to {} in koboldai_vars. That variable isn't defined!".format(inspect.stack()[1].function, name, value))
         
-
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
                             'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui']
+                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui', 'colab_arg']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
-                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
+                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'on_colab'
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch', 'colab_arg']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1236,7 +1240,7 @@ class system_settings(settings):
         self.corescript  = "default.lua"  # Filename of corescript to load
         self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
-        self.hascuda     = False  # Whether torch has detected CUDA on the system
+        self.hascuda     = torch.cuda.is_available()  # Whether torch has detected CUDA on the system
         self.usegpu      = False  # Whether to launch pipeline with GPU support
         self.splist      = []
         self.spselect    = ""     # Temporary storage for soft prompt filename to load
@@ -1280,11 +1284,12 @@ class system_settings(settings):
         self.disable_output_formatting = False
         self.api_tokenizer_id = None
         self.port = 5000
+        self.colab_arg = False
         try:
             import google.colab
             self.on_colab = True
         except:
-            self.on_colab = False
+            self.on_colab = self.colab_arg
         print(f"Colab Check: {self.on_colab}, TPU: {self.use_colab_tpu}")
         self.horde_share = False
         self._horde_pid = None
@@ -1755,11 +1760,15 @@ class KoboldStoryRegister(object):
     
     def go_forward(self):
         action_step = self.action_count+1
-        if action_step in self.actions:
-            if len(self.get_current_options()) == 1:
-                logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
-                self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
-    
+        if action_step not in self.actions:
+            return
+
+        self.show_options(len(self.get_current_options()) > 1)
+
+        if len(self.get_current_options()) == 1:
+            logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
+            self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
+
     def use_option(self, option_number, action_step=None):
         if action_step is None:
             action_step = self.action_count+1
@@ -1796,6 +1805,16 @@ class KoboldStoryRegister(object):
                 del self.actions[action_step]['Options'][option_number]
                 process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
+    
+    def show_options(
+        self,
+        should_show: bool,
+        force: bool = False,
+
+    ) -> None:
+        if self._koboldai_vars.aibusy and not force:
+            return
+        self._socketio.emit("show_options", should_show, broadcast=True, room="UI_2")
     
     def delete_action(self, action_id, keep=True):
         if action_id in self.actions:
@@ -1889,34 +1908,19 @@ class KoboldStoryRegister(object):
                     process_variable_changes(self._socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
         else:
             #We're streaming single options so our output is our selected
-            #First we need to see if this is actually the prompt. If so we'll just not do streaming:
-            if self.story_settings.prompt != "":
-                if self.action_count+1 in self.actions:
-                    if self._koboldai_vars.tokenizer is not None:
-                        selected_text_length = len(self._koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text']))
-                    else:
-                        selected_text_length = 0
-                    self.actions[self.action_count+1]['Selected Text'] = "{}{}".format(self.actions[self.action_count+1]['Selected Text'], text_list[0])
-                    self.actions[self.action_count+1]['Selected Text Length'] = selected_text_length
-                else:
-                    if self._koboldai_vars.tokenizer is not None:
-                        selected_text_length = len(self._koboldai_vars.tokenizer.encode(text_list[0]))
-                    else:
-                        selected_text_length = 0
-                    self.actions[self.action_count+1] = {"Selected Text": text_list[0], "Selected Text Length": selected_text_length, "Options": [], "Time": int(time.time())}
-                
-                
-                
-                if self._koboldai_vars.tokenizer is not None:
-                    if len(self._koboldai_vars.tokenizer.encode(self.actions[self.action_count+1]['Selected Text'])) != self._koboldai_vars.genamt:
-                        #ui1
-                        if queue is not None:
-                            queue.put(["from_server", {"cmd": "streamtoken", "data": [{
-                                "decoded": text_list[0],
-                                "probabilities": self.probability_buffer
-                            }]}, {"broadcast":True, "room":"UI_1"}])
-                        #process_variable_changes(self._socketio, "actions", "Options", {"id": self.action_count+1, "options": self.actions[self.action_count+1]["Options"]}, {"id": self.action_count+1, "options": None})
-                        process_variable_changes(self._socketio, "story", 'actions', {"id": self.action_count+1, 'action':  self.actions[self.action_count+1]}, None)
+            queue.put(["stream_tokens", text_list, {"broadcast": True, "room": "UI_2"}])
+
+            # UI1
+            queue.put([
+                "from_server", {
+                    "cmd": "streamtoken",
+                    "data": [{
+                        "decoded": text_list[0],
+                        "probabilities": self.probability_buffer
+                    }],
+                },
+                {"broadcast":True, "room": "UI_1"}
+            ])
     
     def set_probabilities(self, probabilities, action_id=None):
         self.probability_buffer = probabilities

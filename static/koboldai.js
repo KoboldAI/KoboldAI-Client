@@ -14,7 +14,8 @@ socket.on('load_popup', function(data){load_popup(data);});
 socket.on('popup_items', function(data){popup_items(data);});
 socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
 socket.on('popup_edit_file', function(data){popup_edit_file(data);});
-socket.on('show_model_menu', function(data){show_model_menu(data);});
+//socket.on('show_model_menu', function(data){show_model_menu(data);});
+socket.on('open_model_load_menu', function(data){show_model_menu(data);});
 socket.on('selected_model_info', function(data){selected_model_info(data);});
 socket.on('oai_engines', function(data){oai_engines(data);});
 socket.on('buildload', function(data){buildload(data);});
@@ -22,7 +23,13 @@ socket.on('error_popup', function(data){error_popup(data);});
 socket.on("world_info_entry", function(data){process_world_info_entry(data);});
 socket.on("world_info_entry_used_in_game", function(data){world_info_entry_used_in_game(data);});
 socket.on("world_info_folder", function(data){world_info_folder(data);});
-socket.on("delete_new_world_info_entry", function(data){document.getElementById("world_info_-1").remove();});
+socket.on("delete_new_world_info_entry", function(data) {
+	const card = $el("#world_info_-1");
+	// Prevent weird race condition/strange event call order where blur event
+	// fires before removal is finished on Chrome
+	card.removing = true
+	card.remove();
+});
 socket.on("delete_world_info_entry", function(data){document.getElementById("world_info_"+data).remove();});
 socket.on("delete_world_info_folder", function(data){document.getElementById("world_info_folder_"+data).remove();});
 socket.on("error", function(data){show_error_message(data);});
@@ -36,6 +43,8 @@ socket.on("debug_message", function(data){console.log(data);});
 socket.on("scratchpad_response", recieveScratchpadResponse);
 socket.on("show_error_notification", function(data) { reportError(data.title, data.text) });
 socket.on("generated_wi", showGeneratedWIData);
+socket.on("stream_tokens", stream_tokens);
+socket.on("show_options", show_options);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -56,7 +65,6 @@ var rename_return_emit_name = "popup_rename";
 var popup_rows = [];
 var popup_style = "";
 var popup_sort = {};
-var shift_down = false;
 var world_info_data = {};
 var world_info_folder_data = {};
 var saved_settings = {};
@@ -81,6 +89,22 @@ const on_colab = $el("#on_colab").textContent == "true";
 let story_id = -1;
 var dirty_chunks = [];
 var initial_socketio_connection_occured = false;
+var selected_model_data;
+var supported_gen_modes = [];
+var privacy_mode_enabled = false;
+var attention_wanting_wi_bar = null;
+var ai_busy = false;
+var can_show_options = false;
+
+var streaming = {
+	windowOpen: false,
+	buffer: "",
+	time: {
+		msBuffer: [10],
+		preTime: null,
+	},
+	typeyTimeout: null,
+};
 
 // Each entry into this array should be an object that looks like:
 // {class: "class", key: "key", func: callback}
@@ -145,7 +169,36 @@ const context_menu_actions = {
 	"wi-img-upload-button": [
 		{label: "Upload Image", icon: "file_upload", enabledOn: "ALWAYS", click: wiImageReplace},
 		{label: "Use Generated Image", icon: "image", enabledOn: "GENERATED-IMAGE", click: wiImageUseGeneratedImage},
-	]
+	],
+	"submit-button": [
+		{label: "Generate", icon: "edit", enabledOn: "ALWAYS", click: () => storySubmit()},
+		null,
+		{
+			label: "Generate Forever",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("forever"),
+			click: () => storySubmit("forever")
+		},
+		{
+			label: "Generate Until EOS",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_eos"),
+			click: () => storySubmit("until_eos")
+		},
+		null,
+		{
+			label: "Finish Line",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_newline"),
+			click: () => storySubmit("until_newline")
+		},
+		{
+			label: "Finish Sentence",
+			icon: "edit_off",
+			enabledOn: () => supported_gen_modes.includes("until_sentence_end"),
+			click: () => storySubmit("until_sentence_end")
+		},
+	],
 };
 
 let context_menu_cache = [];
@@ -159,7 +212,7 @@ const shortcuts = [
 	{mod: "ctrl", key: "m", desc: "Focuses Memory", func: () => focusEl("#memory")},
 	{mod: "ctrl", key: "u", desc: "Focuses Author's Note", func: () => focusEl("#authors_notes")}, // CTRL-N is reserved :^(
 	{mod: "ctrl", key: "g", desc: "Focuses game text", func: () => focusEl("#input_text")},
-	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: () => socket.emit("privacy_mode", {'enabled': true})},
+	{mod: "ctrl", key: "l", desc: '"Lock" screen (Not secure)', func: maybe_enable_privacy_mode},
 	{mod: "ctrl", key: "k", desc: "Finder", func: open_finder},
 	{mod: "ctrl", key: "/", desc: "Help screen", func: () => openPopup("shortcuts-popup")},
 ]
@@ -237,10 +290,17 @@ function disconnect() {
 	document.getElementById("disconnect_message").classList.remove("hidden");
 }
 
-function storySubmit() {
+function storySubmit(genMode=null) {
+	const textInput = document.getElementById("input_text");
+	const themeInput = document.getElementById("themetext");
 	disruptStoryState();
-	socket.emit('submit', {'data': document.getElementById('input_text').value, 'theme': document.getElementById('themetext').value});
-	document.getElementById('input_text').value = '';
+	socket.emit('submit', {
+		data: textInput.value,
+		theme: themeInput.value,
+		gen_mode: genMode,
+	});
+
+	textInput.value = '';
 	document.getElementById('themetext').value = '';
 }
 
@@ -294,7 +354,7 @@ function reset_story() {
 	}
 	
 	//clear any options
-	var option_area = document.getElementById("Select Options");
+	var option_area = document.getElementById("option-container");
 	while (option_area.firstChild) {
 		option_area.removeChild(option_area.firstChild);
 	}
@@ -326,7 +386,7 @@ function reset_story() {
 		document.getElementById("Selected Text").setAttribute("contenteditable", "true");
 		
 	}
-	document.getElementById('main-grid').setAttribute('option_length', 0);
+	document.getElementById('main-grid').setAttribute("hide-options", true);
 
 	$(".chat-message").remove();
 	addInitChatMessage();
@@ -346,22 +406,143 @@ function fix_text(val) {
 	}
 }
 
+function create_option_element(text, optionId, actionId, type, itemPinned=false) {
+	// Type must be "gen" or "history"
+	const optionContainer = $el("#option-container");
+	const row = $e("div", optionContainer, {
+		classes: ["sequence_row"],
+		"option_id": optionId,
+		"action_id": actionId,
+	});
+
+	const textcell = document.createElement("span");
+	textcell.textContent = text;
+	textcell.classList.add("sequence");
+	textcell.setAttribute("option_id", optionId);
+	textcell.setAttribute("option_chunk", actionId);
+
+	const iconcell = document.createElement("span");
+	iconcell.setAttribute("option_id", optionId);
+	iconcell.setAttribute("option_chunk", actionId);
+	iconcell.classList.add("sequnce_icon");
+
+	const icon = document.createElement("span");
+	icon.id = "Pin_"+optionId;
+	icon.classList.add("material-icons-outlined");
+	icon.classList.add("option_icon");
+	icon.classList.add("cursor");
+
+	if (type === "gen") {
+		icon.classList.add("pin");
+		icon.textContent = "push_pin";
+
+		if (itemPinned) {
+			icon.classList.add('rotate_45');
+		} else {
+			icon.setAttribute('style', "filter: brightness(50%);");
+		}
+
+		iconcell.addEventListener("click", function() {
+			socket.emit("Pinning", {
+				chunk: actionId,
+				option: optionId
+			});
+		});
+	} else if (type === "history") {
+		icon.textContent = "cached";
+
+		const delete_icon = $e("span", iconcell, {
+			classes: ["material-icons-outlined", "cursor", 'option_icon'],
+			tooltip: "Delete Option",
+			option_id: optionId,
+			option_chunk: actionId,
+			textContent: 'delete'
+		});
+
+		delete_icon.addEventListener("click", function() {
+			socket.emit("delete_option", {
+				chunk: actionId,
+				option: optionId
+			});
+		});
+	}
+
+
+	iconcell.append(icon);
+
+	textcell.addEventListener("click", function() {
+		socket.emit("Use Option Text", {
+			chunk: actionId,
+			option: optionId,
+		});
+	});
+
+	row.append(textcell);
+	row.append(iconcell);
+	optionContainer.append(row);
+	return row;
+}
+
+function action_count_changed() {
+	// Delete all options before the next chunk to hidden
+	const option_container = document.getElementById("option-container");
+	const current_chunk = parseInt(document.getElementById("action_count").textContent) + 1;
+
+	for (const chunk of Array.from(option_container.children)) {
+		if (parseInt(chunk.getAttribute("action_id")) === current_chunk) {
+			// good
+		} else {
+			chunk.remove();
+		}
+	}
+}
+
+function visible_options_present() {
+	const optionContainer = $el("#option-container");
+	for (const el of optionContainer.childNodes) {
+		if (el.classList.contains("hidden")) continue;
+		return true;
+	}
+	return false;
+}
+
+function show_options(doShow) {
+	can_show_options = doShow;
+	let show = doShow;// && visible_options_present();
+	$el("#option-container").classList.toggle("hidden", !show);
+	$el("#main-grid").setAttribute("hide-options", !show);
+
+	if (show) {
+		const action = actions_data[current_action + 1];
+		if (!action) return;
+
+		create_options({
+			id: current_action+1,
+			action: action
+		});
+	}
+}
+
 function create_options(action) {
 	//Set all options before the next chunk to hidden
-	if (action.id  != current_action+1) {
+	if (action.id != current_action+1) {
 		return;
 	}
-	var option_chunk = document.getElementById("Select Options");
-	
-	//first, let's clear out our existing data
-	while (option_chunk.firstChild) {
-		option_chunk.removeChild(option_chunk.firstChild);
+
+	if (!can_show_options) {
+		return;
 	}
-	
+
+	// First, let's clear out our existing data. Note: use querySelectorAll to
+	// iterate for deletion because other methods resize the list during iteration
+	for (const option of document.querySelectorAll(".sequence_row")) {
+		option.remove();
+	}
+
 	//Let's check if we only have a single redo option. In that case we din't show as the user can use the redo button
-	seen_prev_selection = false;
-	show_options = false;
-	for (item of action.action.Options) {
+	let seen_prev_selection = false;
+	let show_options = false;
+	for (const item of action.action.Options) {
 		if (!(item['Previous Selection']) && !(item['Edited'])) {
 			show_options = true;
 			break;
@@ -374,100 +555,46 @@ function create_options(action) {
 			}
 		}
 	}
-	if (!(show_options)) {
-		document.getElementById('main-grid').setAttribute('option_length', 0);
+
+	const mainGrid = $el("#main-grid");
+	const optionContainer = $el("#option-container");
+
+	if (!show_options) {
+		mainGrid.setAttribute("hide-options", true);
+		optionContainer.classList.add("hidden");
 		return;
 	}
-	
-	document.getElementById('main-grid').setAttribute('option_length', action.action.Options.length);
-	
-	var table = document.createElement("div");
-	table.classList.add("sequences");
-	//Add Redo options
-	let added_options=0;
-	i=0;
-	for (item of action.action.Options) {
-		if ((item['Previous Selection']) && (item.text != "")) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", action.id);
-			var iconcell = document.createElement("span");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", action.id);
-			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("material-icons-outlined");
-			icon.classList.add("option_icon");
-			icon.classList.add("cursor");
-			icon.textContent = "cached";
-			iconcell.append(icon);
-			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'option_icon'], 
-												"tooltip": "Delete Option", 'option_id': i,
-												'option_chunk': action.id, 'textContent': 'delete'});
-			delete_icon.onclick = function () {
-									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			textcell.onclick = function () {
-									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-			added_options+=1;
-		}
-		i+=1;
+
+	// mainGrid.setAttribute("hide-options", false);
+	// optionContainer.classList.toggle("hidden", action.action.Options.length < 1);
+
+	// Gens
+	let optionId = 0;
+	for (const item of action.action.Options) {
+		if (!item.text) continue;
+		if (item.Edited) continue;
+		if (item["Previous Selection"]) continue;
+
+		create_option_element(item.text, optionId, action.id, "gen", item.Pinned);
+		optionId++;
 	}
-	//Add general options
-	i=0;
-	for (item of action.action.Options) {
-		if (!(item.Edited) && !(item['Previous Selection']) && (item.text != "")) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", action.id);
-			var iconcell = document.createElement("span");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", action.id);
-			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("material-icons-outlined");
-			icon.classList.add("option_icon");
-			icon.classList.add("cursor");
-			icon.classList.add("pin");
-			icon.textContent = "push_pin";
-			if (!(item.Pinned)) {
-				icon.setAttribute('style', "filter: brightness(50%);");
-			} else {
-				icon.classList.add('rotate_45');
-			}
-			iconcell.append(icon);
-			iconcell.onclick = function () {
-									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							   };
-			textcell.onclick = function () {
-									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-			added_options+=1;
-		}
-		i+=1;
+
+
+	// History
+	optionId = 0;
+	for (const item of action.action.Options) {
+		if (!item.text) continue;
+		if (!item["Previous Selection"]) continue;
+
+		create_option_element(item.text, optionId, action.id, "history");
+		optionId++;
 	}
-	if (added_options > 0) {
-		option_chunk.append(table);
-	}
-	
-	
+
+	let anyOptions = visible_options_present();
+
+	$el("#option-container").classList.toggle("hidden", !anyOptions);
+	$el("#main-grid").setAttribute("hide-options", !anyOptions);
+
 	//make sure our last updated chunk is in view
 	//option_chunk.scrollIntoView();
 }
@@ -505,7 +632,8 @@ function process_actions_data(data) {
 		//update
 		action_type = "update";
 	}
-	for (action of actions) {
+
+	for (const action of actions) {
 		actions_data[parseInt(action.id)] = action.action;
 		do_story_text_updates(action);
 		create_options(action);
@@ -514,7 +642,6 @@ function process_actions_data(data) {
 	clearTimeout(game_text_scroll_timeout);
 	game_text_scroll_timeout = setTimeout(run_infinite_scroll_update.bind(null, action_type, actions, first_action), 200);
 	clearTimeout(auto_loader_timeout);
-	
 	
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
@@ -595,13 +722,11 @@ function do_story_text_updates(action) {
 				story_area.append(item);
 			}
 		}
-		
-		
-		if (action.action['Selected Text'].charAt(0) == ">") {
-			item.classList.add("action_mode_input");
-		} else {
-			item.classList.remove("action_mode_input");
-		}
+
+		item.classList.toggle(
+			"action_mode_input",
+			action.action['Selected Text'].replaceAll("\n", "")[0] === ">"
+		);
 
 		if ('wi_highlighted_text' in action.action) {
 			for (chunk of action.action['wi_highlighted_text']) {
@@ -764,6 +889,10 @@ function update_status_bar(data) {
 }
 
 function do_ai_busy(data) {
+	ai_busy = data.value;
+	// Don't allow editing while Mr. Kobold is thinking
+	document.getElementById("Selected Text").contentEditable = !ai_busy;
+
 	if (data.value) {
 		ai_busy_start = Date.now();
 		favicon.start_swap()
@@ -923,6 +1052,9 @@ function var_changed(data) {
 	//special case for welcome text since we want to allow HTML
 	} else if (data.classname == 'model' && data.name == 'welcome') {
 		document.getElementById('welcome_text').innerHTML = data.value;
+	//Special case for permitted generation modes
+	} else if (data.classname == 'model' && data.name == 'supported_gen_modes') {
+		supported_gen_modes = data.value;
 	//Basic Data Syncing
 	} else {
 		var elements_to_change = document.getElementsByClassName("var_sync_"+data.classname.replace(" ", "_")+"_"+data.name.replace(" ", "_"));
@@ -1013,20 +1145,8 @@ function var_changed(data) {
 	//	Change_Theme(getCookie("theme", "Monochrome"));
 	//}
 	
-	//Set all options before the next chunk to hidden
 	if ((data.classname == "actions") && (data.name == "Action Count")) {
-		var option_container = document.getElementById("Select Options");
-		var current_chunk = parseInt(document.getElementById("action_count").textContent)+1;
-		
-		var children = option_container.children;
-		for (var i = 0; i < children.length; i++) {
-			var chunk = children[i];
-			if (chunk.id == "Select Options Chunk " + current_chunk) {
-				chunk.classList.remove("hidden");
-			} else {
-				chunk.classList.add("hidden");
-			}
-		}
+		action_count_changed();
 	}
 	
 	
@@ -1167,7 +1287,7 @@ function redrawPopup() {
 			delete_icon.setAttribute("tooltip", "Delete");
 			delete_icon.id = row.path;
 			delete_icon.setAttribute("folder", row.isFolder);
-			delete_icon.onclick = function () {
+			delete_icon.addEventListener("click", function(event) {
 				const message = this.getAttribute("folder") == "true" ?  "Do you really want to delete this folder and ALL files under it?" : "Do you really want to delete this file?";
 				const delId = this.id;
 
@@ -1177,9 +1297,11 @@ function redrawPopup() {
 					denyText="I've changed my mind!",
 					confirmCallback=function() {
 						socket.emit("popup_delete", delId);
-					}
+					},
+					null,
+					event.shiftKey
 				);
-			};
+			});
 		}
 		icon_area.append(delete_icon);
 		tr.append(icon_area);
@@ -1501,48 +1623,50 @@ function getModelParameterCount(modelName) {
 }
 
 function show_model_menu(data) {
-	//clear old options
-	document.getElementById("modelkey").classList.add("hidden");
-	document.getElementById("modelkey").value = "";
-	document.getElementById("modelurl").classList.add("hidden");
-	document.getElementById("use_gpu_div").classList.add("hidden");
-	document.getElementById("use_8_bit_div").classList.add("hidden");
-	document.getElementById("modellayers").classList.add("hidden");
-	document.getElementById("oaimodel").classList.add("hidden");
-	var model_layer_bars = document.getElementById('model_layer_bars');
-	while (model_layer_bars.firstChild) {
-		model_layer_bars.removeChild(model_layer_bars.firstChild);
+	//clear out the loadmodelsettings
+	var loadmodelsettings = document.getElementById('loadmodelsettings')
+	while (loadmodelsettings.firstChild) {
+		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
 	}
+	//Clear out plugin selector
+	var model_plugin = document.getElementById('modelplugin');
+	while (model_plugin.firstChild) {
+		model_plugin.removeChild(model_plugin.firstChild);
+	}
+	model_plugin.classList.add("hidden");
+	var accept = document.getElementById("btn_loadmodelaccept");
+	accept.disabled = false;
 	
 	//clear out the breadcrumbs
 	var breadcrumbs = document.getElementById('loadmodellistbreadcrumbs')
 	while (breadcrumbs.firstChild) {
 		breadcrumbs.removeChild(breadcrumbs.firstChild);
 	}
-	//add breadcrumbs
-	//console.log(data.breadcrumbs);
-	for (item of data.breadcrumbs) {
-		var button = document.createElement("button");
-		button.classList.add("breadcrumbitem");
-		button.setAttribute("model", data.menu);
-		button.setAttribute("folder", item[0]);
-		button.textContent = item[1];
-		button.onclick = function () {
-					socket.emit('select_model', {'menu': "", 'model': this.getAttribute("model"), 'path': this.getAttribute("folder")});
-				};
-		breadcrumbs.append(button);
-		var span = document.createElement("span");
-		span.textContent = "\\";
-		breadcrumbs.append(span);
-	}
 	
+	//add breadcrumbs
+	if ('breadcrumbs' in data) {
+		for (item of data.breadcrumbs) {
+			var button = document.createElement("button");
+			button.classList.add("breadcrumbitem");
+			button.setAttribute("model", data.menu);
+			button.setAttribute("folder", item[0]);
+			button.textContent = item[1];
+			button.onclick = function () {
+						socket.emit('select_model', {'menu': "", 'name': this.getAttribute("model"), 'path': this.getAttribute("folder")});
+					};
+			breadcrumbs.append(button);
+			var span = document.createElement("span");
+			span.textContent = "\\";
+			breadcrumbs.append(span);
+		}
+	}
 	//clear out the items
 	var model_list = document.getElementById('loadmodellistcontent')
 	while (model_list.firstChild) {
 		model_list.removeChild(model_list.firstChild);
 	}
 	//add items
-	for (item of data.data) {
+	for (item of data.items) {
 		var list_item = document.createElement("span");
 		list_item.classList.add("model_item");
 		
@@ -1564,10 +1688,33 @@ function show_model_menu(data) {
 		//create the actual item
 		var popup_item = document.createElement("span");
 		popup_item.classList.add("model");
-		popup_item.setAttribute("display_name", item.label);
-		popup_item.id = item.name;
+		for (const key in item) {
+			if (key == "name") {
+				popup_item.id = item[key];
+			} 
+			popup_item.setAttribute(key, item[key]);
+		}
 		
-		popup_item.setAttribute("Menu", data.menu)
+		popup_item.onclick = function() { 
+			var attributes = this.attributes;
+			var obj = {};
+
+			for (var i = 0, len = attributes.length; i < len; i++) {
+				obj[attributes[i].name] = attributes[i].value;
+			}
+			//put the model data on the accept button so we can send it to the server when you accept
+			var accept = document.getElementById("popup_accept");
+			selected_model_data = obj;
+			//send the data to the server so it can figure out what data we need from the user for the model
+			socket.emit('select_model', obj); 
+			
+			//clear out the selected item and select this one visually
+			for (const element of document.getElementsByClassName("model_menu_selected")) {
+				element.classList.remove("model_menu_selected");
+			}
+			this.closest(".model_item").classList.add("model_menu_selected");
+		}
+		
 		//name text
 		var text = document.createElement("span");
 		text.style="grid-area: item;";
@@ -1615,241 +1762,342 @@ function show_model_menu(data) {
 			});
 		})();
 		
-		popup_item.onclick = function () {
-						var accept = document.getElementById("btn_loadmodelaccept");
-						accept.classList.add("disabled");
-						socket.emit("select_model", {"model": this.id, "menu": this.getAttribute("Menu"), "display_name": this.getAttribute("display_name")});
-						var model_list = document.getElementById('loadmodellistcontent').getElementsByClassName("selected");
-						for (model of model_list) {
-							model.classList.remove("selected");
-						}
-						this.classList.add("selected");
-						accept.setAttribute("selected_model", this.id);
-						accept.setAttribute("menu", this.getAttribute("Menu"));
-						accept.setAttribute("display_name", this.getAttribute("display_name"));
-					};
 		list_item.append(popup_item);
-		
-		
 		model_list.append(list_item);
 	}
-	var accept = document.getElementById("btn_loadmodelaccept");
-	accept.disabled = true;
 	
-	//finally, if they selected the custom hugging face menu we show the input box
-	if (data['menu'] == "customhuggingface") {
-		document.getElementById("custommodelname").classList.remove("hidden");
-	} else {
-		document.getElementById("custommodelname").classList.add("hidden");
-	}
-
-
-	// detect if we are in a model selection screen and show the reference
-	var refelement = document.getElementById("modelspecifier");
-	var check = document.getElementById("mainmenu");
-	if (check) {
-		refelement.classList.remove("hidden");
-	} else {
-		refelement.classList.add("hidden");
-	}
 	
 	openPopup("load-model");
+	
 }
 
-function selected_model_info(data) {
+function getOptions(id){
+  let selectElement = document.getElementById(id);
+  let optionNames = [...selectElement.options].map(o => o.text);
+  return optionNames;
+}
+
+function model_settings_checker() {
+	//get check value:
+	missing_element = false;
+	if (this.check_data != null) {
+		if ('sum' in this.check_data) {
+			check_value = 0
+			for (const temp of this.check_data['sum']) {
+				if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+					check_value += parseInt(document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").value);
+				} else {
+					missing_element = true;
+				}
+			}
+		} else {
+			check_value = this.value
+		}
+		if (this.check_data['check'] == "=") {
+			valid = (check_value == this.check_data['value']);
+		} else if (this.check_data['check'] == "!=") {
+			valid = (check_value != this.check_data['value']);
+		} else if (this.check_data['check'] == ">=") {
+			valid = (check_value >= this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value <= this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value > this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value < this.check_data['value']);
+		}
+		if (valid || missing_element) {
+			//if we are supposed to refresh when this value changes we'll resubmit
+			if ((this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
+				//get an object of all the input settings from the user
+				data = {}
+				settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
+				if (settings_area) {
+					for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+						var element_data = element.value;
+						if (element.getAttribute("data_type") == "int") {
+							element_data = parseInt(element_data);
+						} else if (element.getAttribute("data_type") == "float") {
+							element_data = parseFloat(element_data);
+						} else if (element.getAttribute("data_type") == "bool") {
+							element_data = element.checked;
+						}
+						data[element.id.split("|")[1].replace("_value", "")] = element_data;
+					}
+				}
+				data = {...data, ...selected_model_data};
+				
+				data['plugin'] = document.getElementById("modelplugin").value;
+				data['valid_backends'] = getOptions("modelplugin");
+				
+				socket.emit("resubmit_model_info", data);
+			}
+			if ('sum' in this.check_data) {
+				for (const temp of this.check_data['sum']) {
+					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.remove('input_error');
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
+					}
+				}
+			} else {
+				this.closest(".setting_container_model").classList.remove('input_error');
+				this.closest(".setting_container_model").removeAttribute("tooltip");
+			}
+		} else {
+			if ('sum' in this.check_data) {
+				for (const temp of this.check_data['sum']) {
+					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.add('input_error');
+						if (this.check_data['check_message']) {
+							document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+						} else {
+							document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
+						}
+					}
+				}
+			} else {
+				this.closest(".setting_container_model").classList.add('input_error');
+				if (this.check_data['check_message']) {
+					this.closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+				} else {
+					this.closest(".setting_container_model").removeAttribute("tooltip");
+				}
+			}
+		}
+	}
 	var accept = document.getElementById("btn_loadmodelaccept");
-	//hide or unhide key
-	if (data.key) {
-		document.getElementById("modelkey").classList.remove("hidden");
-		document.getElementById("modelkey").value = data.key_value;
-	} else {
-		document.getElementById("modelkey").classList.add("hidden");
-		document.getElementById("modelkey").value = "";
-	}
-	//hide or unhide URL
-	if  (data.url) {
-		document.getElementById("modelurl").classList.remove("hidden");
-	} else {
-		document.getElementById("modelurl").classList.add("hidden");
-	}
-	
-	//hide or unhide 8 bit mode
-	if (data.bit_8_available) {
-		document.getElementById("use_8_bit_div").classList.remove("hidden");
-	} else {
-		document.getElementById("use_8_bit_div").classList.add("hidden");
-		document.getElementById("use_8_bit").checked = false;
-	}
-	
-	//default URL loading
-	if (data.default_url != null) {
-		document.getElementById("modelurl").value = data.default_url;
-	}
-	
-	//change model loading on url if needed
-	if (data.models_on_url) {
-		document.getElementById("modelurl").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': document.getElementById("modelkey").value, 'url': this.value});};
-		document.getElementById("modelkey").onchange = function () {socket.emit('get_cluster_models', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value, 'url': document.getElementById("modelurl").value});};
-	} else {
-		document.getElementById("modelkey").ochange = function () {socket.emit('OAI_Key_Update', {'model': document.getElementById('btn_loadmodelaccept').getAttribute('selected_model'), 'key': this.value});};
-		document.getElementById("modelurl").ochange = null;
-	}
-	
-	//show model select for APIs
-	if (data.show_online_model_select) {
-		document.getElementById("oaimodel").classList.remove("hidden");
-	} else {
-		document.getElementById("oaimodel").classList.add("hidden");
-	}
-	
-	//Multiple Model Select?
-	if (data.multi_online_models) {
-		document.getElementById("oaimodel").setAttribute("multiple", "");
-		document.getElementById("oaimodel").options[0].textContent = "All"
-	} else {
-		document.getElementById("oaimodel").removeAttribute("multiple");
-		document.getElementById("oaimodel").options[0].textContent = "Select Model(s)"
-	}
-	
-	//hide or unhide the use gpu checkbox
-	if  (data.gpu) {
-		document.getElementById("use_gpu_div").classList.remove("hidden");
-	} else {
-		document.getElementById("use_gpu_div").classList.add("hidden");
-	}
-	//setup breakmodel
-	if (data.breakmodel) {
-		document.getElementById("modellayers").classList.remove("hidden");
-		//setup model layer count
-		document.getElementById("gpu_layers_current").textContent = data.break_values.reduce((a, b) => a + b, 0);
-		document.getElementById("gpu_layers_max").textContent = data.layer_count;
-		document.getElementById("gpu_count").value = data.gpu_count;
-		
-		//create the gpu load bars
-		var model_layer_bars = document.getElementById('model_layer_bars');
-		while (model_layer_bars.firstChild) {
-			model_layer_bars.removeChild(model_layer_bars.firstChild);
+	ok_to_load = true;
+	for (const item of document.getElementsByClassName("input_error")) {
+		if (item.classList.contains("input_error") && !item.closest(".model_plugin_settings_area").classList.contains("hidden")) {
+			ok_to_load = false;
+			break;
 		}
-		
-		//Add the bars
-		for (let i = 0; i < data.gpu_names.length; i++) {
-			var div = document.createElement("div");
-			div.classList.add("model_setting_container");
-			//build GPU text
-			var span = document.createElement("span");
-			span.classList.add("model_setting_label");
-			span.textContent = "GPU " + i + " " + data.gpu_names[i] + ": "
-			//build layer count box
-			var input = document.createElement("input");
-			input.classList.add("model_setting_value");
-			input.classList.add("setting_value");
-			input.inputmode = "numeric";
-			input.id = "gpu_layers_box_"+i;
-			input.value = data.break_values[i];
-			input.onblur = function () {
-								document.getElementById(this.id.replace("_box", "")).value = this.value;
-								update_gpu_layers();
-							}
-			span.append(input);
-			div.append(span);
-			//build layer count slider
-			var input = document.createElement("input");
-			input.classList.add("model_setting_item");
-			input.type = "range";
-			input.min = 0;
-			input.max = data.layer_count;
-			input.step = 1;
-			input.value = data.break_values[i];
-			input.id = "gpu_layers_" + i;
-			input.onchange = function () {
-								document.getElementById(this.id.replace("gpu_layers", "gpu_layers_box")).value = this.value;
-								update_gpu_layers();
-							}
-			div.append(input);
-			//build slider bar #s
-			//min
-			var span = document.createElement("span");
-			span.classList.add("model_setting_minlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = 0;
-			span.append(span2);
-			div.append(span);
-			//max
-			var span = document.createElement("span");
-			span.classList.add("model_setting_maxlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = data.layer_count;
-			span.append(span2);
-			div.append(span);
-			
-			model_layer_bars.append(div);
-		}
-		
-		//add the disk layers
-		if (data.disk_break) {
-			var div = document.createElement("div");
-			div.classList.add("model_setting_container");
-			//build GPU text
-			var span = document.createElement("span");
-			span.classList.add("model_setting_label");
-			span.textContent = "Disk cache: "
-			//build layer count box
-			var input = document.createElement("input");
-			input.classList.add("model_setting_value");
-			input.classList.add("setting_value");
-			input.inputmode = "numeric";
-			input.id = "disk_layers_box";
-			input.value = data.disk_break_value;
-			input.onblur = function () {
-								document.getElementById(this.id.replace("_box", "")).value = this.value;
-								update_gpu_layers();
-							}
-			span.append(input);
-			div.append(span);
-			//build layer count slider
-			var input = document.createElement("input");
-			input.classList.add("model_setting_item");
-			input.type = "range";
-			input.min = 0;
-			input.max = data.layer_count;
-			input.step = 1;
-			input.value = data.disk_break_value;
-			input.id = "disk_layers";
-			input.onchange = function () {
-								document.getElementById(this.id+"_box").value = this.value;
-								update_gpu_layers();
-							}
-			div.append(input);
-			//build slider bar #s
-			//min
-			var span = document.createElement("span");
-			span.classList.add("model_setting_minlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = 0;
-			span.append(span2);
-			div.append(span);
-			//max
-			var span = document.createElement("span");
-			span.classList.add("model_setting_maxlabel");
-			var span2 = document.createElement("span");
-			span2.style="top: -4px; position: relative;";
-			span2.textContent = data.layer_count;
-			span.append(span2);
-			div.append(span);
-		}
-		
-		model_layer_bars.append(div);
-		
-		update_gpu_layers();
-	} else {
-		document.getElementById("modellayers").classList.add("hidden");
+	}
+	
+	if (ok_to_load) {
 		accept.classList.remove("disabled");
+		accept.disabled = false;
+	} else {
+		accept.classList.add("disabled");
+		accept.disabled = true;
 	}
+	
+	
+	//We now have valid display boxes potentially. We'll go through them and update the display
+	for (const item of document.querySelectorAll(".model_settings_valid_display:not(#blank_model_settings_valid_display)")) {
+		check_value = 0
+		missing_element = false;
+		for (const temp of item.check_data['sum']) {
+			if (document.getElementById(item.id.split("|")[0] +"|"  + temp + "_value")) {
+				check_value += parseInt(document.getElementById(item.id.split("|")[0] +"|"  + temp + "_value").value);
+			} else {
+				missing_element = true;
+			}
+		}
+		if (!missing_element) {
+			item.innerText = item.original_text.replace("%1", check_value);
+		}
+		
+		
+	}
+}
+
+function set_toggle(id) {
+	$('#'+id).bootstrapToggle({size: "mini", onstyle: "success", toggle: "toggle"});
+}
+
+var temp;
+function selected_model_info(sent_data) {
+	temp = sent_data;
+	const data = sent_data['model_backends'];
+	//clear out the loadmodelsettings
+	var loadmodelsettings = document.getElementById('loadmodelsettings')
+	while (loadmodelsettings.firstChild) {
+		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
+	}
+	//Clear out plugin selector
+	var model_plugin = document.getElementById('modelplugin');
+	while (model_plugin.firstChild) {
+		model_plugin.removeChild(model_plugin.firstChild);
+	}
+	
+	var accept = document.getElementById("btn_loadmodelaccept");
 	accept.disabled = false;
 	
+	modelplugin = document.getElementById("modelplugin");
+	modelplugin.classList.remove("hidden");
+	modelplugin.onchange = function () {
+		for (const area of document.getElementsByClassName("model_plugin_settings_area")) {
+				area.classList.add("hidden");
+		}
+		if (document.getElementById(this.value + "_settings_area")) {
+			document.getElementById(this.value + "_settings_area").classList.remove("hidden");
+		}
+		model_settings_checker()
+	}
+	//create the content
+	for (const [loader, items] of Object.entries(data)) {
+		model_area = document.createElement("DIV");
+		model_area.id = loader + "_settings_area";
+		model_area.classList.add("model_plugin_settings_area");
+		model_area.classList.add("hidden");
+		modelpluginoption = document.createElement("option");
+		modelpluginoption.innerText = loader;
+		modelpluginoption.value = loader;
+		modelplugin.append(modelpluginoption);
+		
+		//create the user input for each requested input
+		for (item of items) {
+			let new_setting = document.getElementById('blank_model_settings').cloneNode(true);
+			new_setting.id = loader;
+			new_setting.classList.remove("hidden");
+			new_setting.querySelector('#blank_model_settings_label').innerText = item['label'];
+			new_setting.querySelector('#blank_model_settings_tooltip').setAttribute("tooltip", item['tooltip']);
+			
+			onchange_event = model_settings_checker;
+			if (item['uitype'] == "slider") {
+				var slider_number = new_setting.querySelector('#blank_model_settings_value_slider_number');
+				slider_number.value = item['default'];
+				slider_number.id = loader + "|" + item['id'] + "_value_text";
+				slider_number.onchange = function() { document.getElementById(this.id.replace("_text", "")).value = this.value;};
+
+				var slider = new_setting.querySelector('#blank_model_settings_slider');
+				slider.value = item['default'];
+				slider.min = item['min'];
+				slider.max = item['max'];
+				slider.setAttribute("data_type", item['unit']);
+				slider.id = loader + "|" + item['id'] + "_value";
+				if ('check' in item) {
+					slider.check_data = item['check'];
+					slider_number.check_data = item['check'];
+				} else {
+					slider.check_data = null;
+					slider_number.check_data = null;
+				}
+				slider.oninput = function() { document.getElementById(this.id+"_text").value = this.value;};
+				slider.onchange = onchange_event;
+				slider.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				new_setting.querySelector('#blank_model_settings_min_label').innerText = item['min'];
+				new_setting.querySelector('#blank_model_settings_max_label').innerText = item['max'];
+				slider.noresubmit = true;
+				slider.onchange();
+				slider.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_slider').remove();
+			}
+			if (item['uitype'] == "toggle") {
+				toggle = document.createElement("input");
+				toggle.type='checkbox';
+				toggle.classList.add("setting_item_input");
+				toggle.classList.add("blank_model_settings_input");
+				toggle.classList.add("model_settings_input");
+				toggle.id = loader + "|" + item['id'] + "_value";
+				toggle.checked = item['default'];
+				toggle.onclick = onchange_event;
+				toggle.setAttribute("data_type", item['unit']);
+				toggle.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					toggle.check_data = item['check'];
+				} else {
+					toggle.check_data = null;
+				}
+				new_setting.querySelector('#blank_model_settings_toggle').append(toggle);
+				setTimeout(set_toggle, 200, loader + "\\|" + item['id'] + "_value");
+				toggle.noresubmit = true;
+				toggle.onclick();
+				toggle.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_toggle').remove();
+			}
+			if (item['uitype'] == "dropdown") {
+				var select_element = new_setting.querySelector('#blank_model_settings_dropdown');
+				select_element.id = loader + "|" + item['id'] + "_value";
+				for (const dropdown_value of item['children']) {
+					new_option = document.createElement("option");
+					new_option.value = dropdown_value['value'];
+					new_option.innerText = dropdown_value['text'];
+					select_element.append(new_option);
+				}
+				select_element.value = item['default'];
+				select_element.setAttribute("data_type", item['unit']);
+				select_element.onchange = onchange_event;
+				select_element.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if (('multiple' in item) && (item['multiple'])) {
+					select_element.multiple = true;
+					select_element.size = 10;
+				}
+				if ('check' in item) {
+					select_element.check_data = item['check'];
+				} else {
+					select_element.check_data = null;
+				}
+				select_element.noresubmit = true;
+				select_element.onchange();
+				select_element.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_dropdown').remove();
+			}
+			if (item['uitype'] == "password") {
+				var password_item = new_setting.querySelector('#blank_model_settings_password');
+				password_item.id = loader + "|" + item['id'] + "_value";
+				password_item.value = item['default'];
+				password_item.setAttribute("data_type", item['unit']);
+				password_item.onchange = onchange_event;
+				password_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					password_item.check_data = item['check'];
+				} else {
+					password_item.check_data = null;
+				}
+				password_item.noresubmit = true;
+				password_item.onchange();
+				password_item.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_password').remove();
+			}
+			if (item['uitype'] == "text") {
+				var text_item = new_setting.querySelector('#blank_model_settings_text');
+				text_item.id = loader + "|" + item['id'] + "_value";
+				text_item.value = item['default'];
+				text_item.onchange = onchange_event;
+				text_item.setAttribute("data_type", item['unit']);
+				text_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					text_item.check_data = item['check'];
+				} else {
+					text_item.check_data = null;
+				}
+				text_item.noresubmit = true;
+				text_item.onchange();
+				text_item.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_text').remove();
+			}
+			
+			if (item['uitype'] == "Valid Display") {
+				new_setting = document.createElement("DIV");
+				new_setting.classList.add("model_settings_valid_display");
+				new_setting.id = loader + "|" + item['id'] + "_value";
+				new_setting.innerText = item['label'];
+				new_setting.check_data = item['check'];
+				new_setting.original_text = item['label'];
+			}
+			
+			model_area.append(new_setting);
+			loadmodelsettings.append(model_area);
+		}
+	}
+	
+	if ('selected_model_backend' in sent_data) {
+		document.getElementById("modelplugin").value = sent_data['selected_model_backend'];
+	}
+	
+	//unhide the first plugin settings
+	if (document.getElementById(document.getElementById("modelplugin").value + "_settings_area")) {
+		document.getElementById(document.getElementById("modelplugin").value + "_settings_area").classList.remove("hidden");
+	}
+	
+	model_settings_checker()
 	
 }
 
@@ -1877,42 +2125,35 @@ function update_gpu_layers() {
 
 function load_model() {
 	var accept = document.getElementById('btn_loadmodelaccept');
-	gpu_layers = []
-	disk_layers = 0;
-	if (!(document.getElementById("modellayers").classList.contains("hidden"))) {
-		for (let i=0; i < document.getElementById("gpu_count").value; i++) {
-			gpu_layers.push(document.getElementById("gpu_layers_"+i).value);
-		}
-		if (document.getElementById("disk_layers")) {
-			disk_layers = document.getElementById("disk_layers").value;
-		}
-	}
-	//Need to do different stuff with custom models
-	if ((accept.getAttribute('menu') == 'GPT2Custom') || (accept.getAttribute('menu') == 'NeoCustom')) {
-		var model = document.getElementById("btn_loadmodelaccept").getAttribute("menu");
-		var path = document.getElementById("btn_loadmodelaccept").getAttribute("display_name");
-	} else {
-		var model = document.getElementById("btn_loadmodelaccept").getAttribute("selected_model");
-		var path = "";
-	}
+	settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
 	
-	let selected_models = [];
-	for (item of document.getElementById("oaimodel").selectedOptions) {
-		selected_models.push(item.value);
+	//get an object of all the input settings from the user
+	data = {}
+	if (settings_area) {
+		for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+			var element_data = element.getAttribute("data_type") === "bool" ? element.checked : element.value;
+			if ((element.tagName == "SELECT") && (element.multiple)) {
+				element_data = [];
+				for (var i=0, iLen=element.options.length; i<iLen; i++) {
+					if (element.options[i].selected) {
+						element_data.push(element.options[i].value);
+					}
+				}
+			} else {
+				if (element.getAttribute("data_type") == "int") {
+					element_data = parseInt(element_data);
+				} else if (element.getAttribute("data_type") == "float") {
+					element_data = parseFloat(element_data);
+				}
+			}
+			data[element.id.split("|")[1].replace("_value", "")] = element_data;
+		}
 	}
-	if (selected_models == ['']) {
-
-		selected_models = [];
-	} else if (selected_models.length == 1) {
-		selected_models = selected_models[0];
-	}
+	data = {...data, ...selected_model_data};
 	
-	message = {'model': model, 'path': path, 'use_gpu': document.getElementById("use_gpu").checked, 
-			   'key': document.getElementById('modelkey').value, 'gpu_layers': gpu_layers.join(), 
-			   'disk_layers': disk_layers, 'url': document.getElementById("modelurl").value, 
-			   'online_model': selected_models,
-			   'use_8_bit': document.getElementById('use_8_bit').checked};
-	socket.emit("load_model", message);
+	data['plugin'] = document.getElementById("modelplugin").value;
+	
+	socket.emit("load_model", data);
 	closePopups();
 }
 
@@ -1970,6 +2211,7 @@ function world_info_entry(data) {
 	} else {
 		world_info_card.classList.remove("used_in_game");
 	}
+
 	const title = world_info_card.querySelector('.world_info_title');
 	title.id = "world_info_title_"+data.uid;
 	title.textContent = data.title;
@@ -1977,7 +2219,7 @@ function world_info_entry(data) {
 	title.setAttribute("original_text", data.title);
 	title.setAttribute("contenteditable", true);
 	title.classList.remove("pulse");
-	title.ondragstart=function() {event.preventDefault();event.stopPropagation();};
+	title.ondragstart=function(event) {event.preventDefault();event.stopPropagation();};
 	title.onblur = function () {
 				this.parentElement.parentElement.setAttribute('draggable', 'true');
 				this.setAttribute('draggable', 'true');
@@ -1987,20 +2229,31 @@ function world_info_entry(data) {
 					this.classList.add("pulse");
 				}
 			}
-	world_info_card.addEventListener('dragstart', dragStart);
-	world_info_card.addEventListener('dragend', dragend);
+
+	title.addEventListener("keydown", function(event) {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			this.blur();
+		}
+	});
+
 	title.addEventListener('dragenter', dragEnter)
 	title.addEventListener('dragover', dragOver);
 	title.addEventListener('dragleave', dragLeave);
 	title.addEventListener('drop', drop);
-	delete_icon = world_info_card.querySelector('.world_info_delete');
+
+	world_info_card.addEventListener('dragstart', dragStart);
+	world_info_card.addEventListener('dragend', dragend);
+
+	const delete_icon = world_info_card.querySelector('.world_info_delete');
 	delete_icon.id = "world_info_delete_"+data.uid;
 	delete_icon.setAttribute("uid", data.uid);
 	delete_icon.setAttribute("wi-title", data.title);
-	delete_icon.onclick = function () {
+	delete_icon.addEventListener("click", function (event) {
 		const wiTitle = this.getAttribute("wi-title");
 		const wiUid = parseInt(this.getAttribute("uid"));
 		const wiElement = this.parentElement.parentElement;
+
 		deleteConfirmation([
 				{text: "You're about to delete World Info entry "},
 				{text: wiTitle, format: "bold"},
@@ -2014,9 +2267,11 @@ function world_info_entry(data) {
 				} else {
 					socket.emit("delete_world_info", wiUid);
 				}
-			}
+			},
+			null,
+			event.shiftKey
 		);
-	}
+	});
 
 	const wiImgContainer = world_info_card.querySelector(".world_info_image_container");
 	const wiImg = wiImgContainer.querySelector(".world_info_image");
@@ -2109,15 +2364,16 @@ function world_info_entry(data) {
 		this.classList.add("pulse");
 	})
 
-	tags = world_info_card.querySelector('.world_info_tag_primary_area');
+	const tags = world_info_card.querySelector('.world_info_tag_primary_area');
 	tags.id = "world_info_tags_"+data.uid;
 	//add tag content here
-	add_tags(tags, data);
+	add_tags(tags, data, "primary");
 	
-	secondarytags = world_info_card.querySelector('.world_info_tag_secondary_area');
+	const secondarytags = world_info_card.querySelector('.world_info_tag_secondary_area');
 	secondarytags.id = "world_info_secondtags_"+data.uid;
 	//add second tag content here
-	add_secondary_tags(secondarytags, data);
+	add_tags(secondarytags, data, "secondary");
+
 	//w++ toggle
 	wpp_toggle_area = world_info_card.querySelector('.world_info_wpp_toggle_area');
 	wpp_toggle_area.id = "world_info_wpp_toggle_area_"+data.uid;
@@ -2287,12 +2543,12 @@ function world_info_entry(data) {
 	comment.setAttribute("uid", data.uid);
 	comment.value = data.comment;
 	comment.onchange = function () {
-							world_info_data[this.getAttribute('uid')]['comment'] = this.textContent;
-							send_world_info(this.getAttribute('uid'));
+							world_info_data[data.uid].comment = this.value;
+							send_world_info(data.uid);
 							this.classList.add("pulse");
 						}
 	comment.classList.remove("pulse");
-						
+
 	//Let's figure out the order to insert this card
 	var found = false;
 	var moved = false;
@@ -2490,8 +2746,9 @@ function world_info_folder(data) {
 			delete_button.classList.add("cursor");
 			delete_button.setAttribute("folder", folder_name);
 			delete_button.textContent = "delete";
-			delete_button.onclick = function () {
+			delete_button.addEventListener("click", function (event) {
 				const folderName = this.getAttribute("folder");
+
 				deleteConfirmation([
 						{text: "You're about to delete World Info folder "},
 						{text: folderName, format: "bold"},
@@ -2501,9 +2758,11 @@ function world_info_folder(data) {
 					],
 					confirmText="Go for it.",
 					denyText="I've changed my mind!",
-					confirmCallback=function() { socket.emit("delete_wi_folder", folderName); }
+					confirmCallback=function() { socket.emit("delete_wi_folder", folderName); },
+					null,
+					event.shiftKey
 				);
-			};
+			});
 			delete_button.classList.add("delete");
 			title.append(delete_button);
 			
@@ -3008,6 +3267,8 @@ function upload_file_without_save(file_box) {
 }
 
 function send_world_info(uid) {
+	const cardEl = document.getElementById(`world_info_${uid}`);
+	if (cardEl.removing) return;
 	socket.emit("edit_world_info", world_info_data[uid]);
 }
 
@@ -3135,6 +3396,11 @@ function fix_dirty_game_text() {
 	//This should get fired if we have deleted chunks or have added text outside of a node.
 	//We wait until after the game text has lost focus to fix things otherwise it messes with typing
 	var game_text = document.getElementById("Selected Text");
+
+	// Fix stray stream
+	const streamBufferEl = document.getElementById("#token-stream-buffer");
+	if (streamBufferEl) streamBufferEl.remove();
+
 	//Fix missing story prompt
 	if (dirty_chunks.includes("-1")) {
 		if (!document.getElementById("story_prompt")) {
@@ -3147,6 +3413,7 @@ function fix_dirty_game_text() {
 			game_text.prepend(story_prompt);
 		}
 	}
+
 	if (dirty_chunks.includes("game_text")) {
 		dirty_chunks = dirty_chunks.filter(item => item != "game_text");
 		console.log("Firing Fix messed up text");
@@ -3182,7 +3449,7 @@ function fix_dirty_game_text() {
 
 function savegametextchanges() {
 	fix_dirty_game_text();
-	for (item of document.getElementsByClassName("editing")) {
+	for (const item of document.getElementsByClassName("editing")) {
 		item.classList.remove("editing");
 	}
 	if (dirty_chunks.length > 0) {
@@ -3225,7 +3492,83 @@ function update_game_text(id, new_text) {
 			socket.emit("Set Selected Text", {"id": id, "text": ""});
 		}
 	}
-	
+}
+
+function stream_tokens(tokens) {
+	// NOTE: This is only for genamt/batch size 1.
+	const smoothStreamingEnabled = $el("#user_smooth_streaming").checked;
+
+	let streamBuffer = $el("#token-stream-buffer");
+
+	if (tokens === true) {
+		streaming.windowOpen = true;
+		return;
+	}
+
+	if (!streaming.windowOpen) {
+		// Reject tokens sent after the streaming window is closed
+		return;
+	}
+
+	if (!tokens) {
+		// Server told us to close up shop!
+		streaming.windowOpen = false;
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+		if (streamBuffer) streamBuffer.remove();
+		return;
+	}
+
+	if (!streamBuffer) {
+		// This should happen once at the beginning of the stream
+		streamBuffer = $e("span", $el(".gametext"), {
+			id: "token-stream-buffer",
+			classes: ["within_max_length"]
+		});
+	}
+
+	if (!smoothStreamingEnabled && streaming.typeyTimeout) {
+		streaming.buffer = "";
+		clearTimeout(streaming.typeyTimeout);
+		streaming.typeyTimeout = null;
+	}
+
+	if (!streaming.typeyTimeout && smoothStreamingEnabled) {
+		function _char() {
+			const times = streaming.time.msBuffer;
+			const avg = times.reduce((a, b) => a + b) / times.length;
+			// Get the average time (ms) it took the last 5 tokens to generate
+
+			if (!streaming.typeyTimeout) return;
+			if (!streaming.windowOpen) return;
+			if (!smoothStreamingEnabled) return;
+			streaming.typeyTimeout = setTimeout(_char, avg);
+
+			if (!streaming.buffer.length) return;
+
+			streamBuffer.textContent += streaming.buffer[0];
+			streaming.buffer = streaming.buffer.slice(1);
+		}
+
+		streaming.typeyTimeout = setTimeout(_char, 10);
+	}
+
+	if (!streaming.time.preTime) streaming.time.preTime = new Date();
+
+	streaming.time.msBuffer.push(
+		(new Date().getTime() - streaming.time.preTime.getTime()) / 5
+		// 5 chosen because Concedo said something about 5 this morning and it seems to work
+	);
+
+	if (streaming.time.msBuffer.length > 5) streaming.time.msBuffer.shift();
+	streaming.time.preTime = new Date();
+
+	if (smoothStreamingEnabled) {
+		streaming.buffer += tokens[0];
+	} else {
+		streamBuffer.textContent += tokens[0];
+	}
 }
 
 function save_preset() {
@@ -3283,16 +3626,36 @@ function update_story_picture(chunk_id) {
 	image.setAttribute("chunk", chunk_id);
 }
 
+function maybe_enable_privacy_mode() {
+	const password = document.getElementById("user_privacy_password").value;
+
+	if (!password) {
+		showNotification(
+			"Lock Failed",
+			"Please set a password before locking KoboldAI.",
+			"error"
+		)
+		return;
+	}
+
+	socket.emit("privacy_mode", {'enabled': true})
+}
+
 function privacy_mode(enabled) {
+	privacy_mode_enabled = enabled;
+	updateTitle();
+
+	const sideMenu = document.getElementById("SideMenu");
+	const mainGrid = document.getElementById("main-grid");
+	const rightSideMenu = document.getElementById("rightSideMenu");
+
+	for (const menu of [sideMenu, mainGrid, rightSideMenu]) {
+		menu.classList.toggle("superblur", enabled);
+	}
+
 	if (enabled) {
-		document.getElementById('SideMenu').classList.add("superblur");
-		document.getElementById('main-grid').classList.add("superblur");
-		document.getElementById('rightSideMenu').classList.add("superblur");
 		openPopup("privacy_mode");
 	} else {
-		document.getElementById('SideMenu').classList.remove("superblur");
-		document.getElementById('main-grid').classList.remove("superblur");
-		document.getElementById('rightSideMenu').classList.remove("superblur");
 		if (!$el("#privacy_mode").classList.contains("hidden")) closePopups();
 		document.getElementById('privacy_password').value = "";
 	}
@@ -4006,7 +4369,7 @@ function update_context(data) {
 					document.getElementById('world_info_'+entry.uid).classList.add("used_in_game");
 				}
 				break;
-			case 'memory':
+			case 'genre':
 				genre_length += entry.tokens.length;
 				break;
 			case 'memory':
@@ -4108,161 +4471,139 @@ function removeA(arr) {
     return arr;
 }
 
-function add_tags(tags, data) {
-	while (tags.firstChild) { 
-		tags.removeChild(tags.firstChild);
+function create_tag_element(tagText, uid, tagType) {
+	// tagText is string, or null for empty tag at end.
+	// barType should be "primary" or "secondary"
+	const isPlaceholderTag = tagText === null;
+
+	const wiCardEl = document.querySelector(`.world_info_card[uid="${uid}"]`)
+	const keyField = {primary: "key", secondary: "keysecondary"}[tagType];
+	const tagClassFragment = {primary: "tags", primary: "secondtags"}[tagType];
+
+	const tagEl = document.createElement("span");
+	tagEl.classList.add("tag");
+	if (isPlaceholderTag) tagEl.classList.add("placeholder_tag");
+
+	const xEl = document.createElement("span");
+	xEl.classList.add("material-icons-outlined");
+	xEl.classList.add("tag_button");
+
+	if (!isPlaceholderTag) {
+		xEl.classList.add("delete_icon");
+		xEl.textContent = "close";
+	} else {
+		xEl.classList.add("add_icon");
+		xEl.textContent = "add";
 	}
-	for (tag of data.key) {
-		tag_item = document.createElement("span");
-		tag_item.classList.add("tag");
-		x = document.createElement("span");
-		x.textContent = "x ";
-		x.classList.add("delete_icon");
-		x.setAttribute("uid", data.uid);
-		x.setAttribute("tag", tag);
-		x.onclick = function () {
-						removeA(world_info_data[this.getAttribute('uid')]['key'], this.getAttribute('tag'));
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		text = document.createElement("span");
-		text.textContent = tag;
-		text.setAttribute("contenteditable", true);
-		text.setAttribute("uid", data.uid);
-		text.setAttribute("tag", tag);
-		text.id = "world_info_tags_text_"+data.uid+"_"+tag;
-		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-		text.setAttribute("draggable", "true");
-		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-		text.onblur = function () {
-						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-						this.setAttribute('draggable', 'true');
-						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['key'].length; i++) {
-							if (world_info_data[this.getAttribute('uid')]['key'][i] == this.getAttribute("tag")) {
-								world_info_data[this.getAttribute('uid')]['key'][i] = this.textContent;
-							}
-						}
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		tag_item.append(x);
-		tag_item.append(text);
-		tag_item.id = "world_info_tags_"+data.uid+"_"+tag;
-		tags.append(tag_item);
-	}
-	//add the blank tag
-	tag_item = document.createElement("span");
-	tag_item.classList.add("tag");
-	x = document.createElement("span");
-	x.textContent = "+ ";
-	tag_item.append(x);
-	text = document.createElement("span");
-	text.classList.add("rawtext");
-	text.textContent = "    ";
-	text.setAttribute("uid", data.uid);
-	text.setAttribute("contenteditable", true);
-	text.id = "world_info_tags_text_"+data.uid+"_blank";
-	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-	text.setAttribute("draggable", "true");
-	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-	text.onblur = function () {
-					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-					this.setAttribute('draggable', 'true');
-					if (this.textContent.trim() != "") {
-						//console.log(this.textContent);
-						on_new_wi_item = this.id;
-						world_info_data[this.getAttribute('uid')]['key'].push(this.textContent);
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					} else {
-						this.textContent = "    ";
-					}
-				};
-	text.onclick = function () {
-					this.textContent = "";
-				};
-	tag_item.append(text);
-	tag_item.id = "world_info_secondtags_"+data.uid+"_new";
-	tags.append(tag_item);
+
+	xEl.setAttribute("uid", uid);
+	xEl.setAttribute("tag", tagText);
+	xEl.addEventListener("click", function() {
+		removeA(
+			world_info_data[uid][keyField],
+			tagText
+		);
+		send_world_info(uid);
+		this.classList.add("pulse");
+	});
+
+	const textEl = document.createElement("span");
+	textEl.classList.add("tag_text");
+	textEl.textContent = tagText;
+
+	textEl.setAttribute("data-placeholder", "Tag")
+	textEl.setAttribute("contenteditable", true);
+	textEl.setAttribute("uid", uid);
+	textEl.setAttribute("tag", tagText);
+	textEl.setAttribute("draggable", "true");
+	textEl.id = `world_info_${tagClassFragment}_text_${uid}_${tagText || "blank"}`;
+
+	textEl.addEventListener("dragstart", function(event) {
+		event.preventDefault();
+		event.stopPropagation();
+	});
+
+	textEl.addEventListener("focus", function(event) {
+		wiCardEl.setAttribute('draggable', 'false');
+		this.setAttribute('draggable', 'false');
+	});
+
+	textEl.addEventListener("blur", function () {
+		wiCardEl.setAttribute('draggable', 'true');
+		this.setAttribute('draggable', 'true');
+
+		if (!isPlaceholderTag) {
+			// Normal tag
+			for (var i = 0; i < world_info_data[uid][keyField].length; i++) {
+				if (world_info_data[uid][keyField][i] !== tagText) {
+					world_info_data[uid][keyField][i] = this.innerText;
+				}
+			}
+		} else {
+			// Placeholder tag
+			if (!this.textContent.trim()) return;
+
+			on_new_wi_item = this.id;
+			world_info_data[uid][keyField].push(this.textContent);
+		}
+
+		send_world_info(uid);
+		this.classList.add("pulse");
+	});
+
+	textEl.addEventListener("keydown", function(event) {
+		if (event.key === "Enter") {
+			// Press Enter to save tag and focus next one
+			event.preventDefault();
+
+			// HACK: Work around the fact that the server is in control of
+			// placing these elements
+			attention_wanting_wi_bar = tagType;
+			// And don't wait for like 10000 years to randomly take focus from
+			// the user
+			setTimeout(() => attention_wanting_wi_bar = null, 500);
+
+			this.blur();
+		} else if (event.key === "Escape") {
+
+		}
+	})
+
+	tagEl.append(xEl);
+	tagEl.append(textEl);
+	tagEl.id = `world_info_${tagClassFragment}_${uid}_${tagText || "new"}`;
+
+	return tagEl;
 }
 
-function add_secondary_tags(tags, data) {
-	while (tags.firstChild) { 
-		tags.removeChild(tags.firstChild);
+function add_tags(tagBarEl, data, tagType) {
+	// tagType is either "primary" or "secondary"
+
+	// Remove existing tags
+	while (tagBarEl.firstChild) {
+		tagBarEl.removeChild(tagBarEl.firstChild);
 	}
-	for (tag of data.keysecondary) {
-		tag_item = document.createElement("span");
-		tag_item.classList.add("tag");
-		x = document.createElement("span");
-		x.textContent = "x ";
-		x.classList.add("delete_icon");
-		x.setAttribute("uid", data.uid);
-		x.setAttribute("tag", tag);
-		x.onclick = function () {
-						removeA(world_info_data[this.getAttribute('uid')]['keysecondary'], this.getAttribute('tag'));
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		text = document.createElement("span");
-		text.textContent = tag;
-		text.setAttribute("contenteditable", true);
-		text.setAttribute("uid", data.uid);
-		text.setAttribute("tag", tag);
-		text.id = "world_info_secondtags_text_"+data.uid+"_"+tag;
-		text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-		text.setAttribute("draggable", "true");
-		text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-		text.onblur = function () {
-						this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-						this.setAttribute('draggable', 'true');
-						for (var i = 0; i < world_info_data[this.getAttribute('uid')]['keysecondary'].length; i++) {
-							if (world_info_data[this.getAttribute('uid')]['keysecondary'][i] == this.getAttribute("tag")) {
-								world_info_data[this.getAttribute('uid')]['keysecondary'][i] = this.textContent;
-							}
-						}
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					};
-		tag_item.append(x);
-		tag_item.append(text);
-		tag_item.id = "world_info_secondtags_"+data.uid+"_"+tag;
-		tags.append(tag_item);
+
+	const tagList = {
+		primary: data.key,
+		secondary: data.keysecondary
+	}[tagType];
+
+	for (tag of tagList) {
+		tagBarEl.append(create_tag_element(tag, data.uid, tagType));
 	}
+
 	//add the blank tag
-	tag_item = document.createElement("span");
-	tag_item.classList.add("tag");
-	x = document.createElement("span");
-	x.textContent = "+ ";
-	tag_item.append(x);
-	text = document.createElement("span");
-	text.classList.add("rawtext");
-	text.textContent = "    ";
-	text.setAttribute("uid", data.uid);
-	text.setAttribute("contenteditable", true);
-	text.id = "world_info_secondtags_text_"+data.uid+"_blank";
-	text.ondragstart=function() {event.preventDefault();event.stopPropagation();};
-	text.setAttribute("draggable", "true");
-	text.onfocus=function() {this.parentElement.parentElement.parentElement.setAttribute('draggable', 'false');this.setAttribute('draggable', 'false');};
-	text.onblur = function () {
-					this.parentElement.parentElement.parentElement.setAttribute('draggable', 'true');
-					this.setAttribute('draggable', 'true');
-					if (this.textContent.trim() != "") {
-						on_new_wi_item = this.id;
-						world_info_data[this.getAttribute('uid')]['keysecondary'].push(this.textContent);
-						send_world_info(this.getAttribute('uid'));
-						this.classList.add("pulse");
-					} else {
-						this.textContent = "    ";
-					}
-				};
-	text.onclick = function () {
-					this.textContent = "";
-				};
-	tag_item.append(text);
-	tag_item.id = "world_info_secondtags_"+data.uid+"_new";
-	tags.append(tag_item);
+	const placeholderTagEl = create_tag_element(null, data.uid, tagType);
+	tagBarEl.append(placeholderTagEl);
+
+	if (attention_wanting_wi_bar === tagType) {
+		const textEl = placeholderTagEl.querySelector(".tag_text");
+		// HACK: Please don't ask because I do not know
+		setTimeout(() => textEl.focus(), 1);
+	}
 }
-	
+
 function create_new_wi_entry(folder) {
 	var uid = -1;
 	for (item of document.getElementsByClassName('world_info_card')) {
@@ -4589,7 +4930,7 @@ function close_menus() {
 	document.getElementById("main-grid").classList.remove("story_menu-open");
 	
 	//close popup menus
-	closePopups();
+	closePopups(true);
 	
 	//unselect sampler items
 	for (temp of document.getElementsByClassName("sample_order")) {
@@ -4699,46 +5040,41 @@ function getCookie(cname, default_return=null) {
 }
 
 function detect_enter_submit(e) {
-	if (((e.code == "Enter") || (e.code == "NumpadEnter")) && !(shift_down)) {
-		if (typeof e.stopPropagation != "undefined") {
-			e.stopPropagation();
-		} else {
-			e.cancelBubble = true;
-		}
-		//console.log("submitting");
-		document.getElementById("btnsubmit").onclick();
-		setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
+	if (e.shiftKey) return;
+	if (!["Enter", "NumpadEnter"].includes(e.key)) return;
+
+	if (typeof e.stopPropagation != "undefined") {
+		e.stopPropagation();
+	} else {
+		e.cancelBubble = true;
 	}
+
+	//console.log("submitting");
+	document.getElementById("btnsubmit").onclick();
+	setTimeout(function() {document.getElementById('input_text').value = '';}, 1);
 }
 
 function detect_enter_text(e) {
-	if (((e.code == "Enter") || (e.code == "NumpadEnter")) && !(shift_down)) {
-		if (typeof e.stopPropagation != "undefined") {
-			e.stopPropagation();
-		} else {
-			e.cancelBubble = true;
-		}
-		//get element
-		//console.log("Doing Text Enter");
-		//console.log(e.currentTarget.activeElement);
-		if (e.currentTarget.activeElement != undefined) {
-			var item = $(e.currentTarget.activeElement);
-			item.onchange();
-		}
+	if (e.shiftKey) return;
+	if (!["Enter", "NumpadEnter"].includes(e.key)) return;
+
+	if (typeof e.stopPropagation != "undefined") {
+		e.stopPropagation();
+	} else {
+		e.cancelBubble = true;
+	}
+	//get element
+	//console.log("Doing Text Enter");
+	//console.log(e.currentTarget.activeElement);
+	if (e.currentTarget.activeElement != undefined) {
+		var item = $(e.currentTarget.activeElement);
+		item.onchange();
 	}
 }
 
 function detect_key_down(e) {
-	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
-		shift_down = true;
-	} else if (e.code == "Escape") {
+	if (e.code == "Escape") {
 		close_menus();
-	}
-}
-
-function detect_key_up(e) {
-	if ((e.code == "ShiftLeft") || (e.code == "ShiftRight")) {
-		shift_down = false;
 	}
 }
 
@@ -5681,8 +6017,21 @@ function position_context_menu(contextMenu, x, y) {
 		right: x + width,
 	};
 
+	// Slide over if running against the window bounds.
 	if (farMenuBounds.right > bounds.right) x -= farMenuBounds.right - bounds.right;
-	if (farMenuBounds.bottom > bounds.bottom) y -= farMenuBounds.bottom - bounds.bottom;
+
+	if (farMenuBounds.bottom > bounds.bottom) {
+		// We've hit the bottom.
+
+		// The old algorithm pushed the menu against the wall, similar to what's
+		// done on the x-axis:
+		// y -= farMenuBounds.bottom - bounds.bottom;
+		// But now, we make the box change its emission direction from the cursor:
+		y -= (height + 5);
+		// The main advantage of this approach is that the cursor is never directly
+		// placed above a context menu item immediately after activating the context
+		// menu. (Thus the 5px offset also added)
+	}
 
 	contextMenu.style.left = `${x}px`;
 	contextMenu.style.top = `${y}px`;
@@ -5690,8 +6039,15 @@ function position_context_menu(contextMenu, x, y) {
 
 function updateTitle() {
 	const titleInput = $el(".var_sync_story_story_name");
-	if (!titleInput.innerText) return;
-	document.title = `${titleInput.innerText} - KoboldAI Client`;
+	let titleText = "Story";
+
+	if (!privacy_mode_enabled && titleInput.innerText) {
+		titleText = titleInput.innerText;
+	} else {
+		titleText = "[🔒]"
+	}
+
+	document.title = `${titleText} - KoboldAI Client`;
 }
 
 function openClubImport() {
@@ -5702,7 +6058,6 @@ function openClubImport() {
 //// INIT ////
 
 document.onkeydown = detect_key_down;
-document.onkeyup = detect_key_up;
 document.getElementById("input_text").onkeydown = detect_enter_submit;
 
 /* -- Popups -- */
@@ -5726,17 +6081,27 @@ function openPopup(id) {
 	}
 }
 
-function closePopups() {
+function closePopups(userAction=false) {
+	// userAction specifies if a user tried to close the popup by normal means
+	// (ESC, clicking outside the menu, etc).
 	const container = $el("#popup-container");
-	container.classList.add("hidden");
+	let allHidden = true;
 
 	for (const popupWindow of container.children) {
+		// Do not let the user close windows they shouldn't be! Sneaky devils!
+		if (userAction && popupWindow.getAttribute("allow-close") === "false" && !popupWindow.classList.contains("hidden")) {
+			allHidden = false;
+			continue;
+		}
+
 		popupWindow.classList.add("hidden");
 	}
+
+	if (allHidden) container.classList.add("hidden");
 }
 
 $el("#popup-container").addEventListener("click", function(event) {
-	if (event.target === this) closePopups();
+	if (event.target === this) closePopups(true);
 });
 
 /* -- Colab Cookie Handling -- */
@@ -5940,21 +6305,23 @@ process_cookies();
 				continue;
 			}
 
+			const enableCriteriaIsFunction = typeof action.enabledOn === "function"
 
-			let item = $e("div", contextMenu, {
+			const itemEl = $e("div", contextMenu, {
 				classes: ["context-menu-item", "noselect", `context-menu-${key}`],
-				"enabled-on": action.enabledOn,
+				"enabled-on": enableCriteriaIsFunction ? "CALLBACK" : action.enabledOn,
 				"cache-index": context_menu_cache.length
 			});
+			itemEl.enabledOnCallback = action.enabledOn;
 
 			context_menu_cache.push({shouldShow: action.shouldShow});
 
-			let icon = $e("span", item, {classes: ["material-icons-outlined"], innerText: action.icon});
-			item.append(action.label);
+			const icon = $e("span", itemEl, {classes: ["material-icons-outlined"], innerText: action.icon});
+			$e("span", itemEl, {classes: ["context-menu-label"], innerText: action.label});
 
-			item.addEventListener("mousedown", e => e.preventDefault());
+			itemEl.addEventListener("mousedown", e => e.preventDefault());
 			// Expose the "summonEvent" to enable access to original context menu target.
-			item.addEventListener("click", () => action.click(summonEvent));
+			itemEl.addEventListener("click", () => action.click(summonEvent));
 		}
 	}
 
@@ -5977,6 +6344,10 @@ process_cookies();
 
 		// Show only applicable actions in the context menu
 		let contextMenuType = target.getAttribute("context-menu");
+
+		// If context menu is not present, return
+		if (!context_menu_actions[contextMenuType]) return;
+
 		for (const contextMenuItem of contextMenu.childNodes) {
 			let shouldShow = contextMenuItem.classList.contains(`context-menu-${contextMenuType}`);
 
@@ -6004,10 +6375,10 @@ process_cookies();
 
 		// Disable non-applicable items
 		$(".context-menu-item").addClass("disabled");
-		
+
 		// A selection is made
 		if (getSelectionText()) $(".context-menu-item[enabled-on=SELECTION]").removeClass("disabled");
-		
+
 		// The caret is placed
 		if (get_caret_position(target) !== null) $(".context-menu-item[enabled-on=CARET]").removeClass("disabled");
 
@@ -6015,6 +6386,11 @@ process_cookies();
 		if ($el(".action_image")) $(".context-menu-item[enabled-on=GENERATED-IMAGE]").removeClass("disabled");
 
 		$(".context-menu-item[enabled-on=ALWAYS]").removeClass("disabled");
+
+		for (const contextMenuItem of document.querySelectorAll(".context-menu-item[enabled-on=CALLBACK]")) {
+			if (!contextMenuItem.enabledOnCallback()) continue;
+			contextMenuItem.classList.remove("disabled");
+		}
 
 		// Make sure hr isn't first or last visible element
 		let visibles = [];
@@ -6571,9 +6947,13 @@ function sFormatted2HTML(sFormatted) {
 	return outHTML;
 }
 
-function deleteConfirmation(sFormatted, confirmText, denyText, confirmCallback, denyCallback) {
+function deleteConfirmation(sFormatted, confirmText, denyText, confirmCallback, denyCallback=null, bypass=false) {
+	if (bypass) {
+		confirmCallback();
+		return;
+	}
+
 	$el("#confirm-text").innerHTML = sFormatted2HTML(sFormatted);
-	
 	$el("#confirm-confirm-button > .text").innerText = confirmText;
 	$el("#confirm-deny-button > .text").innerText = denyText;
 
@@ -7388,4 +7768,32 @@ $el("#gamescreen").addEventListener("paste", function(event) {
 		false,
 		event.clipboardData.getData("text/plain")
 	);
+});
+
+const gameText = document.getElementById("Selected Text");
+gameText.addEventListener("click", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	set_edit(event);
+});
+
+gameText.addEventListener("focusout", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	savegametextchanges();
+});
+
+gameText.addEventListener("paste", function(event) {
+	if (ai_busy) {
+		event.stopPropagation();
+		return;
+	};
+
+	check_game_after_paste();
 });

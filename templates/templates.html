@@ -1,5 +1,4 @@
 <!---------------- World Info Card ---------------------->
-<link href="static/koboldai.css" rel="stylesheet">
 <div draggable="true" class="world_info_card" id="world_info_">
 	<div class="world_info_title_area">
 		<div>
@@ -23,12 +22,16 @@
 				<span
 					class="world_info_item_type"
 					contenteditable="true"
-					data-placeholder="Person"
+					data-placeholder="..."
 					spellcheck="false"
-				></span> <span class="helpicon material-icons-outlined" tooltip="Please enter a noun that describes a person, place or thing." "]">help_icon</span>
+				></span>
+				<span
+					class="helpicon material-icons-outlined"
+					tooltip='Please enter a noun that describes this entry. For example, "person", "weapon", or "building". This will be used with the Generate Content button below.'
+				>help_icon</span>
 			</div>
 		</div>
-		<span id="world_info_delete_" class="world_info_delete">X</span>
+		<span id="world_info_delete_" class="world_info_delete material-icons-outlined">close</span>
 	</div>
 
 	<div class="world_info_upper_container world_info_tag_area">
@@ -153,4 +156,22 @@
 			</div>
 		</div>
 	</div>
+</div>
+<!---------------- Model Settings ---------------------->
+<div id="blank_model_settings" class="setting_container_model">
+	<span class="setting_label">
+		<span id="blank_model_settings_label">:&nbsp;</span><span id="blank_model_settings_tooltip" class="helpicon material-icons-outlined" style="text-align: left;" tooltip="">help_icon</span>
+	</span>
+	<input autocomplete="off" class="setting_value" id="blank_model_settings_value_slider_number">
+	<span class="setting_item">
+		<input type="range" id="blank_model_settings_slider" class="setting_item_input blank_model_settings_input model_settings_input">
+		<!--<input type=checkbox id="blank_model_settings_toggle" class="setting_item_input blank_model_settings_input model_settings_input" data-size="mini" data-onstyle="success" data-toggle="toggle">-->
+		<span id="blank_model_settings_toggle"></span>
+		<select id="blank_model_settings_dropdown" class="settings_select blank_model_settings_input model_settings_input"></select>
+		<input type=password id="blank_model_settings_password" class="settings_select blank_model_settings_input model_settings_input">
+		<input id="blank_model_settings_text" class="settings_select blank_model_settings_input model_settings_input">
+	</span>
+	<span class="setting_minlabel"><span style="position: relative;" id="blank_model_settings_min_label"></span></span>
+	<span class="setting_maxlabel"><span style="position: relative;" id="blank_model_settings_max_label"></span></span>
+	</span>
 </div>

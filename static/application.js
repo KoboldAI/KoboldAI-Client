@@ -1,3 +1,5 @@
+
+
 //=================================================================//
 //  VARIABLES
 //=================================================================//
@@ -2333,6 +2335,8 @@ $(document).ready(function(){
 	socket.on('popup_breadcrumbs', function(data){popup_breadcrumbs(data);});
 	socket.on('popup_edit_file', function(data){popup_edit_file(data);});
 	socket.on('error_popup', function(data){error_popup(data);});
+	socket.on('open_model_load_menu', function(data){show_model_menu(data);});
+	socket.on('selected_model_info', function(data){selected_model_info(data);});
 
 	socket.on('from_server', function(msg) {
 		//console.log(msg);
@@ -3332,28 +3336,6 @@ $(document).ready(function(){
 		hideLoadPopup();
 	});
 	
-	load_model_accept.on("click", function(ev) {
-		hideMessage();
-		var gpu_layers;
-		var message;
-		if($("#modellayers")[0].classList.contains('hidden')) {
-			gpu_layers = ","
-		} else {
-			gpu_layers = ""
-			for (let i=0; i < $("#gpu_count")[0].value; i++) {
-				gpu_layers += $("#gpu_layers"+i)[0].value + ",";
-			}
-		}
-		var disk_layers = $("#disk_layers").length > 0 ? $("#disk_layers")[0].value : 0;
-		models = getSelectedOptions(document.getElementById('oaimodel'));
-		if (models.length == 1) {
-			models = models[0];
-		}
-		message = {'cmd': 'load_model', 'use_gpu': $('#use_gpu')[0].checked, 'key': $('#modelkey')[0].value, 'gpu_layers': gpu_layers.slice(0, -1), 'disk_layers': disk_layers, 'url': $('#modelurl')[0].value, 'online_model': models};
-		socket.send(message);
-		loadmodelcontent.html("");
-		hideLoadModelPopup();
-	});
 
 	sp_close.on("click", function(ev) {
 		hideSPPopup();
@@ -3388,8 +3370,9 @@ $(document).ready(function(){
 	});
 	
 	button_loadmodel.on("click", function(ev) {
-		showLoadModelPopup();
-		socket.send({'cmd': 'list_model', 'data': 'mainmenu'});
+		//showLoadModelPopup();
+		//socket.send({'cmd': 'list_model', 'data': 'mainmenu'});
+		socket.emit('load_model_button', {});
 	});
 	button_showmodel.on("click", function(ev) {
 		socket.send({'cmd': 'show_model', 'data': ''});
@@ -3836,3 +3819,728 @@ function show_message(data) {
 	
 	document.getElementById('message-popup').classList.remove('hidden');
 }
+
+
+
+
+
+
+
+//-----------------------------------------------------Copy from UI2--------------------------------------------------------
+function show_model_menu(data) {
+	console.log(data);
+	//clear out the loadmodelsettings
+	var loadmodelsettings = document.getElementById('loadmodelsettings')
+	while (loadmodelsettings.firstChild) {
+		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
+	}
+	//Clear out plugin selector
+	var model_plugin = document.getElementById('modelplugin');
+	while (model_plugin.firstChild) {
+		model_plugin.removeChild(model_plugin.firstChild);
+	}
+	model_plugin.classList.add("hidden");
+	var accept = document.getElementById("btn_loadmodelaccept");
+	accept.disabled = false;
+	
+	//clear out the breadcrumbs
+	var breadcrumbs = document.getElementById('loadmodellistbreadcrumbs')
+	while (breadcrumbs.firstChild) {
+		breadcrumbs.removeChild(breadcrumbs.firstChild);
+	}
+	
+	//add breadcrumbs
+	if ('breadcrumbs' in data) {
+		for (item of data.breadcrumbs) {
+			var button = document.createElement("button");
+			button.classList.add("breadcrumbitem");
+			button.setAttribute("model", data.menu);
+			button.setAttribute("folder", item[0]);
+			button.textContent = item[1];
+			button.onclick = function () {
+						socket.emit('select_model', {'menu': "", 'name': this.getAttribute("model"), 'path': this.getAttribute("folder")});
+					};
+			breadcrumbs.append(button);
+			var span = document.createElement("span");
+			span.textContent = "\\";
+			breadcrumbs.append(span);
+		}
+	}
+	//clear out the items
+	var model_list = document.getElementById('loadmodellistcontent')
+	while (model_list.firstChild) {
+		model_list.removeChild(model_list.firstChild);
+	}
+	//add items
+	for (item of data.items) {
+		var list_item = document.createElement("span");
+		list_item.classList.add("model_item");
+		
+		//create the folder icon
+		var folder_icon = document.createElement("span");
+		folder_icon.classList.add("material-icons-outlined");
+		folder_icon.classList.add("cursor");
+
+		let isModel = !(
+			item.isMenu ||
+			item.label === "Load a model from its directory" ||
+			item.label === "Load an old GPT-2 model (eg CloverEdition)"
+		);
+
+		folder_icon.textContent = isModel ? "psychology" : "folder";
+		list_item.append(folder_icon);
+		
+		
+		//create the actual item
+		var popup_item = document.createElement("span");
+		popup_item.classList.add("model");
+		for (const key in item) {
+			if (key == "name") {
+				popup_item.id = item[key];
+			} 
+			popup_item.setAttribute(key, item[key]);
+		}
+		
+		popup_item.onclick = function() { 
+			var attributes = this.attributes;
+			var obj = {};
+
+			for (var i = 0, len = attributes.length; i < len; i++) {
+				obj[attributes[i].name] = attributes[i].value;
+			}
+			//put the model data on the accept button so we can send it to the server when you accept
+			var accept = document.getElementById("popup_accept");
+			selected_model_data = obj;
+			//send the data to the server so it can figure out what data we need from the user for the model
+			socket.emit('select_model', obj); 
+			
+			//clear out the selected item and select this one visually
+			for (const element of document.getElementsByClassName("model_menu_selected")) {
+				element.classList.remove("model_menu_selected");
+			}
+			this.closest(".model_item").classList.add("model_menu_selected");
+		}
+		
+		//name text
+		var text = document.createElement("span");
+		text.style="grid-area: item;";
+		text.textContent = item.label;
+		popup_item.append(text);
+		//model size text
+		var text = document.createElement("span");
+		text.textContent = item.size;
+		text.style="grid-area: gpu_size;padding: 2px;";
+		popup_item.append(text);
+
+		(function() {
+			// Anon function to avoid unreasonable indentation
+			if (!isModel) return;
+
+			let parameterCount = getModelParameterCount(item.label);
+			if (!parameterCount) return;
+
+			let warningText = "";
+
+			if (parameterCount > 25_000_000_000) warningText = "This is a very high-end model and will likely not run without a specialized setup."; // 25B
+			if (parameterCount < 2_000_000_000) warningText = "This is a lower-end model and may perform poorly.";			// 2B
+			if (parameterCount < 1_000_000_000) warningText = "This is a very low-end model and may perform incoherently.";	// 1B
+
+			if (!warningText) return;
+			$e("span", list_item, {
+				classes: ["material-icons-outlined", "model-size-warning"],
+				innerText: "warning",
+				"style.grid-area": "warning_icon",
+				tooltip: warningText
+			});
+
+		})();
+
+		(function() {
+			// Anon function to avoid unreasonable indentation
+			if (!item.isDownloaded) return;
+			if (!isModel) return;
+
+			$e("span", list_item, {
+				classes: ["material-icons-outlined", "model-download-notification"],
+				innerText: "download_done",
+				"style.grid-area": "downloaded_icon",
+				tooltip: "This model is already downloaded."
+			});
+		})();
+		
+		list_item.append(popup_item);
+		model_list.append(list_item);
+	}
+	
+	
+	openPopup("load-model");
+	
+}
+
+function getOptions(id){
+  let selectElement = document.getElementById(id);
+  let optionNames = [...selectElement.options].map(o => o.text);
+  return optionNames;
+}
+
+function model_settings_checker() {
+	//get check value:
+	missing_element = false;
+	if (this.check_data != null) {
+		if ('sum' in this.check_data) {
+			check_value = 0
+			for (const temp of this.check_data['sum']) {
+				if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+					check_value += parseInt(document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").value);
+				} else {
+					missing_element = true;
+				}
+			}
+		} else {
+			check_value = this.value
+		}
+		if (this.check_data['check'] == "=") {
+			valid = (check_value == this.check_data['value']);
+		} else if (this.check_data['check'] == "!=") {
+			valid = (check_value != this.check_data['value']);
+		} else if (this.check_data['check'] == ">=") {
+			valid = (check_value >= this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value <= this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value > this.check_data['value']);
+		} else if (this.check_data['check'] == "<=") {	
+			valid = (check_value < this.check_data['value']);
+		}
+		if (valid || missing_element) {
+			//if we are supposed to refresh when this value changes we'll resubmit
+			if ((this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
+				//get an object of all the input settings from the user
+				data = {}
+				settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
+				if (settings_area) {
+					for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+						var element_data = element.value;
+						if (element.getAttribute("data_type") == "int") {
+							element_data = parseInt(element_data);
+						} else if (element.getAttribute("data_type") == "float") {
+							element_data = parseFloat(element_data);
+						} else if (element.getAttribute("data_type") == "bool") {
+							element_data = (element_data == 'on');
+						}
+						data[element.id.split("|")[1].replace("_value", "")] = element_data;
+					}
+				}
+				data = {...data, ...selected_model_data};
+				
+				data['plugin'] = document.getElementById("modelplugin").value;
+				data['valid_backends'] = getOptions("modelplugin");
+				
+				
+				socket.emit("resubmit_model_info", data);
+			}
+			if ('sum' in this.check_data) {
+				for (const temp of this.check_data['sum']) {
+					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.remove('input_error');
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
+					}
+				}
+			} else {
+				this.closest(".setting_container_model").classList.remove('input_error');
+				this.closest(".setting_container_model").removeAttribute("tooltip");
+			}
+		} else {
+			if ('sum' in this.check_data) {
+				for (const temp of this.check_data['sum']) {
+					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
+						document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").classList.add('input_error');
+						if (this.check_data['check_message']) {
+							document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+						} else {
+							document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value").closest(".setting_container_model").removeAttribute("tooltip");
+						}
+					}
+				}
+			} else {
+				this.closest(".setting_container_model").classList.add('input_error');
+				if (this.check_data['check_message']) {
+					this.closest(".setting_container_model").setAttribute("tooltip", this.check_data['check_message']);
+				} else {
+					this.closest(".setting_container_model").removeAttribute("tooltip");
+				}
+			}
+		}
+	}
+	var accept = document.getElementById("btn_loadmodelaccept");
+	ok_to_load = true;
+	for (const item of document.getElementsByClassName("input_error")) {
+		if (item.classList.contains("input_error") && !item.closest(".model_plugin_settings_area").classList.contains("hidden")) {
+			ok_to_load = false;
+			break;
+		}
+	}
+	
+	if (ok_to_load) {
+		accept.classList.remove("disabled");
+		accept.disabled = false;
+	} else {
+		accept.classList.add("disabled");
+		accept.disabled = true;
+	}
+	
+	
+	//We now have valid display boxes potentially. We'll go through them and update the display
+	for (const item of document.querySelectorAll(".model_settings_valid_display:not(#blank_model_settings_valid_display)")) {
+		check_value = 0
+		missing_element = false;
+		for (const temp of item.check_data['sum']) {
+			if (document.getElementById(item.id.split("|")[0] +"|"  + temp + "_value")) {
+				check_value += parseInt(document.getElementById(item.id.split("|")[0] +"|"  + temp + "_value").value);
+			} else {
+				missing_element = true;
+			}
+		}
+		if (!missing_element) {
+			item.innerText = item.original_text.replace("%1", check_value);
+		}
+		
+		
+	}
+}
+
+function set_toggle(id) {
+	$('#'+id).bootstrapToggle({size: "mini", onstyle: "success", toggle: "toggle"});
+}
+
+function selected_model_info(sent_data) {
+	const data = sent_data['model_backends'];
+	//clear out the loadmodelsettings
+	var loadmodelsettings = document.getElementById('loadmodelsettings')
+	while (loadmodelsettings.firstChild) {
+		loadmodelsettings.removeChild(loadmodelsettings.firstChild);
+	}
+	//Clear out plugin selector
+	var model_plugin = document.getElementById('modelplugin');
+	while (model_plugin.firstChild) {
+		model_plugin.removeChild(model_plugin.firstChild);
+	}
+	
+	var accept = document.getElementById("btn_loadmodelaccept");
+	accept.disabled = false;
+	
+	modelplugin = document.getElementById("modelplugin");
+	modelplugin.classList.remove("hidden");
+	modelplugin.onchange = function () {
+		for (const area of document.getElementsByClassName("model_plugin_settings_area")) {
+				area.classList.add("hidden");
+		}
+		if (document.getElementById(this.value + "_settings_area")) {
+			document.getElementById(this.value + "_settings_area").classList.remove("hidden");
+		}
+		model_settings_checker()
+	}
+	//create the content
+	for (const [loader, items] of Object.entries(data)) {
+		model_area = document.createElement("DIV");
+		model_area.id = loader + "_settings_area";
+		model_area.classList.add("model_plugin_settings_area");
+		model_area.classList.add("hidden");
+		modelpluginoption = document.createElement("option");
+		modelpluginoption.innerText = loader;
+		modelpluginoption.value = loader;
+		modelplugin.append(modelpluginoption);
+		
+		//create the user input for each requested input
+		for (item of items) {
+			let new_setting = document.getElementById('blank_model_settings').cloneNode(true);
+			new_setting.id = loader;
+			new_setting.classList.remove("hidden");
+			new_setting.querySelector('#blank_model_settings_label').innerText = item['label'];
+			new_setting.querySelector('#blank_model_settings_tooltip').setAttribute("tooltip", item['tooltip']);
+			
+			onchange_event = model_settings_checker;
+			if (item['uitype'] == "slider") {
+				var slider_number = new_setting.querySelector('#blank_model_settings_value_slider_number');
+				slider_number.value = item['default'];
+				slider_number.id = loader + "|" + item['id'] + "_value_text";
+				slider_number.onchange = function() { document.getElementById(this.id.replace("_text", "")).value = this.value;};
+
+				var slider = new_setting.querySelector('#blank_model_settings_slider');
+				slider.value = item['default'];
+				slider.min = item['min'];
+				slider.max = item['max'];
+				slider.setAttribute("data_type", item['unit']);
+				slider.id = loader + "|" + item['id'] + "_value";
+				if ('check' in item) {
+					slider.check_data = item['check'];
+					slider_number.check_data = item['check'];
+				} else {
+					slider.check_data = null;
+					slider_number.check_data = null;
+				}
+				slider.oninput = function() { document.getElementById(this.id+"_text").value = this.value;};
+				slider.onchange = onchange_event;
+				slider.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				new_setting.querySelector('#blank_model_settings_min_label').innerText = item['min'];
+				new_setting.querySelector('#blank_model_settings_max_label').innerText = item['max'];
+				slider.noresubmit = true;
+				slider.onchange();
+				slider.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_slider').remove();
+			}
+			if (item['uitype'] == "toggle") {
+				toggle = document.createElement("input");
+				toggle.type='checkbox';
+				toggle.classList.add("setting_item_input");
+				toggle.classList.add("blank_model_settings_input");
+				toggle.classList.add("model_settings_input");
+				toggle.id = loader + "|" + item['id'] + "_value";
+				toggle.checked = item['default'];
+				toggle.onclick = onchange_event;
+				toggle.setAttribute("data_type", item['unit']);
+				
+				toggle.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					toggle.check_data = item['check'];
+				} else {
+					toggle.check_data = null;
+				}
+				new_setting.querySelector('#blank_model_settings_toggle').append(toggle);
+				setTimeout(set_toggle, 200, loader + "\\|" + item['id'] + "_value");
+				toggle.noresubmit = true;
+				toggle.onclick();
+				toggle.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_toggle').remove();
+			}
+			if (item['uitype'] == "dropdown") {
+				var select_element = new_setting.querySelector('#blank_model_settings_dropdown');
+				select_element.id = loader + "|" + item['id'] + "_value";
+				for (const dropdown_value of item['children']) {
+					new_option = document.createElement("option");
+					new_option.value = dropdown_value['value'];
+					new_option.innerText = dropdown_value['text'];
+					select_element.append(new_option);
+				}
+				select_element.value = item['default'];
+				select_element.setAttribute("data_type", item['unit']);
+				select_element.onchange = onchange_event;
+				select_element.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if (('multiple' in item) && (item['multiple'])) {
+					select_element.multiple = true;
+					select_element.size = 10;
+				}
+				if ('check' in item) {
+					select_element.check_data = item['check'];
+				} else {
+					select_element.check_data = null;
+				}
+				select_element.noresubmit = true;
+				select_element.onchange();
+				select_element.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_dropdown').remove();
+			}
+			if (item['uitype'] == "password") {
+				var password_item = new_setting.querySelector('#blank_model_settings_password');
+				password_item.id = loader + "|" + item['id'] + "_value";
+				password_item.value = item['default'];
+				password_item.setAttribute("data_type", item['unit']);
+				password_item.onchange = onchange_event;
+				password_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					password_item.check_data = item['check'];
+				} else {
+					password_item.check_data = null;
+				}
+				password_item.noresubmit = true;
+				password_item.onchange();
+				password_item.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_password').remove();
+			}
+			if (item['uitype'] == "text") {
+				var text_item = new_setting.querySelector('#blank_model_settings_text');
+				text_item.id = loader + "|" + item['id'] + "_value";
+				text_item.value = item['default'];
+				text_item.onchange = onchange_event;
+				text_item.setAttribute("data_type", item['unit']);
+				text_item.setAttribute("refresh_model_inputs", item['refresh_model_inputs']);
+				if ('check' in item) {
+					text_item.check_data = item['check'];
+				} else {
+					text_item.check_data = null;
+				}
+				text_item.noresubmit = true;
+				text_item.onchange();
+				text_item.noresubmit = false;
+			} else {
+				new_setting.querySelector('#blank_model_settings_text').remove();
+			}
+			
+			if (item['uitype'] == "Valid Display") {
+				new_setting = document.createElement("DIV");
+				new_setting.classList.add("model_settings_valid_display");
+				new_setting.id = loader + "|" + item['id'] + "_value";
+				new_setting.innerText = item['label'];
+				new_setting.check_data = item['check'];
+				new_setting.original_text = item['label'];
+			}
+			
+			model_area.append(new_setting);
+			loadmodelsettings.append(model_area);
+		}
+	}
+	
+	if ('selected_model_backend' in sent_data) {
+		document.getElementById("modelplugin").value = sent_data['selected_model_backend'];
+	}
+	
+	//unhide the first plugin settings
+	if (document.getElementById(document.getElementById("modelplugin").value + "_settings_area")) {
+		document.getElementById(document.getElementById("modelplugin").value + "_settings_area").classList.remove("hidden");
+	}
+	
+	model_settings_checker()
+	
+}
+
+function getModelParameterCount(modelName) {
+	if (!modelName) return null;
+
+	// The "T" and "K" may be a little optimistic...
+	let paramsString = modelName.toUpperCase().match(/[\d.]+[TBMK]/)
+	if (!paramsString) return null;
+	paramsString = paramsString[0];
+
+	let base = parseFloat(paramsString);
+	let multiplier = {T: 1_000_000_000_000, B: 1_000_000_000, M: 1_000_000, K: 1_000}[paramsString[paramsString.length - 1]];
+
+	return base * multiplier;
+}
+
+function openPopup(id) {
+	closePopups();
+
+	const container = document.getElementById("popup-container");
+	container.classList.remove("hidden");
+
+	for (const popupWindow of container.children) {
+		popupWindow.classList.add("hidden");
+	}
+
+	const popup = document.getElementById(`${id}`);
+	popup.classList.remove("hidden");
+
+	// Sometimes we want to instantly focus on certain elements when a menu opens.
+	for (const noticeMee of popup.getElementsByClassName("focus-on-me")) {
+		noticeMee.focus();
+		break;
+	}
+}
+
+function closePopups() {
+	const container = document.getElementById("popup-container");
+	container.classList.add("hidden");
+
+	for (const popupWindow of container.children) {
+		popupWindow.classList.add("hidden");
+	}
+}
+
+function $el(selector) {
+	// We do not preemptively fetch all elements upon execution (wall of consts)
+	// due to the layer of mental overhead it adds to debugging and reading
+	// code in general.
+	return document.querySelector(selector);
+}
+
+function $e(tag, parent, attributes, insertionLocation=null) {
+	// Small helper function for dynamic UI creation
+
+	let element = document.createElement(tag);
+
+	if (!attributes) attributes = {};
+
+	if ("classes" in attributes) {
+		if (!Array.isArray(attributes.classes)) throw Error("Classes was not array!");
+		for (const className of attributes.classes) {
+			element.classList.add(className);
+		}
+		delete attributes.classes;
+	}
+
+
+	for (const [attribute, value] of Object.entries(attributes)) {
+		if (attribute.includes(".")) {
+			let ref = element;
+			const parts = attribute.split(".");
+
+			for (const part of parts.slice(0, -1)) {
+				ref = ref[part];
+			}
+
+			ref[parts[parts.length - 1]] = value;
+			continue;
+		}
+
+		if (attribute in element) {
+			element[attribute] = value;
+		} else {
+			element.setAttribute(attribute, value);
+		}
+	}
+
+	if (!parent) return element;
+
+	if (insertionLocation && Object.keys(insertionLocation).length) {
+		let [placement, target] = Object.entries(insertionLocation)[0];
+		if (placement === "before") {
+			parent.insertBefore(element, target);
+		} else if (placement === "after") {
+			parent.insertBefore(element, target.nextSibling);
+		} else {
+			throw Error(`I have no clue what placement ${placement} is`);
+		}
+	} else {
+		parent.appendChild(element);
+	}
+
+	return element;
+}
+
+function load_model() {
+	var accept = document.getElementById('btn_loadmodelaccept');
+	settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
+	
+	//get an object of all the input settings from the user
+	data = {}
+	if (settings_area) {
+		for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+			var element_data = element.value;
+			if ((element.tagName == "SELECT") && (element.multiple)) {
+				element_data = [];
+				for (var i=0, iLen=element.options.length; i<iLen; i++) {
+					if (element.options[i].selected) {
+						element_data.push(element.options[i].value);
+					}
+				}
+			} else {
+				if (element.getAttribute("data_type") == "int") {
+					element_data = parseInt(element_data);
+				} else if (element.getAttribute("data_type") == "float") {
+					element_data = parseFloat(element_data);
+				} else if (element.getAttribute("data_type") == "bool") {
+					element_data = element.checked;
+				}
+			}
+			data[element.id.split("|")[1].replace("_value", "")] = element_data;
+		}
+	}
+	data = {...data, ...selected_model_data};
+	
+	data['plugin'] = document.getElementById("modelplugin").value;
+	
+	socket.emit("load_model", data);
+	closePopups();
+}
+
+function initalizeTooltips() {
+	const tooltip = $e("span", document.body, {id: "tooltip-text", "style.display": "none"});
+	let tooltipTarget = null;
+
+	function alterTooltipState(target, specialClass=null) {
+		tooltipTarget = target;
+		tooltip.style.display = target ? "block" : "none";
+		tooltip.className = specialClass || "";
+	}
+
+	function registerElement(el) {
+		// el should have attribute "tooltip"
+		let text = el.getAttribute("tooltip");
+
+		el.addEventListener("mouseenter", function(event) {
+			if (!el.hasAttribute("tooltip")) return;
+			tooltip.innerText = text;
+			let specialClass = "tooltip-standard";
+
+			// Kinda lame
+			if (this.classList.contains("context-token")) specialClass = "tooltip-context-token";
+
+			alterTooltipState(el, specialClass);
+		});
+
+		el.addEventListener("mouseleave", function(event) {
+			alterTooltipState(null);
+		});
+	}
+
+	const xOffset = 10;
+	const yOffset = 15;
+
+	document.addEventListener("mousemove", function(event) {
+		if (!tooltipTarget) return;
+
+		let [x, y] = [event.x, event.y];
+
+		// X + the tooltip's width is the farthest point right we will display;
+		// let's account for it. If we will render outside of the window,
+		// subtract accordingly.
+		let xOverflow = (x + tooltip.clientWidth) - window.innerWidth;
+		if (xOverflow > 0) x -= xOverflow;
+
+		if (xOverflow + xOffset < 0) x += xOffset;
+
+		// Same for Y!
+		let yOverflow = (y + tooltip.clientHeight) - window.innerHeight;
+		if (yOverflow > 0) y -= yOverflow;
+
+		if (yOverflow + yOffset < 0) y += yOffset;
+
+		tooltip.style.left = `${x}px`;
+		tooltip.style.top = `${y}px`;
+	});
+
+	// Inital scan
+	for (const element of document.querySelectorAll("[tooltip]")) {
+		registerElement(element);
+	}
+
+	// Use a MutationObserver to catch future tooltips
+	const observer = new MutationObserver(function(records, observer) {
+		for (const record of records) {
+			
+			if (record.type === "attributes") {
+				// Sanity check
+				if (record.attributeName !== "tooltip") continue;
+				registerElement(record.target);
+				continue;
+			}
+			
+			// If we remove the tooltip target, stop showing the tooltip. Maybe a little ineffecient.
+			if (!document.body.contains(tooltipTarget)) alterTooltipState(null);
+
+			for (const node of record.addedNodes) {
+				if (node.nodeType !== 1) continue;
+
+				if (node.hasAttribute("tooltip")) registerElement(node);
+
+				// Register for descendants (Slow?)
+				for (const element of node.querySelectorAll("[tooltip]")) {
+					registerElement(element);
+				}
+			}
+		}
+	});
+	observer.observe(document.body, {
+		childList: true,
+		subtree: true,
+		attributeFilter: ["tooltip"],
+	});
+}
+
+// Must be done before any elements are made; we track their changes.
+console.log(document.body);
+initalizeTooltips();
