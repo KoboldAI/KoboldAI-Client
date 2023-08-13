@@ -6,7 +6,7 @@ import os, re, time, threading, json, pickle, base64, copy, tqdm, datetime, sys
 import shutil
 from typing import List, Union
 from io import BytesIO
-from flask import has_request_context, session
+from flask import has_request_context, session, request
 from flask_socketio import join_room, leave_room
 from collections import OrderedDict
 import multiprocessing
@@ -130,11 +130,14 @@ class koboldai_vars(object):
         original_story_name = story_name
         if not multi_story:
             story_name = 'default'
-        #Leave the old room and join the new one
-        logger.debug("Leaving room {}".format(session['story']))
-        leave_room(session['story'])
-        logger.debug("Joining room {}".format(story_name))
-        join_room(story_name)
+
+        # Leave the old room and join the new one if in socket context
+        if hasattr(request, "sid"):
+            logger.debug("Leaving room {}".format(session['story']))
+            leave_room(session['story'])
+            logger.debug("Joining room {}".format(story_name))
+            join_room(story_name)
+
         session['story'] = story_name
         logger.debug("Sending story reset")
         self._story_settings[story_name]._socketio.emit("reset_story", {}, broadcast=True, room=story_name)

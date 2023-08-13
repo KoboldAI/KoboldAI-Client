@@ -93,7 +93,11 @@ class HFTorchInferenceModel(HFInferenceModel):
         self.hf_torch = True
         self.lazy_load = True
         self.low_mem = False
+
+        # `nobreakmodel` indicates that breakmodel cannot be used, while `breakmodel`
+        # indicates whether breakmodel is currently being used
         self.nobreakmodel = False
+        self.breakmodel = False
 
         self.post_token_hooks = [
             PostTokenHooks.stream_tokens,

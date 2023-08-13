@@ -908,7 +908,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.2",
+    version="1.2.3",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -1694,9 +1694,6 @@ def load_model(model_backend, initial_load=False):
 
     koboldai_vars.aibusy = True
     koboldai_vars.horde_share = False
-
-    if initial_load:
-        use_breakmodel_args = True
 
     koboldai_vars.reset_model()
 
@@ -3227,7 +3224,7 @@ def actionsubmit(
     gen_mode=GenerationMode.STANDARD
 ):
     # Ignore new submissions if the AI is currently busy
-    if(koboldai_vars.aibusy):
+    if koboldai_vars.aibusy and not ignore_aibusy:
         return
 
     while(True):
@@ -5105,9 +5102,13 @@ def load_story_v1(js, from_file=None):
 def load_story_v2(js, from_file=None):
     logger.debug("Loading V2 Story")
     logger.debug("Called from {}".format(inspect.stack()[1].function))
-    leave_room(session['story'])
-    session['story'] = js['story_name']
-    join_room(session['story'])
+
+    new_story = js["story_name"]
+    # In socket context
+    if hasattr(request, "sid"):
+        leave_room(session['story'])
+        join_room(new_story)
+    session['story'] = new_story
     
     koboldai_vars.load_story(session['story'], js)
     
@@ -8231,6 +8232,7 @@ class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
 
 class ModelSelectionSchema(KoboldSchema):
     model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+    backend: Optional[str] = fields.String(required=False, validate=validate.OneOf(model_backends.keys()))
 
 def _generate_text(body: GenerationInputSchema):
     if koboldai_vars.aibusy or koboldai_vars.genseqs:
@@ -8488,6 +8490,7 @@ def put_model(body: ModelSelectionSchema):
       summary: Load a model
       description: |-2
         Loads a model given its Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model.
+        Optionally, a backend parameter can be passed in to dictate which backend loads the model.
       tags:
         - model
       requestBody:
@@ -8497,6 +8500,7 @@ def put_model(body: ModelSelectionSchema):
             schema: ModelSelectionSchema
             example:
               model: ReadOnly
+              backend: Read Only
       responses:
         200:
           description: Successful request
@@ -8514,8 +8518,18 @@ def put_model(body: ModelSelectionSchema):
     set_aibusy(1)
     old_model = koboldai_vars.model
     koboldai_vars.model = body.model.strip()
+
+    backend = getattr(body, "backend", None)
+    if not backend:
+        # Backend is optional for backwards compatibility; it should probably be
+        # required on the next major API version.
+        if body.model == "ReadOnly":
+            backend = "Read Only"
+        else:
+            backend = "Huggingface"
+
     try:
-        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
+        load_model(backend)
     except Exception as e:
         koboldai_vars.model = old_model
         raise e
@@ -8803,8 +8817,14 @@ def get_story():
     chunks = []
     if koboldai_vars.gamestarted:
         chunks.append({"num": 0, "text": koboldai_vars.prompt})
-    for num, action in koboldai_vars.actions.items():
-        chunks.append({"num": num + 1, "text": action})
+
+    last_action_num = list(koboldai_vars.actions.actions.keys())[-1]
+    for num, action in koboldai_vars.actions.actions.items():
+        text = action["Selected Text"]
+        # The last action seems to always be empty
+        if not text and num == last_action_num:
+            continue
+        chunks.append({"num": num + 1, "text": text})
     return {"results": chunks}
 
 
@@ -8828,7 +8848,7 @@ def get_story_nums():
     chunks = []
     if koboldai_vars.gamestarted:
         chunks.append(0)
-    for num in koboldai_vars.actions.keys():
+    for num in koboldai_vars.actions.actions.keys():
         chunks.append(num + 1)
     return {"results": chunks}
 
@@ -9189,7 +9209,7 @@ def get_world_info():
             if wi["folder"] != last_folder:
                 folder = []
                 if wi["folder"] is not None:
-                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[wi["folder"]]["name"], "entries": folder})
+                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[str(wi["folder"])]["name"], "entries": folder})
                 last_folder = wi["folder"]
             (folder if wi["folder"] is not None else entries).append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
     return {"folders": folders, "entries": entries}
