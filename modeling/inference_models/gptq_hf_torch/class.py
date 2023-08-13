@@ -153,6 +153,32 @@ class model_backend(HFTorchInferenceModel):
         gptq_model, _, _, _, _ = load_model_gptq_settings(model_path)
         return bool(gptq_model)
 
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+        requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters)
+        if model_name != 'customhuggingface' or "custom_model_name" in parameters:
+            if os.path.exists("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
+                with open("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
+                    temp = json.load(f)
+            else:
+                temp = {}
+            requested_parameters.append({
+                                        "uitype": "dropdown",
+                                        "unit": "text",
+                                        "label": "Implementation",
+                                        "id": "implementation",
+                                        "default": temp['implementation'] if 'implementation' in temp else 'occam',
+                                        "tooltip": "Which GPTQ provider to use?",
+                                        "menu_path": "Layers",
+                                        "children": [{'text': 'Occam GPTQ', 'value': 'occam'}, {'text': 'AutoGPTQ', 'value': 'AutoGPTQ'}],
+                                        "extra_classes": "",
+                                        "refresh_model_inputs": False
+                                    })
+        return requested_parameters
+
+    def set_input_parameters(self, parameters):
+        super().set_input_parameters(parameters)
+        self.implementation = parameters['implementation'] if 'implementation' in parameters else "occam"
+
     def _load(self, save_model: bool, initial_load: bool) -> None:
         try:
             from hf_bleeding_edge import AutoModelForCausalLM
@@ -169,7 +195,6 @@ class model_backend(HFTorchInferenceModel):
         self.init_model_config()
 
         self.lazy_load = True
-        self.implementation = "occam"
 
         gpulayers = self.breakmodel_config.gpu_blocks
 
