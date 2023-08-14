@@ -4396,8 +4396,8 @@ def requestwi():
 #  and items in different folders are sorted based on the order of the folders
 #==================================================================#
 def stablesortwi():
-    mapping = {int(uid): index for index, uid in enumerate(koboldai_vars.wifolders_l)}
-    koboldai_vars.worldinfo.sort(key=lambda x: mapping[int(x["folder"])] if x["folder"] is not None else float("inf"))
+    mapping = {uid: index for index, uid in enumerate(koboldai_vars.wifolders_l)}
+    koboldai_vars.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
     for i, wi in enumerate(koboldai_vars.worldinfo):
@@ -6548,7 +6548,7 @@ def UI_2_create_world_info_folder(data):
 @socketio.on('delete_world_info')
 @logger.catch
 def UI_2_delete_world_info(uid):
-    koboldai_vars.worldinfo_v2.delete(int(uid))
+    koboldai_vars.worldinfo_v2.delete(uid)
 
 
 #==================================================================#
@@ -7706,7 +7706,6 @@ def maybe_review_story() -> None:
     for uid, wi in koboldai_vars.worldinfo_v2.world_info.items():
         if wi["type"] == "commentator":
             continue
-        uid = int(uid)
         allowed_wi_uids.append(uid)
 
     prompt = f"\n\n{speaker_name}'s thoughts on what just happened in this story: \""
