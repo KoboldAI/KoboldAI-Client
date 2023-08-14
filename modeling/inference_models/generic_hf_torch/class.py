@@ -29,7 +29,7 @@ model_backend_type = "Huggingface" #This should be a generic name in case multip
 class model_backend(HFTorchInferenceModel):
     def __init__(self) -> None:
         super().__init__()
-        self.use_4_bit = False
+        self.quantization = False
 
     def is_valid(self, model_name, model_path, menu_path):
         base_is_valid = super().is_valid(model_name, model_path, menu_path)
@@ -72,7 +72,7 @@ class model_backend(HFTorchInferenceModel):
         else:
             logger.warning("Bitsandbytes is not installed, you can not use Quantization for Huggingface models")
         return requested_parameters
- 
+
     def set_input_parameters(self, parameters):
         super().set_input_parameters(parameters)
         self.quantization = parameters['quantization'] if 'quantization' in parameters else False
