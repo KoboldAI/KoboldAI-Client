@@ -10254,8 +10254,7 @@ def post_world_info_folders_none(body: EmptySchema):
     stablesortwi()
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
     setgamesaved(False)
-    if koboldai_vars.worldinfo:
-        emit('from_server', {'cmd': 'wiexpand', 'data': koboldai_vars.worldinfo[-1]["num"]}, broadcast=True)
+    emit('from_server', {'cmd': 'wiexpand', 'data': koboldai_vars.worldinfo[-1]["num"]}, broadcast=True)
     koboldai_vars.worldinfo[-1]["init"] = True
     addwiitem(folder_uid=None)
     return {"uid": koboldai_vars.worldinfo[-2]["uid"]}
