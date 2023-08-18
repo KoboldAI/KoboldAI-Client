@@ -301,7 +301,7 @@ model_menu = {
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'nsfwlist': [
-        MenuFolder("Looking to Chat RP? Use a chat model", "chatlist"),
+        MenuFolder("Looking for NSFW Chat RP? Most chat models give better replies", "chatlist"),
         MenuModel("Green Devil (Novel)", "Pirr/pythia-13b-deduped-green_devil", "14GB"),
         MenuModel("Erebus 20B (Novel)", "KoboldAI/GPT-NeoX-20B-Erebus", "20GB*"),
         MenuModel("Nerybus 13B (Novel)", "KoboldAI/OPT-13B-Nerybus-Mix", "12GB"),
