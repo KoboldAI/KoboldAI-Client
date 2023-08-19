@@ -233,7 +233,7 @@ class model_backend(HFTorchInferenceModel):
             from huggingface_hub import snapshot_download
             target_dir = "models/" + self.model_name.replace("/", "_")
             print(self.model_name)
-            snapshot_download(self.model_name, local_dir=target_dir, local_dir_use_symlinks=False, cache_dir="cache/")
+            snapshot_download(self.model_name, local_dir=target_dir, local_dir_use_symlinks=False, cache_dir="cache/", revision=utils.koboldai_vars.revision)
         
         self.model = self._get_model(self.get_local_model_path())
         self.tokenizer = self._get_tokenizer(self.get_local_model_path())
