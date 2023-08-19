@@ -608,11 +608,16 @@ class settings(object):
                 if key == 'sampler_order':
                     if(len(value) < 7):
                         value = [6] + value
-                if key == 'autosave':
+                elif key == 'autosave':
                     autosave = value
+                elif key in ['worldinfo_u', 'wifolders_d']:
+                    # Fix UID keys to be ints
+                    value = {int(k): v for k, v in value.items()}
+
                 if isinstance(value, str):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))
+
                 #Need to fix the data type of value to match the module
                 if type(getattr(self, key)) == int:
                     setattr(self, key, int(value))
@@ -1010,7 +1015,7 @@ class story_settings(settings):
                 new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], 
                                         wi["key"], 
                                         wi.get("keysecondary", ""), 
-                                        "root" if wi["folder"] is None else self.wifolders_d[str(wi['folder'])]['name'], 
+                                        "root" if wi["folder"] is None else self.wifolders_d[wi['folder']]['name'],
                                         wi.get("constant", False), 
                                         wi["content"], 
                                         wi.get("comment", ""), 
@@ -2551,7 +2556,7 @@ class KoboldWorldInfo(object):
                 with open(image_path, "wb") as file:
                     file.write(base64.b64decode(image_b64))
         
-        data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
+        data["entries"] = {int(k): self.upgrade_entry(v) for k,v in data["entries"].items()}
         
         #Add the item
         start_time = time.time()
@@ -2632,13 +2637,13 @@ class KoboldWorldInfo(object):
         self.story_settings.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
         
         #self.wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
-        self.story_settings.wifolders_d = {str(folder_entries[x]): {'name': x, 'collapsed': False} for x in folder_entries if x != "root"}
+        self.story_settings.wifolders_d = {folder_entries[x]: {'name': x, 'collapsed': False} for x in folder_entries if x != "root"}
         
         #self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
-        self.story_settings.worldinfo_u = {str(y["uid"]): y for x in folder_entries for y in self.story_settings.worldinfo if y["folder"] == (folder_entries[x] if x != "root" else None)}
+        self.story_settings.worldinfo_u = {y["uid"]: y for x in folder_entries for y in self.story_settings.worldinfo if y["folder"] == (folder_entries[x] if x != "root" else None)}
         
         #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
-        self.story_settings.wifolders_u = {str(folder_entries[x]): [y for y in self.story_settings.worldinfo if y['folder'] == folder_entries[x]] for x in folder_entries if x != "root"}
+        self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == folder_entries[x]] for x in folder_entries if x != "root"}
         
     def reset_used_in_game(self):
         for key in self.world_info:
