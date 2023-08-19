@@ -1130,7 +1130,7 @@ def loadmodelsettings():
             try:
                 js   = json.load(open(koboldai_vars.custmodpth + "/config.json", "r"))
             except Exception as e:
-                js   = json.load(open(koboldai_vars.custmodpth.replace('/', '_') + "/config.json", "r"))            
+                js   = json.load(open(koboldai_vars.custmodpth.replace('/', '_') + "/config.json", "r"))
         except Exception as e:
             js   = {}
     koboldai_vars.default_preset = koboldai_settings.default_preset
@@ -2855,7 +2855,7 @@ def get_message(msg):
         emit('from_server', {'cmd': 'wiupdate', 'num': msg['num'], 'data': {field: koboldai_vars.worldinfo[num][field] for field in fields}}, broadcast=True, room="UI_1")
     elif(msg['cmd'] == 'wifolderupdate'):
         setgamesaved(False)
-        uid = str(msg['uid'])
+        uid = msg['uid']
         fields = ("name", "collapsed")
         for field in fields:
             if(field in msg['data'] and type(msg['data'][field]) is (str if field != "collapsed" else bool)):
@@ -4303,17 +4303,17 @@ def togglewimode():
 #   
 #==================================================================#
 def addwiitem(folder_uid=None):
-    assert folder_uid is None or str(folder_uid) in koboldai_vars.wifolders_d
+    assert folder_uid is None or folder_uid in koboldai_vars.wifolders_d
     ob = {"key": "", "keysecondary": "", "content": "", "comment": "", "folder": folder_uid, "num": len(koboldai_vars.worldinfo), "init": False, "selective": False, "constant": False}
     koboldai_vars.worldinfo.append(ob)
     while(True):
-        uid = str(int.from_bytes(os.urandom(4), "little", signed=True))
+        uid = int.from_bytes(os.urandom(4), "little", signed=True)
         if(uid not in koboldai_vars.worldinfo_u):
             break
     koboldai_vars.worldinfo_u[uid] = koboldai_vars.worldinfo[-1]
     koboldai_vars.worldinfo[-1]["uid"] = uid
     if(folder_uid is not None):
-        koboldai_vars.wifolders_u[str(folder_uid)].append(koboldai_vars.worldinfo[-1])
+        koboldai_vars.wifolders_u[folder_uid].append(koboldai_vars.worldinfo[-1])
     emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
 
 #==================================================================#
@@ -4321,7 +4321,7 @@ def addwiitem(folder_uid=None):
 #==================================================================#
 def addwifolder():
     while(True):
-        uid = str(int.from_bytes(os.urandom(4), "little", signed=True))
+        uid = int.from_bytes(os.urandom(4), "little", signed=True)
         if(uid not in koboldai_vars.wifolders_d):
             break
     ob = {"name": "", "collapsed": False}
@@ -4337,18 +4337,18 @@ def addwifolder():
 #==================================================================#
 def movewiitem(dst, src):
     setgamesaved(False)
-    if(koboldai_vars.worldinfo_u[str(src)]["folder"] is not None):
-        for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])]):
-            if(e["uid"] == koboldai_vars.worldinfo_u[str(src)]["uid"]):
-                koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(src)]["folder"])].pop(i)
+    if(koboldai_vars.worldinfo_u[src]["folder"] is not None):
+        for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[src]["folder"]]):
+            if(e["uid"] == koboldai_vars.worldinfo_u[src]["uid"]):
+                koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[src]["folder"]].pop(i)
                 break
-    if(koboldai_vars.worldinfo_u[str(dst)]["folder"] is not None):
-        koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[str(dst)]["folder"])].append(koboldai_vars.worldinfo_u[str(src)])
-    koboldai_vars.worldinfo_u[str(src)]["folder"] = koboldai_vars.worldinfo_u[str(dst)]["folder"]
+    if(koboldai_vars.worldinfo_u[dst]["folder"] is not None):
+        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[dst]["folder"]].append(koboldai_vars.worldinfo_u[src])
+    koboldai_vars.worldinfo_u[src]["folder"] = koboldai_vars.worldinfo_u[dst]["folder"]
     for i, e in enumerate(koboldai_vars.worldinfo):
-        if(e["uid"] == koboldai_vars.worldinfo_u[str(src)]["uid"]):
+        if(e["uid"] == koboldai_vars.worldinfo_u[src]["uid"]):
             _src = i
-        elif(e["uid"] == koboldai_vars.worldinfo_u[str(dst)]["uid"]):
+        elif(e["uid"] == koboldai_vars.worldinfo_u[dst]["uid"]):
             _dst = i
     koboldai_vars.worldinfo[_src]["folder"] = koboldai_vars.worldinfo[_dst]["folder"]
     koboldai_vars.worldinfo.insert(_dst - (_dst >= _src), koboldai_vars.worldinfo.pop(_src))
@@ -4360,12 +4360,12 @@ def movewiitem(dst, src):
 #==================================================================#
 def movewifolder(dst, src):
     setgamesaved(False)
-    koboldai_vars.wifolders_l.remove(str(src))
+    koboldai_vars.wifolders_l.remove(src)
     if(dst is None):
         # If dst is None, that means we should move src to be the last folder
-        koboldai_vars.wifolders_l.append(str(src))
+        koboldai_vars.wifolders_l.append(src)
     else:
-        koboldai_vars.wifolders_l.insert(koboldai_vars.wifolders_l.index(str(dst)), str(src))
+        koboldai_vars.wifolders_l.insert(koboldai_vars.wifolders_l.index(dst), src)
     sendwi()
 
 #==================================================================#
@@ -4391,7 +4391,7 @@ def sendwi():
         last_folder = ...
         for wi in koboldai_vars.worldinfo:
             if(wi["folder"] != last_folder):
-                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': koboldai_vars.wifolders_d[str(wi["folder"])] if wi["folder"] is not None else None}, broadcast=True, room="UI_1")
+                emit('from_server', {'cmd': 'addwifolder', 'uid': wi["folder"], 'data': koboldai_vars.wifolders_d[wi["folder"]] if wi["folder"] is not None else None}, broadcast=True, room="UI_1")
                 last_folder = wi["folder"]
             ob = wi
             emit('from_server', {'cmd': 'addwiitem', 'data': ob}, broadcast=True, room="UI_1")
@@ -4412,8 +4412,8 @@ def requestwi():
 #  and items in different folders are sorted based on the order of the folders
 #==================================================================#
 def stablesortwi():
-    mapping = {int(uid): index for index, uid in enumerate(koboldai_vars.wifolders_l)}
-    koboldai_vars.worldinfo.sort(key=lambda x: mapping[int(x["folder"])] if x["folder"] is not None else float("inf"))
+    mapping = {uid: index for index, uid in enumerate(koboldai_vars.wifolders_l)}
+    koboldai_vars.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
     last_folder = ...
     last_wi = None
     for i, wi in enumerate(koboldai_vars.worldinfo):
@@ -4434,7 +4434,6 @@ def stablesortwi():
 #==================================================================#
 def commitwi(ar):
     for ob in ar:
-        ob["uid"] = str(ob["uid"])
         koboldai_vars.worldinfo_u[ob["uid"]]["key"]          = ob["key"]
         koboldai_vars.worldinfo_u[ob["uid"]]["keysecondary"] = ob["keysecondary"]
         koboldai_vars.worldinfo_u[ob["uid"]]["content"]      = ob["content"]
@@ -4457,9 +4456,9 @@ def deletewi(uid):
         koboldai_vars.deletewi = uid
         if(koboldai_vars.deletewi is not None):
             if(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"] is not None):
-                for i, e in enumerate(koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])]):
+                for i, e in enumerate(koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]]):
                     if(e["uid"] == koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["uid"]):
-                        koboldai_vars.wifolders_u[str(koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"])].pop(i)
+                        koboldai_vars.wifolders_u[koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["folder"]].pop(i)
                         break
             for i, e in enumerate(koboldai_vars.worldinfo):
                 if(e["uid"] == koboldai_vars.worldinfo_u[koboldai_vars.deletewi]["uid"]):
@@ -4475,18 +4474,17 @@ def deletewi(uid):
 #  
 #==================================================================#
 def deletewifolder(uid):
-    uid = str(uid)
     del koboldai_vars.wifolders_u[uid]
     del koboldai_vars.wifolders_d[uid]
     del koboldai_vars.wifolders_l[koboldai_vars.wifolders_l.index(uid)]
     setgamesaved(False)
     # Delete uninitialized entries in the folder we're going to delete
-    koboldai_vars.worldinfo = [wi for wi in koboldai_vars.worldinfo if str(wi["folder"]) != uid or wi["init"]]
+    koboldai_vars.worldinfo = [wi for wi in koboldai_vars.worldinfo if wi["folder"] != uid or wi["init"]]
     koboldai_vars.worldinfo_i = [wi for wi in koboldai_vars.worldinfo if wi["init"]]
     # Move WI entries that are inside of the folder we're going to delete
     # so that they're outside of all folders
     for wi in koboldai_vars.worldinfo:
-        if(str(wi["folder"]) == uid):
+        if(wi["folder"] == uid):
             wi["folder"] = None
 
     sendwi()
@@ -6566,7 +6564,7 @@ def UI_2_create_world_info_folder(data):
 @socketio.on('delete_world_info')
 @logger.catch
 def UI_2_delete_world_info(uid):
-    koboldai_vars.worldinfo_v2.delete(int(uid))
+    koboldai_vars.worldinfo_v2.delete(uid)
 
 
 #==================================================================#
@@ -6621,7 +6619,7 @@ def UI_2_import_world_info():
         for child in children:
             # Child is index
             if child not in uids:
-                entry_data = wi_data["entries"][str(child)]
+                entry_data = wi_data["entries"][child]
                 uids[child] = koboldai_vars.worldinfo_v2.add_item(
                     title=entry_data["title"],
                     key=entry_data["key"],
@@ -7724,7 +7722,6 @@ def maybe_review_story() -> None:
     for uid, wi in koboldai_vars.worldinfo_v2.world_info.items():
         if wi["type"] == "commentator":
             continue
-        uid = int(uid)
         allowed_wi_uids.append(uid)
 
     prompt = f"\n\n{speaker_name}'s thoughts on what just happened in this story: \""
@@ -9225,7 +9222,7 @@ def get_world_info():
             if wi["folder"] != last_folder:
                 folder = []
                 if wi["folder"] is not None:
-                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[str(wi["folder"])]["name"], "entries": folder})
+                    folders.append({"uid": wi["folder"], "name": koboldai_vars.wifolders_d[wi["folder"]]["name"], "entries": folder})
                 last_folder = wi["folder"]
             (folder if wi["folder"] is not None else entries).append({k: v for k, v in wi.items() if k not in ("init", "folder", "num") and (wi["selective"] or k != "keysecondary")})
     return {"folders": folders, "entries": entries}
