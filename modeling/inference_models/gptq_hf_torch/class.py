@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 model_backend_type = "GPTQ"
-model_backend_name = "Huggingface GPTQ"
+model_backend_name = "Legacy GPTQ"
 
 
 def load_model_gptq_settings(path):

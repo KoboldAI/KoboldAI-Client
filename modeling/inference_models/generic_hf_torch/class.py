@@ -57,18 +57,19 @@ class model_backend(HFTorchInferenceModel):
                         temp = json.load(f)
                 else:
                     temp = {}
-                requested_parameters.append({
-                                            "uitype": "dropdown",
-                                            "unit": "text",
-                                            "label": "Quantization",
-                                            "id": "quantization",
-                                            "default": temp['quantization'] if 'quantization' in temp else '4bit' if dependency_exists else '16-bit',
-                                            "tooltip": "Whether or not to use BnB's 4-bit or 8-bit mode",
-                                            "menu_path": "Layers",
-                                            "children": [{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': '8bit'}, {'text': '16-bit', 'value':'16-bit'}],
-                                            "extra_classes": "",
-                                            "refresh_model_inputs": False
-                                        })
+                if not hasattr(self.model_config, 'quantization_config'):
+                    requested_parameters.append({
+                                                "uitype": "dropdown",
+                                                "unit": "text",
+                                                "label": "Quantization",
+                                                "id": "quantization",
+                                                "default": temp['quantization'] if 'quantization' in temp else '4bit' if dependency_exists else '16-bit',
+                                                "tooltip": "Whether or not to use BnB's 4-bit or 8-bit mode",
+                                                "menu_path": "Layers",
+                                                "children": [{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': '8bit'}, {'text': '16-bit', 'value':'16-bit'}],
+                                                "extra_classes": "",
+                                                "refresh_model_inputs": False
+                                            })
         else:
             logger.warning("Bitsandbytes is not installed, you can not use Quantization for Huggingface models")
         return requested_parameters
@@ -105,24 +106,25 @@ class model_backend(HFTorchInferenceModel):
             "low_cpu_mem_usage": True,
         }
         
-        if self.quantization == "8bit":
-            tf_kwargs.update({
-                "quantization_config":BitsAndBytesConfig(
-                    load_in_8bit=True,
-                    llm_int8_enable_fp32_cpu_offload=True
-                ),
-            })
+        if not hasattr(self.model_config, 'quantization_config'):
+            if self.quantization == "8bit":
+                tf_kwargs.update({
+                    "quantization_config":BitsAndBytesConfig(
+                        load_in_8bit=True,
+                        llm_int8_enable_fp32_cpu_offload=True
+                    ),
+                })
 
-        if self.quantization == "4bit" or utils.koboldai_vars.colab_arg:
-            tf_kwargs.update({
-                "quantization_config":BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type='nf4',
-                    llm_int8_enable_fp32_cpu_offload=True
-                ),
-            })
+            if self.quantization == "4bit" or utils.koboldai_vars.colab_arg:
+                tf_kwargs.update({
+                    "quantization_config":BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type='nf4',
+                        llm_int8_enable_fp32_cpu_offload=True
+                    ),
+                })
 
         if self.model_type == "gpt2":
             # We must disable low_cpu_mem_usage and if using a GPT-2 model
