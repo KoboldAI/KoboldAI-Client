@@ -282,6 +282,7 @@ class model_backend(InferenceModel):
 
         self.generator.gen_begin_reuse(gen_in)
 
+        trim_count = 0
         for i in range(max_new):
             logits = self.model.forward(self.generator.sequence[:, -1:], self.generator.cache)
             logits[:, :, self.tokenizer.bos_token_id] = -10000.0
@@ -300,15 +301,19 @@ class model_backend(InferenceModel):
 
             utils.koboldai_vars.generated_tkns += 1
 
-            if token.item() == self.tokenizer.eos_token_id: break
+            if token.item() == self.tokenizer.eos_token_id:
+                trim_count = 1
+                break
 
-        utils.koboldai_vars.generated_tkns = max_new
+        utils.koboldai_vars.generated_tkns = max_new - trim_count
+        if trim_count > 0:
+            seq = self.generator.sequence[:, gen_in.size(1):-trim_count]
+        else:
+            seq = self.generator.sequence[:, gen_in.size(1):]
 
         return GenerationResult(
             model=self,
-            out_batches=np.array(
-                self.generator.sequence[:, gen_in.size(1):],
-            ),
+            out_batches=np.array(seq,),
             prompt=prompt_tokens,
             is_whole_generation=True,
             single_line=single_line,
