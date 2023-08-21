@@ -54,3 +54,5 @@ dependencies:
     - einops
     - peft==0.3.0
     - scipy
+    - windows-curses; sys_platform == 'win32'
+    - pynvml

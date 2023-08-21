@@ -44,3 +44,5 @@ dependencies:
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - einops
     - peft==0.3.0
+    - windows-curses; sys_platform == 'win32'
+    - pynvml

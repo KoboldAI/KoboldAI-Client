@@ -61,6 +61,12 @@ import gc
 import traceback
 
 import lupa
+# Hack to make the new Horde worker understand its imports...
+try:
+    sys.path.append(os.path.abspath("AI-Horde-Worker"))
+    print(os.path.abspath("AI-Horde-Worker/"))
+except:
+    pass
 
 # KoboldAI
 import fileops
