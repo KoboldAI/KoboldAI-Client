@@ -1352,17 +1352,22 @@ class system_settings(settings):
             if name == 'horde_share':
                 if self.on_colab is True:
                     return
-                if not os.path.exists("./KoboldAI-Horde-Bridge"):
+                if not os.path.exists("./AI-Horde-Worker"):
                     return
                 if value is True:
                     if self._horde_pid is None:
                         logger.info("Starting Horde bridge")
-                        bd_module = importlib.import_module("KoboldAI-Horde-Bridge.worker.bridge_data.scribe")
+                        bd_module = importlib.import_module("AI-Horde-Worker.worker.bridge_data.scribe")
                         bridge_data = bd_module.KoboldAIBridgeData()
                         bridge_data.reload_data()
                         bridge_data.kai_url = f'http://127.0.0.1:{self.port}'
+                        bridge_data.horde_url = self._koboldai_var.horde_url
+                        bridge_data.api_key = self._koboldai_var.horde_api_key
+                        bridge_data.worker_name = self._koboldai_var.horde_worker_name
+                        if bridge_data.worker_name == "My Awesome Instance":
+                            bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
                         logger.info(f"Name: {bridge_data.worker_name} on {bridge_data.kai_url}")
-                        worker_module = importlib.import_module("KoboldAI-Horde-Bridge.worker.workers.scribe")
+                        worker_module = importlib.import_module("AI-Horde-Worker.worker.workers.scribe")
                         self._horde_pid = worker_module.ScribeWorker(bridge_data)
                         threading.Thread(target=self._horde_pid.start).run()
                 else:
