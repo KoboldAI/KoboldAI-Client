@@ -1368,7 +1368,7 @@ class system_settings(settings):
                 else:
                     if self._horde_pid is not None:
                         logger.info("Killing Horde bridge")
-                        self._horde_pid.stop()
+                        self._horde_pid.should_stop = True
                         self._horde_pid = None
 
                 
