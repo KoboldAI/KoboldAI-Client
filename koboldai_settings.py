@@ -1369,11 +1369,14 @@ class system_settings(settings):
                         logger.info(f"Name: {bridge_data.worker_name} on {bridge_data.kai_url}")
                         worker_module = importlib.import_module("AI-Horde-Worker.worker.workers.scribe")
                         self._horde_pid = worker_module.ScribeWorker(bridge_data)
-                        threading.Thread(target=self._horde_pid.start).run()
+                        new_thread = threading.Thread(target=self._horde_pid.start)
+                        new_thread.daemon = True
+                        new_thread.start()
+
                 else:
                     if self._horde_pid is not None:
                         logger.info("Killing Horde bridge")
-                        self._horde_pid.should_stop = True
+                        self._horde_pid.stop()
                         self._horde_pid = None
 
                 
