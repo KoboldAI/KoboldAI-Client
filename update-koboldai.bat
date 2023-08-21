@@ -15,24 +15,18 @@ IF %M%==2 GOTO subfolder
 IF %M%==3 GOTO drivemap_B
 
 :subfolder
-SET TEMP=%~DP0MINICONDA3
-SET TMP=%~DP0MINICONDA3
 call miniconda3\condabin\activate
 GOTO GIT
 
 :drivemap
 subst /D K: >nul
 subst K: miniconda3 >nul
-SET TEMP=K:\
-SET TMP=K:\
 call K:\python\condabin\activate
 GOTO GIT
 
 :drivemap_B
 subst /D B: >nul
 subst B: miniconda3 >nul
-SET TEMP=B:\
-SET TMP=B:\
 call B:\python\condabin\activate
 GOTO GIT
 
