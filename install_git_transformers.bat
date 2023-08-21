@@ -24,6 +24,8 @@ SET TEMP=%~DP0MINICONDA3
 SET TMP=%~DP0MINICONDA3
 call miniconda3\condabin\activate
 pip install git+https://github.com/huggingface/transformers
+pip install git+https://github.com/huggingface/optimum
+pip install git+https://github.com/huggingface/accelerate
 cmd /k
 
 :drivemap
@@ -34,6 +36,8 @@ SET TEMP=K:\
 SET TMP=K:\
 call K:\python\condabin\activate
 pip install git+https://github.com/huggingface/transformers
+pip install git+https://github.com/huggingface/optimum
+pip install git+https://github.com/huggingface/accelerate
 cmd /k
 
 :drivemap_B
@@ -44,4 +48,6 @@ SET TEMP=B:\
 SET TMP=B:\
 call B:\python\condabin\activate
 pip install git+https://github.com/huggingface/transformers
+pip install git+https://github.com/huggingface/optimum
+pip install git+https://github.com/huggingface/accelerate
 cmd /k
