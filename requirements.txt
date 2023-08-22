@@ -1,5 +1,6 @@
-transformers==4.31.*
-huggingface_hub==0.15.1
+transformers==4.32.*
+huggingface_hub==0.16.4
+git+https://github.com/huggingface/optimum@2c1eaf6c0242badb86f3d626811ee3d7d220ec06
 Flask==2.2.3
 Flask-SocketIO==5.3.2
 python-socketio==5.7.2
@@ -15,7 +16,7 @@ markdown
 bleach==4.1.0
 sentencepiece
 protobuf
-accelerate==0.20.3
+accelerate==0.21.0
 flask-session==0.4.0
 marshmallow>=3.13
 apispec-webframeworks
