@@ -1364,7 +1364,7 @@ class system_settings(settings):
                         bridge_data.kai_url = f'http://127.0.0.1:{self.port}'
                         bridge_data.horde_url = self._koboldai_var.horde_url
                         bridge_data.api_key = self._koboldai_var.horde_api_key
-                        bridge_data.worker_name = self._koboldai_var.horde_worker_name
+                        bridge_data.scribe_name = self._koboldai_var.horde_worker_name
                         bridge_data.disable_terminal_ui = False
                         if bridge_data.worker_name == "My Awesome Instance":
                             bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
