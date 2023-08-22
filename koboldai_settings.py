@@ -1364,6 +1364,7 @@ class system_settings(settings):
                         bridge_data.horde_url = self._koboldai_var.horde_url
                         bridge_data.api_key = self._koboldai_var.horde_api_key
                         bridge_data.worker_name = self._koboldai_var.horde_worker_name
+                        bridge_data.disable_terminal_ui = True # I know people love it, but it prevents stopping the worker at the moment. Feel free to flip the switch if you prefer to have it, you must then terminate your worker with Q. - Henk
                         if bridge_data.worker_name == "My Awesome Instance":
                             bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
                         logger.info(f"Name: {bridge_data.worker_name} on {bridge_data.kai_url}")
