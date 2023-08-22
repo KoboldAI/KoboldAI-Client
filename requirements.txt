@@ -44,3 +44,5 @@ einops
 peft==0.3.0
 scipy
 auto-gptq
+windows-curses; sys_platform == 'win32'
+pynvml

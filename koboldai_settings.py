@@ -1350,38 +1350,36 @@ class system_settings(settings):
                 self._koboldai_var.calc_ai_text()
             
             if name == 'horde_share':
-                if self.on_colab == False:
-                    if os.path.exists("./KoboldAI-Horde-Bridge"):
-                        if value == True:
-                            if self._horde_pid is None:
-                                logger.info("Starting Horde bridge")
-                                bridge = importlib.import_module("KoboldAI-Horde-Bridge.bridge")
-                                self._horde_pid = bridge.kai_bridge()
-                                try:
-                                    bridge_cd = importlib.import_module("KoboldAI-Horde-Bridge.clientData")
-                                    cluster_url = bridge_cd.cluster_url
-                                    kai_name = bridge_cd.kai_name
-                                    if kai_name == "My Awesome Instance":
-                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
-                                    api_key = bridge_cd.api_key
-                                    priority_usernames = bridge_cd.priority_usernames
-                                except:
-                                    cluster_url = "https://horde.koboldai.net"
-                                    kai_name = self._koboldai_var.horde_worker_name
-                                    if kai_name == "My Awesome Instance":
-                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
-                                    api_key = self._koboldai_var.horde_api_key
-                                    priority_usernames = []
-                                # Always use the local URL & port
-                                kai_url = f'http://127.0.0.1:{self.port}'
+                if self.on_colab is True:
+                    return
+                if not os.path.exists("./AI-Horde-Worker"):
+                    return
+                if value is True:
+                    if self._horde_pid is None:
+                        self._horde_pid = "Pending" # Hack to make sure we don't launch twice while it loads
+                        logger.info("Starting Horde bridge")
+                        bd_module = importlib.import_module("AI-Horde-Worker.worker.bridge_data.scribe")
+                        bridge_data = bd_module.KoboldAIBridgeData()
+                        bridge_data.reload_data()
+                        bridge_data.kai_url = f'http://127.0.0.1:{self.port}'
+                        bridge_data.horde_url = self._koboldai_var.horde_url
+                        bridge_data.api_key = self._koboldai_var.horde_api_key
+                        bridge_data.scribe_name = self._koboldai_var.horde_worker_name
+                        bridge_data.disable_terminal_ui = False
+                        if bridge_data.worker_name == "My Awesome Instance":
+                            bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
+                        worker_module = importlib.import_module("AI-Horde-Worker.worker.workers.scribe")
+                        self._horde_pid = worker_module.ScribeWorker(bridge_data)
+                        new_thread = threading.Thread(target=self._horde_pid.start)
+                        new_thread.daemon = True
+                        new_thread.start()
 
-                                logger.info(f"Name: {kai_name} on {kai_url}")
-                                threading.Thread(target=self._horde_pid.bridge, args=(1, api_key, kai_name, kai_url, cluster_url, priority_usernames)).run()
-                        else:
-                            if self._horde_pid is not None:
-                                logger.info("Killing Horde bridge")
-                                self._horde_pid.stop()
-                                self._horde_pid = None
+                else:
+                    if self._horde_pid is not None:
+                        logger.info("Killing Horde bridge")
+                        self._horde_pid.stop()
+                        self._horde_pid = None
+
                 
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
