@@ -1367,7 +1367,6 @@ class system_settings(settings):
                         bridge_data.disable_terminal_ui = False
                         if bridge_data.worker_name == "My Awesome Instance":
                             bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
-                        logger.info(f"Name: {bridge_data.worker_name} on {bridge_data.kai_url}")
                         worker_module = importlib.import_module("AI-Horde-Worker.worker.workers.scribe")
                         self._horde_pid = worker_module.ScribeWorker(bridge_data)
                         new_thread = threading.Thread(target=self._horde_pid.start)
