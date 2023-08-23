@@ -91,7 +91,7 @@ class model_backend(InferenceModel):
         self.capabilties = ModelCapabilities(
             embedding_manipulation=False,
             post_token_hooks=True,
-            stopper_hooks=False,
+            stopper_hooks=True,
             post_token_probs=False,
         )
 
@@ -303,6 +303,15 @@ class model_backend(InferenceModel):
 
             if token.item() == self.tokenizer.eos_token_id:
                 trim_count = 1
+                break
+
+            # Apply stoppers
+            do_stop = False
+            for stopper in self.stopper_hooks:
+                do_stop = stopper(self, self.generator.sequence)
+                if do_stop:
+                    break
+            if do_stop:
                 break
 
         utils.koboldai_vars.generated_tkns = max_new - trim_count
