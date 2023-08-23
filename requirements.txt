@@ -31,7 +31,7 @@ ansi2html
 flask_compress
 ijson
 bitsandbytes==0.40.0.post4; sys_platform == 'linux'
-https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.40.0.post4-py3-none-win_amd64.whl; sys_platform == 'win32'
+https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.40.0.post4-py3-none-win_amd64.whl; sys_platform == 'win32'; python_version
 ftfy
 py==1.11.0
 pydub
@@ -43,6 +43,9 @@ git+https://github.com/0cc4m/hf_bleeding_edge/
 einops
 peft==0.3.0
 scipy
-auto-gptq
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux'; python_version == '3.10'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32'; python_version == '3.10'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'; python_version == '3.8'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32'; python_version == '3.8'
 windows-curses; sys_platform == 'win32'
 pynvml
