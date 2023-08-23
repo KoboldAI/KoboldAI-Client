@@ -34,7 +34,8 @@ dependencies:
     - lupa==1.10
     - transformers==4.32.*
     - huggingface_hub==0.16.4
-    - git+https://github.com/huggingface/optimum@2c1eaf6c0242badb86f3d626811ee3d7d220ec06
+    - optimum==1.12.0
+    - safetensors==0.3.2
     - accelerate==0.21.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - flask-session
