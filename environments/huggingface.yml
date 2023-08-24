@@ -35,7 +35,7 @@ dependencies:
     - transformers==4.32.*
     - huggingface_hub==0.16.4
     - optimum==1.12.0
-    - safetensors==0.3.2
+    - safetensors==0.3.3
     - accelerate==0.21.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - flask-session
