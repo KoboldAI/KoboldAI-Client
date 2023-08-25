@@ -49,6 +49,9 @@ class model_backend(HFTorchInferenceModel):
 
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters)
+        if not utils.koboldai_vars.hascuda:
+            logger.warning("Your GPU has not been detected and you can only make use of 32-bit inference, meaning the ram requirements are 8 times higher than specified on the menu and your generations will be slow.\nUnless this is an error and your GPU is known to be compatible with our software check out https://koboldai.org/cpp for a suitable alternative that has wider GPU support and has the ability to run models in 4-bit on the CPU.")
+
         dependency_exists = importlib.util.find_spec("bitsandbytes")
         if dependency_exists:
             if model_name != 'customhuggingface' or "custom_model_name" in parameters:
@@ -57,7 +60,7 @@ class model_backend(HFTorchInferenceModel):
                         temp = json.load(f)
                 else:
                     temp = {}
-                if not hasattr(self.model_config, 'quantization_config'):
+                if not hasattr(self.model_config, 'quantization_config') and utils.koboldai_vars.hascuda:
                     requested_parameters.append({
                                                 "uitype": "dropdown",
                                                 "unit": "text",
