@@ -1369,7 +1369,7 @@ class system_settings(settings):
                         bridge_data.horde_url = self._koboldai_var.horde_url
                         bridge_data.api_key = self._koboldai_var.horde_api_key
                         bridge_data.scribe_name = self._koboldai_var.horde_worker_name
-                        bridge_data.disable_terminal_ui = True
+                        bridge_data.disable_terminal_ui = self._koboldai_var.host
                         if bridge_data.worker_name == "My Awesome Instance":
                             bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
                         worker_module = importlib.import_module("AI-Horde-Worker.worker.workers.scribe")
