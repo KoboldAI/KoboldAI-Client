@@ -1358,10 +1358,11 @@ class system_settings(settings):
                     if self._horde_pid is None:
                         self._horde_pid = "Pending" # Hack to make sure we don't launch twice while it loads
                         logger.info("Starting Horde bridge")
-                        bd_module = importlib.import_module("AI-Horde-Worker.worker.bridge_data.scribe")
                         logger.debug("Clearing command line args in sys.argv before AI Horde Scribe load")
+                        logger.info(args)
                         sys_arg_bkp = sys.argv.copy()
                         sys.argv = sys.argv[:1]
+                        bd_module = importlib.import_module("AI-Horde-Worker.worker.bridge_data.scribe")
                         bridge_data = bd_module.KoboldAIBridgeData()
                         sys.argv = sys_arg_bkp
                         bridge_data.reload_data()
