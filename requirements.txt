@@ -1,4 +1,4 @@
-transformers==4.32.*
+transformers==4.32.1
 huggingface_hub==0.16.4
 optimum==1.12.0
 safetensors==0.3.3
