@@ -49,9 +49,16 @@ def load_model_gptq_settings(path):
 
     gptq_model = False
     gptq_file = False
+    gptq_in_config = False
+
+    try:
+        if js['quantization_config']['quant_method'] == "gptq":
+            gptq_in_config = True
+    except:
+        pass
 
     gptq_legacy_files = glob.glob(os.path.join(path, "*4bit*.safetensors"))
-    if "gptq_bits" in js:
+    if "gptq_bits" in js or gptq_in_config:
         gptq_model = True
         gptq_file = os.path.join(path, "model.safetensors")
     elif gptq_legacy_files:
