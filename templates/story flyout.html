@@ -50,6 +50,14 @@
 			<label for="authors_notes">Author's Notes:</label><br/>
 			<textarea autocomplete="off" rows=16 id="authors_notes" class="var_sync_story_authornote var_sync_alt_story_authornote_length fullwidth" oninput="autoResize(this)" onchange='sync_to_server(this);'></textarea><br/>
 
+			<div class="setting_tile_area">
+				{% with menu='author_notes' %}
+					{% with sub_path='' %}
+						{% include 'settings item.html' %}
+					{% endwith %}
+				{% endwith %}
+			</div>
+
 			<h4 class="section_header">Genre</h4>
 			<div class="help_text">Styles the AI will attempt to imitate. Effectiveness depends on model.</div>
 			<input id="genre-input" class="fullwidth" placeholder="Fantasy" autocomplete="off" spellcheck="false">
@@ -75,14 +83,6 @@
 					}
 				</script>
 			</div>
-
-			<div class="setting_tile_area">
-				{% with menu='author_notes' %}
-					{% with sub_path='' %}
-						{% include 'settings item.html' %}
-					{% endwith %}
-				{% endwith %}
-			</div>
 		</div>
 	</div>
 	<div id="story_menu_notes" class="story_category_area tab-target tab-target-story hidden">
@@ -97,7 +97,7 @@
 	<div id="story_menu_wi" class="story_category_area tab-target tab-target-story hidden">
 		<h4 class="section_header" style="margin-left: 12px;">World Info</h4>
 		<div class="help_text" style="margin-left: 20px;">
-			Lore information, which the AI recalls by certain words.
+			Lore information, which the AI recalls with the mention of certain words.
 			<span class="helpicon material-icons-outlined" tooltip="Use this instead of Memory for information on things like characters, objects, events, places, and anything else with detail.">help_icon</span>
 		</div>
 		<div class="setting_tile_area wi_settings">
