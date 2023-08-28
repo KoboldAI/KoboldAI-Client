@@ -234,7 +234,7 @@ class HFInferenceModel(InferenceModel):
         if self.model_type == "llama":
             # Note: self.tokenizer is a GenericTokenizer, and self.tokenizer.tokenizer is the actual LlamaTokenizer
             self.tokenizer.add_bos_token = False
-
+            self.tokenizer.legacy = False
             # HF transformers no longer supports decode_with_prefix_space
             # We work around this by wrapping decode, encode, and __call__
             # with versions that work around the 'prefix space' misfeature

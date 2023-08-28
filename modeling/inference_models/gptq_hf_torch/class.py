@@ -389,7 +389,7 @@ class model_backend(HFTorchInferenceModel):
                 except:
                     autogptq_failed = True # Ugly hack to get it to free the VRAM of the last attempt like we do above, better suggestions welcome - Henk
                 if autogptq_failed:
-                    model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map, disable_exllama=True)
+                    model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map, inject_fused_attention=False)
                 # Patch in embeddings function
                 def get_input_embeddings(self):
                     return self.model.get_input_embeddings()

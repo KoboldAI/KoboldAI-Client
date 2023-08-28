@@ -248,7 +248,7 @@ model_menu = {
         MenuPath("Load a model from its directory", "NeoCustom"),
         MenuPath("Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom"),
         MenuModel("Load custom Pytorch model from Hugging Face", "customhuggingface", ""),
-        MenuModel("Load custom GPTQ model from Hugging Face", "customgptq", "", model_backend="GPTQ"),
+        MenuModel("Load old GPTQ model from Hugging Face", "customgptq", "", model_backend="GPTQ"),
         MenuFolder("Instruct Models", "instructlist"),
         MenuFolder("Novel Models", "novellist"),
         MenuFolder("Chat Models", "chatlist"),
