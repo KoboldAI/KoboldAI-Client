@@ -44,7 +44,7 @@
 	</div>
 
 	<!------------ Main Screen--------------------->
-	<div id="main-grid" class="main-grid settings_pinned var_sync_alt_model_numseqs" onclick="close_menus();" option_length="0">
+	<div id="main-grid" class="main-grid settings_pinned var_sync_alt_model_numseqs" onclick="close_menus();" hide-options="true">
 		<!------------ Game Text Screen--------------------->
 		<div class="gamescreen" id="gamescreen" context-menu="gamescreen">
 			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
@@ -53,13 +53,13 @@
 				<div id="welcome_text" class="var_sync_model_welcome" draggable="False"></div>
 			</div>
 
-			<div class="gametext" id="Selected Text" contenteditable=false tabindex=0 onpaste="check_game_after_paste()" onfocusout="savegametextchanges();" onclick="return set_edit(event)" onkeyup="return set_edit(event);">
+			<div class="gametext" id="Selected Text" contenteditable="false" tabindex="0" onkeyup="return set_edit(event);">
 				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext hidden" chunk="-1"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
 		</div>
 
 		<!------------ Sequences --------------------->
 		<div id="action_count" class="var_sync_actions_Action_Count hidden"></div>
-		<div id="Select Options" class="sequence_area"></div>
+		<div id="option-container" class="hidden"></div>
 
 		<!-- Story Review -->
 		<div id="story-review" class="hidden">
@@ -110,9 +110,9 @@
 					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='play_pause_tts()' aria-label="play"><span id="play_tts" class="material-icons-outlined" style="font-size: 1.4em;">play_arrow</span></button>
 					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='stop_tts()' aria-label="play"><span id="stop_tts" class="material-icons-outlined" style="font-size: 1.4em;">stop</span></button>
 			</span>
-			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" onclick="storySubmit();">Submit</button>
+			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" onclick="storySubmit();" context-menu="submit-button">Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsent"><img id="thinking" src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>
-			<button type="button" class="btn action_button back var_sync_alt_system_aibusy" system_aibusy=False onclick="storyBack();" aria-label="undo"><span class="material-icons-outlined" style="font-size: 1.4em;">replay</span></button>
+			<button type="button" class="btn action_button back var_sync_alt_system_aibusy" system_aibusy=False onclick="storyBack();" aria-label="undo" context-menu="undo-button"><span class="material-icons-outlined" style="font-size: 1.4em;">replay</span></button>
 			<button type="button" class="btn action_button redo var_sync_alt_system_aibusy" system_aibusy=False onclick="storyRedo();" aria-label="redo"><span class="material-icons-outlined" style="font-size: 1.4em;">arrow_forward</span></button>
 			<button type="button" class="btn action_button retry var_sync_alt_system_aibusy" system_aibusy=False onclick="storyRetry();" aria-label="retry"><span class="material-icons-outlined" style="font-size: 1.4em;">autorenew</span></button>
 		</div>

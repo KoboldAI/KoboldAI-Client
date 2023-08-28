@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import torch
-import requests
 import numpy as np
 from typing import List, Optional, Union
 
 import utils
-from logger import logger
 from modeling.inference_model import (
     GenerationResult,
     GenerationSettings,
@@ -15,29 +13,46 @@ from modeling.inference_model import (
 )
 
 model_backend_name = "Read Only"
-model_backend_type = "Read Only" #This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
+model_backend_type = "Read Only"  # This should be a generic name in case multiple model backends are compatible (think Hugging Face Custom and Basic Hugging Face)
 
-class BasicAPIException(Exception):
-    """To be used for errors when using the Basic API as an interface."""
+
+class DummyHFTokenizerOut:
+    input_ids = np.array([[]])
+
+
+class FacadeTokenizer:
+    def __init__(self):
+        self._koboldai_header = []
+
+    def decode(self, _input):
+        return ""
+
+    def encode(self, input_text):
+        return []
+
+    def __call__(self, *args, **kwargs) -> DummyHFTokenizerOut:
+        return DummyHFTokenizerOut()
 
 
 class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
 
-        # Do not allow API to be served over the API
+        # Do not allow ReadOnly to be served over the API
         self.capabilties = ModelCapabilities(api_host=False)
-        self.tokenizer = self._tokenizer()
+        self.tokenizer: FacadeTokenizer = None
         self.model = None
         self.model_name = "Read Only"
-    
+
     def is_valid(self, model_name, model_path, menu_path):
         return model_name == "ReadOnly"
-    
-    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+
+    def get_requested_parameters(
+        self, model_name, model_path, menu_path, parameters={}
+    ):
         requested_parameters = []
         return requested_parameters
-        
+
     def set_input_parameters(self, parameters):
         return
 
@@ -46,17 +61,9 @@ class model_backend(InferenceModel):
 
     def _initialize_model(self):
         return
-    
-    class _tokenizer():
-        def __init__(self):
-            self._koboldai_header = []
-        def decode(self, _input):
-            return ""
-        def encode(self, input_text):
-            return []
 
     def _load(self, save_model: bool = False, initial_load: bool = False) -> None:
-        self.tokenizer = self.tokenizer
+        self.tokenizer = FacadeTokenizer()
         self.model = None
         utils.koboldai_vars.noai = True
 
@@ -72,7 +79,7 @@ class model_backend(InferenceModel):
     ):
         return GenerationResult(
             model=self,
-            out_batches=np.array([]),
+            out_batches=np.array([[]]),
             prompt=prompt_tokens,
             is_whole_generation=True,
             single_line=single_line,

@@ -133,7 +133,8 @@ class model_backend(HFInferenceModel):
             utils.koboldai_vars.compiling = True
 
         def mtj_stopped_compiling_callback() -> None:
-            print(Colors.GREEN + "TPU backend compilation stopped" + Colors.END)
+            if utils.koboldai_vars.compiling:
+                print(Colors.GREEN + "TPU backend compilation stopped" + Colors.END)
             utils.koboldai_vars.compiling = False
 
         def mtj_settings_callback() -> dict:
