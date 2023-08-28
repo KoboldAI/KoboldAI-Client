@@ -54,3 +54,5 @@ dependencies:
     - einops
     - peft==0.3.0
     - scipy
+    - --find-links=https://0cc4m.github.io/exllama/exllama-whl-links.html
+    - exllama==0.0.6
