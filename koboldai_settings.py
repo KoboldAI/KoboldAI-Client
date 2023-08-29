@@ -693,6 +693,7 @@ class model_settings(settings):
         self._koboldai_vars = koboldai_vars
         self.alt_multi_gen = False
         self.bit_8_available = None
+        self.use_default_badwordids = True
         self.supported_gen_modes = []
         
     def reset_for_model_load(self):
