@@ -399,6 +399,22 @@ gensettingstf = [
     {
  	"uitype": "toggle",
  	"unit": "bool",
+ 	"label": "Ban Bad Tokens",
+ 	"id": "setusedefaultbadwordids",
+ 	"min": 0,
+ 	"max": 1,
+ 	"step": 1,
+ 	"default": 1,
+	"tooltip": "Ban tokens that commonly worsen the writing experience for continuous story writing.",
+    "menu_path": "Settings",
+    "sub_path": "Sampling",
+    "classname": "model",
+    "name": "use_default_badwordids",
+    "ui_level": 0
+ 	},
+    {
+ 	"uitype": "toggle",
+ 	"unit": "bool",
  	"label": "Token Probabilities",
  	"id": "setshowprobs",
  	"min": 0,

@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 model_backend_type = "GPTQ"
-model_backend_name = "Huggingface GPTQ"
+model_backend_name = "Legacy GPTQ"
 
 
 def load_model_gptq_settings(path):
@@ -155,7 +155,7 @@ class model_backend(HFTorchInferenceModel):
 
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters)
-        if model_name != 'customhuggingface' or "custom_model_name" in parameters:
+        if model_name != 'customgptq' or "custom_model_name" in parameters:
             if os.path.exists("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
                 with open("settings/{}.generic_hf_torch.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
                     temp = json.load(f)
@@ -228,12 +228,15 @@ class model_backend(HFTorchInferenceModel):
                     logger.warning(f"Gave up on lazy loading due to {e}")
                     self.lazy_load = False
 
-        if self.get_local_model_path():
-            # Model is stored locally, load it.
-            self.model = self._get_model(self.get_local_model_path())
-            self.tokenizer = self._get_tokenizer(self.get_local_model_path())
-        else:
-            raise NotImplementedError("GPTQ Model downloading not implemented")
+        if not self.get_local_model_path():
+            print(self.get_local_model_path())
+            from huggingface_hub import snapshot_download
+            target_dir = "models/" + self.model_name.replace("/", "_")
+            print(self.model_name)
+            snapshot_download(self.model_name, local_dir=target_dir, local_dir_use_symlinks=False, cache_dir="cache/", revision=utils.koboldai_vars.revision)
+        
+        self.model = self._get_model(self.get_local_model_path())
+        self.tokenizer = self._get_tokenizer(self.get_local_model_path())
 
         if (
             utils.koboldai_vars.badwordsids is koboldai_settings.badwordsids_default
@@ -367,6 +370,7 @@ class model_backend(HFTorchInferenceModel):
                         raise RuntimeError("Model not supported by Occam's GPTQ")
                 except:
                     self.implementation = "AutoGPTQ"
+                    
             if self.implementation == "AutoGPTQ":
                 try:
                     import auto_gptq
@@ -379,11 +383,13 @@ class model_backend(HFTorchInferenceModel):
                 auto_gptq.modeling._base.AutoConfig = hf_bleeding_edge.AutoConfig
                 auto_gptq.modeling._base.AutoModelForCausalLM = hf_bleeding_edge.AutoModelForCausalLM
 
+                autogptq_failed = False 
                 try:
                     model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map)
                 except:
-                    model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map, disable_exllama=True)
-
+                    autogptq_failed = True # Ugly hack to get it to free the VRAM of the last attempt like we do above, better suggestions welcome - Henk
+                if autogptq_failed:
+                    model = AutoGPTQForCausalLM.from_quantized(location, model_basename=Path(gptq_file).stem, use_safetensors=gptq_file.endswith(".safetensors"), device_map=device_map, inject_fused_attention=False)
                 # Patch in embeddings function
                 def get_input_embeddings(self):
                     return self.model.get_input_embeddings()

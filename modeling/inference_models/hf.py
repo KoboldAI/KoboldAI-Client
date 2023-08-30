@@ -47,7 +47,7 @@ class HFInferenceModel(InferenceModel):
         requested_parameters = []
         if not self.hf_torch:
             return []
-        if model_name == 'customhuggingface':
+        if model_name in ('customhuggingface', 'customgptq'):
             requested_parameters.append({
                                         "uitype": "text",
                                         "unit": "text",
@@ -61,7 +61,7 @@ class HFInferenceModel(InferenceModel):
                                         "extra_classes": ""
                                     })
         
-        if model_name != 'customhuggingface' or "custom_model_name" in parameters:
+        if model_name not in ('customhuggingface', 'customgptq') or "custom_model_name" in parameters:
             model_name = parameters["custom_model_name"] if "custom_model_name" in parameters and parameters["custom_model_name"] != "" else model_name
             if model_path is not None and os.path.exists(model_path):
                 self.model_config = AutoConfig.from_pretrained(model_path)
@@ -234,7 +234,7 @@ class HFInferenceModel(InferenceModel):
         if self.model_type == "llama":
             # Note: self.tokenizer is a GenericTokenizer, and self.tokenizer.tokenizer is the actual LlamaTokenizer
             self.tokenizer.add_bos_token = False
-
+            self.tokenizer.legacy = False
             # HF transformers no longer supports decode_with_prefix_space
             # We work around this by wrapping decode, encode, and __call__
             # with versions that work around the 'prefix space' misfeature

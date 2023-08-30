@@ -152,6 +152,7 @@ if [ "$init" != "skip" ]; then
     cp -rn softprompts/* /content/drive/MyDrive/KoboldAI/softprompts/
     cp -rn presets/* /content/drive/MyDrive/KoboldAI/presets/
     cp -rn themes/* /content/drive/MyDrive/KoboldAI/themes/
+    rm -rf AI-Horde-Worker/
     rm -rf KoboldAI-Horde-Bridge/
     rm stories
     rm -rf stories/

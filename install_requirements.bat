@@ -44,8 +44,6 @@ echo 3 > loader.settings
 subst B: /D >nul
 mkdir miniconda3
 subst B: miniconda3
-SET TEMP=B:\
-SET TMP=B:\
 copy umamba.exe B:\umamba.exe
 copy loader.settings B:\loader.settings
 copy disconnect-kobold-drive.bat B:\disconnect-kobold-drive.bat
@@ -60,8 +58,6 @@ exit
 
 :subfolder
 echo 2 > loader.settings
-SET TEMP=%~DP0MINICONDA3
-SET TMP=%~DP0MINICONDA3
 umamba.exe create -r miniconda3\ -n base
 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingface.yml -y --always-copy
 umamba.exe clean -a -y

@@ -17,6 +17,8 @@ class Colors:
 STDOUT_LEVELS = ["GENERATION", "PROMPT"]
 INIT_LEVELS = ["INIT", "INIT_OK", "INIT_WARN", "INIT_ERR"]
 MESSAGE_LEVELS = ["MESSAGE"]
+STATS_LEVELS = ["STATS"]
+
 # By default we're at error level or higher
 verbosity = 20
 quiet = 0
@@ -54,6 +56,16 @@ def is_msg_log(record):
         return(False)
     return(True)
 
+def is_stats_log(record):
+    if record["level"].name not in STATS_LEVELS:
+        return False
+    return True
+
+def is_not_stats_log(record):
+    if record["level"].name in STATS_LEVELS:
+        return False
+    return True
+    
 def is_stderr_log(record):
     if record["level"].name in STDOUT_LEVELS + INIT_LEVELS + MESSAGE_LEVELS:
         return(False)
@@ -91,6 +103,7 @@ logger.level("INIT_ERR", no=31, color="<red>")
 # Messages contain important information without which this application might not be able to be used
 # As such, they have the highest priority
 logger.level("MESSAGE", no=61, color="<green>")
+logger.level("STATS", no=19, color="<blue>")
 
 logger.__class__.generation = partialmethod(logger.__class__.log, "GENERATION")
 logger.__class__.prompt = partialmethod(logger.__class__.log, "PROMPT")
