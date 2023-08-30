@@ -400,7 +400,7 @@ gensettingstf = [
  	"uitype": "toggle",
  	"unit": "bool",
  	"label": "Ban Bad Tokens",
- 	"id": "setusedefaultbadwordids",
+ 	"id": "setusedefaultbadwordsids",
  	"min": 0,
  	"max": 1,
  	"step": 1,
@@ -409,7 +409,7 @@ gensettingstf = [
     "menu_path": "Settings",
     "sub_path": "Sampling",
     "classname": "model",
-    "name": "use_default_badwordids",
+    "name": "use_default_badwordsids",
     "ui_level": 0
  	},
     {

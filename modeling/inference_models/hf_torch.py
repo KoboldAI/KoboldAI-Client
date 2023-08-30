@@ -330,17 +330,17 @@ class HFTorchInferenceModel(HFInferenceModel):
         if seed is not None:
             torch.manual_seed(seed)
 
-        if utils.koboldai_vars.use_default_badwordids:
-            self.active_badwordids = self.badwordsids + additional_bad_words_ids
+        if utils.koboldai_vars.use_default_badwordsids:
+            self.active_badwordsids = self.badwordsids + additional_bad_words_ids
         else:
             if additional_bad_words_ids:
-                self.active_badwordids = additional_bad_words_ids
+                self.active_badwordsids = additional_bad_words_ids
             else:
-                self.active_badwordids = None
+                self.active_badwordsids = None
         
         with torch.no_grad():
             start_time = time.time()
-            if self.active_badwordids: ## I know duplicating this is ugly, but HF checks if its present and accepts nothing but actual token bans if its there (Which I can't guarantee would be universal enough).... - Henk
+            if self.active_badwordsids: ## I know duplicating this is ugly, but HF checks if its present and accepts nothing but actual token bans if its there (Which I can't guarantee would be universal enough).... - Henk
                 genout = self.model.generate(
                     input_ids=gen_in,
                     do_sample=True,
@@ -348,7 +348,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         len(prompt_tokens) + max_new, utils.koboldai_vars.max_length
                     ),
                     repetition_penalty=1.0,
-                    bad_words_ids=self.active_badwordids,
+                    bad_words_ids=self.active_badwordsids,
                     use_cache=True,
                     num_return_sequences=batch_count,
                 )
