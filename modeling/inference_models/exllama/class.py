@@ -102,9 +102,6 @@ class model_backend(InferenceModel):
             post_token_probs=False,
         )
 
-        # We need to wait until the tokenizer is available to fill this in.
-        self.badwordsids = []
-
     def is_valid(self, model_name, model_path, menu_path):
         gptq_model, _ = load_model_gptq_settings(model_path)
         try:
@@ -129,7 +126,6 @@ class model_backend(InferenceModel):
         self.model = self._get_model(self.get_local_model_path(), {})
         self.tokenizer = self._get_tokenizer(self.get_local_model_path())
 
-        self.badwordsids = [self.tokenizer.bos_token_id, self.tokenizer.eos_token_id]
         self.cache = ExLlamaCache(self.model)
 
         self.generator = ExLlamaGenerator(self.model, self.tokenizer.tokenizer, self.cache)
@@ -221,6 +217,8 @@ class model_backend(InferenceModel):
         # Cache the newline token (for single line mode)
         # Since there is only one Llama token containing newline, just encode \n
         self.newline_tokens = self.tokenizer.encode("\n")
+        self.bracket_tokens = [i for i, tok in enumerate(vocab) if '[' in tok or ']' in tok]
+        self.tokenizer._koboldai_header = self.tokenizer.encode("")
 
     def unload(self):
         self.model_config = None
@@ -290,9 +288,12 @@ class model_backend(InferenceModel):
         if seed:
             torch.manual_seed(seed)
 
-        bad_words_ids = self.badwordsids
+        bad_words_ids = [self.tokenizer.bos_token_id]
+        if utils.koboldai_vars.use_default_badwordids:
+            bad_words_ids.append(self.tokenizer.eos_token_id)
+            bad_words_ids.extend(self.bracket_tokens)
         if single_line:
-            bad_words_ids = list(bad_words_ids) + self.newline_tokens
+            bad_words_ids.extend(self.newline_tokens)
 
         if not isinstance(prompt_tokens, torch.Tensor):
             gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]
@@ -301,7 +302,6 @@ class model_backend(InferenceModel):
 
         self.generator.gen_begin_reuse(gen_in)
 
-        trim_count = 0
         for i in range(max_new):
             logits = self.model.forward(self.generator.sequence[:, -1:], self.generator.cache)
             for bad_word_id in bad_words_ids:
@@ -322,15 +322,14 @@ class model_backend(InferenceModel):
                 if (scores.gather(1, token) > 0).all():
                     break
 
+            if (token == self.tokenizer.eos_token_id).any():
+                break
+
             self.generator.gen_accept_token(token)
 
             self._post_token_gen(self.generator.sequence)
 
             utils.koboldai_vars.generated_tkns += 1
-
-            if (token == self.tokenizer.eos_token_id).any():
-                trim_count = 1
-                break
 
             # Apply stoppers
             do_stop = False
@@ -341,11 +340,7 @@ class model_backend(InferenceModel):
             if do_stop:
                 break
 
-        utils.koboldai_vars.generated_tkns = max_new - trim_count
-        if trim_count > 0:
-            seq = self.generator.sequence[:, gen_in.size(1):-trim_count]
-        else:
-            seq = self.generator.sequence[:, gen_in.size(1):]
+        seq = self.generator.sequence[:, gen_in.size(1):]
 
         return GenerationResult(
             model=self,
@@ -365,7 +360,6 @@ class model_backend(InferenceModel):
 
     def _get_tokenizer(self, location: str):
         tokenizer = GenericTokenizer(LlamaTokenizer.from_pretrained(location))
-        tokenizer._koboldai_header = tokenizer.encode("")
         return tokenizer
 
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
