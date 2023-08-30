@@ -29,7 +29,7 @@ model_backend_type = "Huggingface" #This should be a generic name in case multip
 class model_backend(HFTorchInferenceModel):
     def __init__(self) -> None:
         super().__init__()
-        self.use_4_bit = False
+        self.quantization = False
 
     def is_valid(self, model_name, model_path, menu_path):
         base_is_valid = super().is_valid(model_name, model_path, menu_path)
@@ -49,6 +49,9 @@ class model_backend(HFTorchInferenceModel):
 
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters)
+        if not utils.koboldai_vars.hascuda:
+            logger.warning("Your GPU has not been detected and you can only make use of 32-bit inference, meaning the ram requirements are 8 times higher than specified on the menu and your generations will be slow.\nUnless this is an error and your GPU is known to be compatible with our software check out https://koboldai.org/cpp for a suitable alternative that has wider GPU support and has the ability to run models in 4-bit on the CPU.")
+
         dependency_exists = importlib.util.find_spec("bitsandbytes")
         if dependency_exists:
             if model_name != 'customhuggingface' or "custom_model_name" in parameters:
@@ -57,22 +60,23 @@ class model_backend(HFTorchInferenceModel):
                         temp = json.load(f)
                 else:
                     temp = {}
-                requested_parameters.append({
-                                            "uitype": "dropdown",
-                                            "unit": "text",
-                                            "label": "Quantization",
-                                            "id": "quantization",
-                                            "default": temp['quantization'] if 'quantization' in temp else '4bit' if dependency_exists else '16-bit',
-                                            "tooltip": "Whether or not to use BnB's 4-bit or 8-bit mode",
-                                            "menu_path": "Layers",
-                                            "children": [{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': '8bit'}, {'text': '16-bit', 'value':'16-bit'}],
-                                            "extra_classes": "",
-                                            "refresh_model_inputs": False
-                                        })
+                if not hasattr(self.model_config, 'quantization_config') and utils.koboldai_vars.hascuda:
+                    requested_parameters.append({
+                                                "uitype": "dropdown",
+                                                "unit": "text",
+                                                "label": "Quantization",
+                                                "id": "quantization",
+                                                "default": temp['quantization'] if 'quantization' in temp else '4bit' if dependency_exists else '16-bit',
+                                                "tooltip": "Whether or not to use BnB's 4-bit or 8-bit mode",
+                                                "menu_path": "Layers",
+                                                "children": [{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': '8bit'}, {'text': '16-bit', 'value':'16-bit'}],
+                                                "extra_classes": "",
+                                                "refresh_model_inputs": False
+                                            })
         else:
             logger.warning("Bitsandbytes is not installed, you can not use Quantization for Huggingface models")
         return requested_parameters
- 
+
     def set_input_parameters(self, parameters):
         super().set_input_parameters(parameters)
         self.quantization = parameters['quantization'] if 'quantization' in parameters else False
@@ -105,24 +109,25 @@ class model_backend(HFTorchInferenceModel):
             "low_cpu_mem_usage": True,
         }
         
-        if self.quantization == "8bit":
-            tf_kwargs.update({
-                "quantization_config":BitsAndBytesConfig(
-                    load_in_8bit=True,
-                    llm_int8_enable_fp32_cpu_offload=True
-                ),
-            })
+        if not hasattr(self.model_config, 'quantization_config'):
+            if self.quantization == "8bit":
+                tf_kwargs.update({
+                    "quantization_config":BitsAndBytesConfig(
+                        load_in_8bit=True,
+                        llm_int8_enable_fp32_cpu_offload=True
+                    ),
+                })
 
-        if self.quantization == "4bit" or utils.koboldai_vars.colab_arg:
-            tf_kwargs.update({
-                "quantization_config":BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type='nf4',
-                    llm_int8_enable_fp32_cpu_offload=True
-                ),
-            })
+            if self.quantization == "4bit" or utils.koboldai_vars.colab_arg:
+                tf_kwargs.update({
+                    "quantization_config":BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type='nf4',
+                        llm_int8_enable_fp32_cpu_offload=True
+                    ),
+                })
 
         if self.model_type == "gpt2":
             # We must disable low_cpu_mem_usage and if using a GPT-2 model

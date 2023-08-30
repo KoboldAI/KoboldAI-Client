@@ -1,5 +1,7 @@
-transformers==4.31.*
-huggingface_hub==0.15.1
+transformers==4.32.1
+huggingface_hub==0.16.4
+optimum==1.12.0
+safetensors==0.3.3
 Flask==2.2.3
 Flask-SocketIO==5.3.2
 python-socketio==5.7.2
@@ -15,7 +17,7 @@ markdown
 bleach==4.1.0
 sentencepiece
 protobuf
-accelerate==0.20.3
+accelerate==0.21.0
 flask-session==0.4.0
 marshmallow>=3.13
 apispec-webframeworks
@@ -37,8 +39,13 @@ pytest==7.2.2
 pytest-html==3.2.0
 pytest-metadata==2.0.4
 requests-mock==1.10.0
-safetensors==0.3.1
 git+https://github.com/0cc4m/hf_bleeding_edge/
 einops
 peft==0.3.0
 scipy
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32' and python_version == '3.10'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
+windows-curses; sys_platform == 'win32'
+pynvml

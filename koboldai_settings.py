@@ -608,11 +608,16 @@ class settings(object):
                 if key == 'sampler_order':
                     if(len(value) < 7):
                         value = [6] + value
-                if key == 'autosave':
+                elif key == 'autosave':
                     autosave = value
+                elif key in ['worldinfo_u', 'wifolders_d']:
+                    # Fix UID keys to be ints
+                    value = {int(k): v for k, v in value.items()}
+
                 if isinstance(value, str):
                     if value[:7] == 'base64:':
                         value = pickle.loads(base64.b64decode(value[7:]))
+
                 #Need to fix the data type of value to match the module
                 if type(getattr(self, key)) == int:
                     setattr(self, key, int(value))
@@ -688,6 +693,7 @@ class model_settings(settings):
         self._koboldai_vars = koboldai_vars
         self.alt_multi_gen = False
         self.bit_8_available = None
+        self.use_default_badwordids = True
         self.supported_gen_modes = []
         
     def reset_for_model_load(self):
@@ -1010,7 +1016,7 @@ class story_settings(settings):
                 new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], 
                                         wi["key"], 
                                         wi.get("keysecondary", ""), 
-                                        "root" if wi["folder"] is None else self.wifolders_d[str(wi['folder'])]['name'], 
+                                        "root" if wi["folder"] is None else self.wifolders_d[wi['folder']]['name'],
                                         wi.get("constant", False), 
                                         wi["content"], 
                                         wi.get("comment", ""), 
@@ -1345,38 +1351,40 @@ class system_settings(settings):
                 self._koboldai_var.calc_ai_text()
             
             if name == 'horde_share':
-                if self.on_colab == False:
-                    if os.path.exists("./KoboldAI-Horde-Bridge"):
-                        if value == True:
-                            if self._horde_pid is None:
-                                logger.info("Starting Horde bridge")
-                                bridge = importlib.import_module("KoboldAI-Horde-Bridge.bridge")
-                                self._horde_pid = bridge.kai_bridge()
-                                try:
-                                    bridge_cd = importlib.import_module("KoboldAI-Horde-Bridge.clientData")
-                                    cluster_url = bridge_cd.cluster_url
-                                    kai_name = bridge_cd.kai_name
-                                    if kai_name == "My Awesome Instance":
-                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
-                                    api_key = bridge_cd.api_key
-                                    priority_usernames = bridge_cd.priority_usernames
-                                except:
-                                    cluster_url = "https://horde.koboldai.net"
-                                    kai_name = self._koboldai_var.horde_worker_name
-                                    if kai_name == "My Awesome Instance":
-                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
-                                    api_key = self._koboldai_var.horde_api_key
-                                    priority_usernames = []
-                                # Always use the local URL & port
-                                kai_url = f'http://127.0.0.1:{self.port}'
+                if self.on_colab is True:
+                    return
+                if not os.path.exists("./AI-Horde-Worker"):
+                    return
+                if value is True:
+                    if self._horde_pid is None:
+                        self._horde_pid = "Pending" # Hack to make sure we don't launch twice while it loads
+                        logger.info("Starting Horde bridge")
+                        logger.debug("Clearing command line args in sys.argv before AI Horde Scribe load")
+                        sys_arg_bkp = sys.argv.copy()
+                        sys.argv = sys.argv[:1]
+                        bd_module = importlib.import_module("AI-Horde-Worker.worker.bridge_data.scribe")
+                        bridge_data = bd_module.KoboldAIBridgeData()
+                        sys.argv = sys_arg_bkp
+                        bridge_data.reload_data()
+                        bridge_data.kai_url = f'http://127.0.0.1:{self.port}'
+                        bridge_data.horde_url = self._koboldai_var.horde_url
+                        bridge_data.api_key = self._koboldai_var.horde_api_key
+                        bridge_data.scribe_name = self._koboldai_var.horde_worker_name
+                        bridge_data.disable_terminal_ui = self._koboldai_var.host
+                        if bridge_data.worker_name == "My Awesome Instance":
+                            bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
+                        worker_module = importlib.import_module("AI-Horde-Worker.worker.workers.scribe")
+                        self._horde_pid = worker_module.ScribeWorker(bridge_data)
+                        new_thread = threading.Thread(target=self._horde_pid.start)
+                        new_thread.daemon = True
+                        new_thread.start()
 
-                                logger.info(f"Name: {kai_name} on {kai_url}")
-                                threading.Thread(target=self._horde_pid.bridge, args=(1, api_key, kai_name, kai_url, cluster_url, priority_usernames)).run()
-                        else:
-                            if self._horde_pid is not None:
-                                logger.info("Killing Horde bridge")
-                                self._horde_pid.stop()
-                                self._horde_pid = None
+                else:
+                    if self._horde_pid is not None:
+                        logger.info("Killing Horde bridge")
+                        self._horde_pid.stop()
+                        self._horde_pid = None
+
                 
 class KoboldStoryRegister(object):
     def __init__(self, socketio, story_settings, koboldai_vars, tokenizer=None, sequence=[]):
@@ -2551,7 +2559,7 @@ class KoboldWorldInfo(object):
                 with open(image_path, "wb") as file:
                     file.write(base64.b64decode(image_b64))
         
-        data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
+        data["entries"] = {int(k): self.upgrade_entry(v) for k,v in data["entries"].items()}
         
         #Add the item
         start_time = time.time()
@@ -2632,13 +2640,13 @@ class KoboldWorldInfo(object):
         self.story_settings.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
         
         #self.wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
-        self.story_settings.wifolders_d = {str(folder_entries[x]): {'name': x, 'collapsed': False} for x in folder_entries if x != "root"}
+        self.story_settings.wifolders_d = {folder_entries[x]: {'name': x, 'collapsed': False} for x in folder_entries if x != "root"}
         
         #self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
-        self.story_settings.worldinfo_u = {str(y["uid"]): y for x in folder_entries for y in self.story_settings.worldinfo if y["folder"] == (folder_entries[x] if x != "root" else None)}
+        self.story_settings.worldinfo_u = {y["uid"]: y for x in folder_entries for y in self.story_settings.worldinfo if y["folder"] == (folder_entries[x] if x != "root" else None)}
         
         #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
-        self.story_settings.wifolders_u = {str(folder_entries[x]): [y for y in self.story_settings.worldinfo if y['folder'] == folder_entries[x]] for x in folder_entries if x != "root"}
+        self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == folder_entries[x]] for x in folder_entries if x != "root"}
         
     def reset_used_in_game(self):
         for key in self.world_info:

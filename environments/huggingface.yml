@@ -32,10 +32,11 @@ dependencies:
     - flask-ngrok
     - flask-cors
     - lupa==1.10
-    - transformers==4.31.0
-    - huggingface_hub==0.15.1
-    - safetensors==0.3.1
-    - accelerate==0.20.3
+    - transformers==4.32.1
+    - huggingface_hub==0.16.4
+    - optimum==1.12.0
+    - safetensors==0.3.3
+    - accelerate==0.21.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - flask-session
     - ansi2html
@@ -50,9 +51,11 @@ dependencies:
     - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
     - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
-    - https://github.com/henk717/KoboldAI/releases/download/Snapshot-11-08-23/auto_gptq-0.4.1+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
+    - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - einops
     - peft==0.3.0
     - scipy
     - --find-links=https://0cc4m.github.io/exllama/exllama-whl-links.html
     - exllama==0.0.6
+    - windows-curses; sys_platform == 'win32'
+    - pynvml
