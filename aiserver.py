@@ -930,7 +930,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.4",
+    version="1.2.5",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -8146,6 +8146,8 @@ def permutation_validator(lst: list):
     return True
 
 class GenerationInputSchema(SamplerSettingsSchema):
+    class Meta:
+        unknown = EXCLUDE # Doing it on this level is not a deliberate design choice on our part, it doesn't work nested... - Henk
     prompt: str = fields.String(required=True, metadata={"description": "This is the submission."})
     use_memory: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the memory from the KoboldAI GUI when generating text."})
     use_story: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the story from the KoboldAI GUI when generating text."})
