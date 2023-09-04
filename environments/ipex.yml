@@ -1,0 +1,50 @@
+name: koboldai
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - colorama
+  - flask=2.2.3
+  - flask-socketio=5.3.2
+  - flask-session=0.4.0
+  - python-socketio=5.7.2
+  - python=3.8.*
+  - eventlet=0.33.3
+  - dnspython=2.2.1
+  - markdown
+  - bleach=4.1.0
+  - pip
+  - git=2.35.1
+  - sentencepiece
+  - protobuf
+  - marshmallow>=3.13
+  - apispec-webframeworks
+  - loguru
+  - termcolor
+  - Pillow
+  - psutil
+  - pip:
+    - -f https://developer.intel.com/ipex-whl-stable-xpu
+    - torch==2.0.1a0
+    - intel_extension_for_pytorch==2.0.110+xpu
+    - flask-cloudflared==0.0.10
+    - flask-ngrok
+    - flask-cors
+    - lupa==1.10
+    - transformers==4.32.1
+    - huggingface_hub==0.16.4
+    - optimum==1.12.0
+    - safetensors==0.3.3
+    - accelerate==0.20.3
+    - git+https://github.com/VE-FORBRYDERNE/mkultra
+    - ansi2html
+    - flask_compress
+    - ijson
+    - ftfy
+    - pydub
+    - diffusers
+    - git+https://github.com/0cc4m/hf_bleeding_edge/
+    - einops
+    - peft==0.3.0
+    - windows-curses; sys_platform == 'win32'
+    - pynvml

@@ -74,6 +74,13 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
+try:
+    import intel_extension_for_pytorch as ipex
+    if torch.xpu.is_available():
+        from modeling.ipex import ipex_init
+        ipex_init()
+except Exception:
+    pass
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForTokenClassification
 import transformers
 import ipaddress
@@ -930,7 +937,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.4",
+    version="1.2.5",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -8146,6 +8153,8 @@ def permutation_validator(lst: list):
     return True
 
 class GenerationInputSchema(SamplerSettingsSchema):
+    class Meta:
+        unknown = EXCLUDE # Doing it on this level is not a deliberate design choice on our part, it doesn't work nested... - Henk
     prompt: str = fields.String(required=True, metadata={"description": "This is the submission."})
     use_memory: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the memory from the KoboldAI GUI when generating text."})
     use_story: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the story from the KoboldAI GUI when generating text."})
@@ -8153,7 +8162,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     use_world_info: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the world info from the KoboldAI GUI when generating text."})
     use_userscripts: bool = fields.Boolean(load_default=False, metadata={"description": "Whether or not to use the userscripts from the KoboldAI GUI when generating text."})
     soft_prompt: Optional[str] = fields.String(metadata={"description": "Soft prompt to use when generating. If set to the empty string or any other string containing no non-whitespace characters, uses no soft prompt."}, validate=[soft_prompt_validator, validate.Regexp(r"^[^/\\]*$")])
-    max_length: int = fields.Integer(validate=validate.Range(min=1, max=512), metadata={"description": "Number of tokens to generate."})
+    max_length: int = fields.Integer(validate=validate.Range(min=1), metadata={"description": "Number of tokens to generate."})
     max_context_length: int = fields.Integer(validate=validate.Range(min=1), metadata={"description": "Maximum number of tokens to send to the model."})
     n: int = fields.Integer(validate=validate.Range(min=1, max=5), metadata={"description": "Number of outputs to generate."})
     disable_output_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all output formatting options default to `false` instead of the value in the KoboldAI GUI."})
@@ -8168,7 +8177,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 6 and the array must be a permutation of the first N non-negative integers."})
     sampler_seed: Optional[int] = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), metadata={"description": "RNG seed to use for sampling. If not specified, the global RNG will be used."})
     sampler_full_determinism: Optional[bool] = fields.Boolean(metadata={"description": "If enabled, the generated text will always be the same as long as you use the same RNG seed, input and settings. If disabled, only the *sequence* of generated texts that you get when repeatedly generating text will be the same given the same RNG seed, input and settings."})
-    stop_sequence: Optional[List[str]] = fields.List(fields.String(),metadata={"description": "An array of string sequences where the API will stop generating further tokens. The returned text WILL contain the stop sequence."}, validate=[validate.Length(max=10)])
+    stop_sequence: Optional[List[str]] = fields.List(fields.String(),metadata={"description": "An array of string sequences where the API will stop generating further tokens. The returned text WILL contain the stop sequence."})
 
 
 class GenerationResultSchema(KoboldSchema):

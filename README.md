@@ -128,8 +128,11 @@ The easiest way for Windows users is to use the [offline installer](https://sour
 ### Installing KoboldAI on Linux using the KoboldAI Runtime (Easiest)
 
 1.  Clone the URL of this Github repository (For example git clone [https://github.com/koboldai/koboldai-client](https://github.com/koboldai/koboldai-client) )
-2.  AMD user? Make sure ROCm is installed if you want GPU support. Is yours not compatible with ROCm? Follow the usual instructions.
-3.  Run play.sh or if your AMD GPU supports ROCm use play-rocm.sh
+2.  AMD user? Make sure ROCm is installed if you want GPU support. Is yours not compatible with ROCm? Follow the usual instructions.  
+    Intel ARC user? Make sure OneAPI is installed if you want GPU support.
+3.  Run play.sh if you use an Nvidia GPU or you want to use CPU only    
+    Run play-rocm.sh if you use an AMD GPU supported by ROCm    
+    Run play-ipex.sh if you use an Intel ARC GPU
 
 KoboldAI will now automatically configure its dependencies and start up, everything is contained in its own conda runtime so we will not clutter your system. The files will be located in the runtime subfolder. If at any point you wish to force a reinstallation of the runtime you can do so with the install\_requirements.sh file. While you can run this manually it is not neccesary.
 
@@ -147,6 +150,10 @@ If you would like to manually install KoboldAI you will need some python/conda p
 ### AMD GPU's (Linux only)
 
 AMD GPU's have terrible compute support, this will currently not work on Windows and will only work for a select few Linux GPU's. [You can find a list of the compatible GPU's here](https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support). Any GPU that is not listed is guaranteed not to work with KoboldAI and we will not be able to provide proper support on GPU's that are not compatible with the versions of ROCm we require. Make sure to first install ROCm on your Linux system using a guide for your distribution, after that you can follow the usual linux instructions above.
+
+### Intel ARC GPU's (Linux or WSL)
+
+Make sure to first install OneAPI on your Linux or WSL system using a guide for your distribution, after that you can follow the usual linux instructions above.
 
 ### Troubleshooting
 
