@@ -20,8 +20,7 @@
 		{% if item["uitype"] == "slider" %}
 			<input type="range" min="{{ item['min'] }}" max="{{ item['max'] }}" step="{{ item['step'] }}" 
 				   value="{{ item['default'] }}" id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
-				   oninput="document.getElementById(this.id+'_cur').value = this.value;"
-				   onclick="sync_to_server(this);">
+				   onchange="document.getElementById(this.id+'_cur').value = this.value;sync_to_server(this);">
 	    {% elif item["uitype"] == "toggle" %}
 			<input type=checkbox id="{{ item['classname'] }}_{{ item['name'] }}" class="setting_item_input var_sync_{{ item['classname'] }}_{{ item['name'] }}"
 			       data-size="mini" data-onstyle="success" data-toggle="toggle" onchange='sync_to_server(this);'>
