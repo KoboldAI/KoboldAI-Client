@@ -94,7 +94,7 @@ var supported_gen_modes = [];
 var privacy_mode_enabled = false;
 var attention_wanting_wi_bar = null;
 var ai_busy = false;
-var can_show_options = false;
+var can_show_options = true;
 
 var streaming = {
 	windowOpen: false,
@@ -3448,6 +3448,7 @@ function fix_dirty_game_text() {
 }
 
 function savegametextchanges() {
+	console.log("Saving game text");
 	fix_dirty_game_text();
 	for (const item of document.getElementsByClassName("editing")) {
 		item.classList.remove("editing");
