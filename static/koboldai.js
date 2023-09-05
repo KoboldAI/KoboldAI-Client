@@ -3448,7 +3448,6 @@ function fix_dirty_game_text() {
 }
 
 function savegametextchanges() {
-	console.log("Saving game text");
 	fix_dirty_game_text();
 	for (const item of document.getElementsByClassName("editing")) {
 		item.classList.remove("editing");
