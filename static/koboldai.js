@@ -94,7 +94,7 @@ var supported_gen_modes = [];
 var privacy_mode_enabled = false;
 var attention_wanting_wi_bar = null;
 var ai_busy = false;
-var can_show_options = false;
+var can_show_options = true;
 
 var streaming = {
 	windowOpen: false,
