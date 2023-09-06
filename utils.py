@@ -688,7 +688,7 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
     txt = txt.replace("</s>", "")
 
     # Use standard quotes and apostrophes
-    txt = fixquotes(txt)
+    # txt = fixquotes(txt)
 
     # Adventure mode clipping of all characters after '>'
     if(koboldai_vars.adventure):
