@@ -331,8 +331,11 @@ model_menu = {
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'chatlist': [
+        MenuModel("Pygmalion-2 13B", "PygmalionAI/pygmalion-2-13b", "12GB*"),
+        MenuModel("Mythalion 13B", "PygmalionAI/mythalion-13b", "12GB*"),
         MenuModel("Mythomax 13B (Instruct)", "Gryphe/MythoMax-L2-13b", "12GB*"),
         MenuModel("Huginn 13B (Instruct)", "The-Face-Of-Goonery/Huginn-13b-FP16", "12GB*"),
+        MenuModel("Pygmalion-2 7B", "PygmalionAI/pygmalion-2-7b", "8GB*"),
         MenuModel("Pygmalion 6B", "PygmalionAI/pygmalion-6b", "8GB*"),
         MenuModel("Pygmalion 2.7B", "PygmalionAI/pygmalion-2.7b", "6GB"),
         MenuModel("Pygmalion 1.3B", "PygmalionAI/pygmalion-1.3b", "4GB*"),
