@@ -174,10 +174,13 @@ if [ "$init" != "skip" ]; then
     ln -s /content/drive/MyDrive/KoboldAI/presets/ presets
     ln -s /content/drive/MyDrive/KoboldAI/themes/ themes
 
+    # Remove conflicting dependencies
+    sudo apt remove python3-blinker -y
+
     if [ -n "${COLAB_TPU_ADDR+set}" ]; then
-        pip install -r requirements_mtj.txt --force
+        pip install -r requirements_mtj.txt
     else
-        pip install -r requirements.txt --force
+        pip install -r requirements.txt
     fi
     
     # Make sure Colab has the system dependencies
