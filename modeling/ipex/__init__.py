@@ -2,22 +2,12 @@ import os
 import sys
 import contextlib
 import torch
-import intel_extension_for_pytorch as ipex
-from .diffusers import ipex_diffusers
+import intel_extension_for_pytorch as ipex # pylint: disable=import-error, unused-import
 from .hijacks import ipex_hijacks
-from logger import logger
 
-#ControlNet depth_leres++
-class DummyDataParallel(torch.nn.Module):
-    def __new__(cls, module, device_ids=None, output_device=None, dim=0):
-        if type(device_ids) is list and len(device_ids) > 1:
-            logger.info("IPEX backend doesn't support DataParallel on multiple XPU devices")
-        return module.to("xpu")
+# pylint: disable=protected-access, missing-function-docstring, line-too-long
 
-def return_null_context(*args, **kwargs):
-    return contextlib.nullcontext()
-
-def ipex_init():
+def ipex_init(): # pylint: disable=too-many-statements
     #Replace cuda with xpu:
     torch.cuda.current_device = torch.xpu.current_device
     torch.cuda.current_stream = torch.xpu.current_stream
@@ -30,6 +20,7 @@ def ipex_init():
     torch.cuda.init = torch.xpu.init
     torch.cuda.is_available = torch.xpu.is_available
     torch.cuda.is_initialized = torch.xpu.is_initialized
+    torch.cuda.is_current_stream_capturing = lambda: False
     torch.cuda.set_device = torch.xpu.set_device
     torch.cuda.stream = torch.xpu.stream
     torch.cuda.synchronize = torch.xpu.synchronize
@@ -138,8 +129,13 @@ def ipex_init():
     torch.cuda.amp.common.amp_definitely_not_available = lambda: False
     try:
         torch.cuda.amp.GradScaler = torch.xpu.amp.GradScaler
-    except Exception:
-        torch.cuda.amp.GradScaler = ipex.cpu.autocast._grad_scaler.GradScaler
+    except Exception: # pylint: disable=broad-exception-caught
+        try:
+            from .gradscaler import gradscaler_init # pylint: disable=import-outside-toplevel, import-error
+            gradscaler_init()
+            torch.cuda.amp.GradScaler = torch.xpu.amp.GradScaler
+        except Exception: # pylint: disable=broad-exception-caught
+            torch.cuda.amp.GradScaler = ipex.cpu.autocast._grad_scaler.GradScaler
 
     #C
     torch._C._cuda_getCurrentRawStream = ipex._C._getCurrentStream
@@ -156,10 +152,12 @@ def ipex_init():
     torch.cuda.get_device_capability = lambda: [11,7]
     torch.cuda.get_device_properties.major = 11
     torch.cuda.get_device_properties.minor = 7
-    torch.backends.cuda.sdp_kernel = return_null_context
-    torch.nn.DataParallel = DummyDataParallel
     torch.cuda.ipc_collect = lambda: None
     torch.cuda.utilization = lambda: 0
 
     ipex_hijacks()
-    ipex_diffusers()
+    try:
+        from .diffusers import ipex_diffusers # pylint: disable=import-outside-toplevel, import-error
+        ipex_diffusers()
+    except Exception: # pylint: disable=broad-exception-caught
+        pass
