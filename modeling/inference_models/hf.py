@@ -230,7 +230,6 @@ class HFInferenceModel(InferenceModel):
     def _post_load(self) -> None:
         self.badwordsids = koboldai_settings.badwordsids_default
         self.model_type = str(self.model_config.model_type)
-        self.model.use_cache = True # Workaround for models that accidentally uploaded with False
         
         # These are model specific tokenizer overrides if a model has bad defaults
         if self.model_type == "llama":

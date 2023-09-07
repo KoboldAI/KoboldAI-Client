@@ -107,6 +107,7 @@ class model_backend(HFTorchInferenceModel):
 
         tf_kwargs = {
             "low_cpu_mem_usage": True,
+            "use_cache": True # Workaround for models that accidentally turn cache to false
         }
         
         if not hasattr(self.model_config, 'quantization_config'):
@@ -130,8 +131,8 @@ class model_backend(HFTorchInferenceModel):
                 })
 
         if self.model_type == "gpt2":
-            # We must disable low_cpu_mem_usage and if using a GPT-2 model
-            # because GPT-2 is not compatible with this feature yet.
+            # We must disable low_cpu_mem_usage and quantization if using a GPT-2 model
+            # because GPT-2 is not compatible with these features yet.
             tf_kwargs.pop("low_cpu_mem_usage", None)
             tf_kwargs.pop("quantization_config", None)
             
