@@ -1,11 +1,13 @@
 import torch
-import intel_extension_for_pytorch as ipex
-import torch.nn.functional as F
-import diffusers #0.20.2
+import intel_extension_for_pytorch as ipex # pylint: disable=import-error, unused-import
+import torch.nn.functional as F # pylint: disable=ungrouped-imports
+import diffusers #0.20.2 # pylint: disable=import-error
+
+# pylint: disable=protected-access, missing-function-docstring, line-too-long
 
 Attention = diffusers.models.attention_processor.Attention
 
-class SlicedAttnProcessor:
+class SlicedAttnProcessor: # pylint: disable=too-few-public-methods
     r"""
     Processor for implementing sliced attention.
 
@@ -18,7 +20,7 @@ class SlicedAttnProcessor:
     def __init__(self, slice_size):
         self.slice_size = slice_size
 
-    def __call__(self, attn: Attention, hidden_states, encoder_hidden_states=None, attention_mask=None):
+    def __call__(self, attn: Attention, hidden_states, encoder_hidden_states=None, attention_mask=None): # pylint: disable=too-many-statements, too-many-locals, too-many-branches
         residual = hidden_states
 
         input_ndim = hidden_states.ndim
@@ -74,7 +76,7 @@ class SlicedAttnProcessor:
             end_idx = (i + 1) * self.slice_size
 
             if do_split_2:
-                for i2 in range(query_tokens // split_2_slice_size):
+                for i2 in range(query_tokens // split_2_slice_size): # pylint: disable=invalid-name
                     start_idx_2 = i2 * split_2_slice_size
                     end_idx_2 = (i2 + 1) * split_2_slice_size
 
@@ -114,7 +116,7 @@ class SlicedAttnProcessor:
 
         return hidden_states
 
-class AttnProcessor2_0:
+class AttnProcessor2_0: # pylint: disable=too-few-public-methods, invalid-name
     r"""
     Processor for implementing scaled dot-product attention (enabled by default if you're using PyTorch 2.0).
     """
@@ -123,7 +125,7 @@ class AttnProcessor2_0:
         if not hasattr(F, "scaled_dot_product_attention"):
             raise ImportError("AttnProcessor2_0 requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0.")
 
-    def __call__(
+    def __call__( # pylint: disable=too-many-arguments, too-many-statements, too-many-locals, too-many-branches
         self,
         attn: Attention,
         hidden_states,
@@ -208,7 +210,7 @@ class AttnProcessor2_0:
                 start_idx = i * split_slice_size
                 end_idx = (i + 1) * split_slice_size
                 if do_split_2:
-                    for i2 in range(query_tokens // split_2_slice_size):
+                    for i2 in range(query_tokens // split_2_slice_size): # pylint: disable=invalid-name
                         start_idx_2 = i2 * split_2_slice_size
                         end_idx_2 = (i2 + 1) * split_2_slice_size
 
