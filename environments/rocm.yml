@@ -31,7 +31,7 @@ dependencies:
     - lupa==1.10
     - transformers[sentencepiece]==4.33.1
     - huggingface_hub==0.16.4
-    - optimum[onnx]==1.12.0
+    - optimum[onnxruntime]==1.12.0
     - safetensors==0.3.3
     - accelerate==0.21.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
