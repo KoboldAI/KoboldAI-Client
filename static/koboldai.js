@@ -957,7 +957,6 @@ function var_changed(data) {
 		if (current_action <= 0) {
 			//console.log("setting action_count to "+current_action);
 			const storyPrompt = $el("#story_prompt");
-			if (storyPrompt) storyPrompt.classList.remove("hidden");
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
 		}
@@ -3388,6 +3387,10 @@ function gametextwatcher(records) {
 			if (!dirty_chunks.includes("game_text")) {
 				dirty_chunks.push("game_text");
 			}
+		} else if ((record.target.nodeName == "#text") && (record.target.parentNode == game_text)) {
+			if (!dirty_chunks.includes("game_text")) {
+				dirty_chunks.push("game_text");
+			}
 		}
 	}
 }
@@ -3427,17 +3430,20 @@ function fix_dirty_game_text() {
 				} else {
 					node_text = node.data;
 				}
-				if (!(node.nextElementSibling) || !(dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) || dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+								if ((!(node.nextElementSibling) || !(dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) || dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) && (node.previousElementSibling)) {
 					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node_text;
 					if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
 						dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
 					}
 				} else {
 					node.nextElementSibling.innerText = node.nextElementSibling.innerText + node_text;
+					if (!dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) {
+						dirty_chunks.push(node.nextElementSibling.getAttribute("chunk"));
+					}
 				}
 				
 				//Looks like sometimes it splits the parent. Let's look for that and fix it too
-				if (node.nextElementSibling && (node.nextElementSibling.getAttribute("chunk") == node.previousElementSibling.getAttribute("chunk"))) {
+				if (node.nextElementSibling && node.previousElementSibling && (node.nextElementSibling.getAttribute("chunk") == node.previousElementSibling.getAttribute("chunk"))) {
 					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.nextElementSibling.innerText;
 					node.nextElementSibling.remove();
 				}
