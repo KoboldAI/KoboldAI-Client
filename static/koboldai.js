@@ -1806,31 +1806,6 @@ function model_settings_checker() {
 			valid = (check_value < this.check_data['value']);
 		}
 		if (valid || missing_element) {
-			//if we are supposed to refresh when this value changes we'll resubmit
-			if ((this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
-				//get an object of all the input settings from the user
-				data = {}
-				settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
-				if (settings_area) {
-					for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
-						var element_data = element.value;
-						if (element.getAttribute("data_type") == "int") {
-							element_data = parseInt(element_data);
-						} else if (element.getAttribute("data_type") == "float") {
-							element_data = parseFloat(element_data);
-						} else if (element.getAttribute("data_type") == "bool") {
-							element_data = element.checked;
-						}
-						data[element.id.split("|")[1].replace("_value", "")] = element_data;
-					}
-				}
-				data = {...data, ...selected_model_data};
-				
-				data['plugin'] = document.getElementById("modelplugin").value;
-				data['valid_backends'] = getOptions("modelplugin");
-				
-				socket.emit("resubmit_model_info", data);
-			}
 			if ('sum' in this.check_data) {
 				for (const temp of this.check_data['sum']) {
 					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
@@ -1898,6 +1873,32 @@ function model_settings_checker() {
 		}
 		
 		
+	}
+	
+	//if we are supposed to refresh when this value changes we'll resubmit
+	if ((this != window) && (this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
+		//get an object of all the input settings from the user
+		data = {}
+		settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
+		if (settings_area) {
+			for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+				var element_data = element.value;
+				if (element.getAttribute("data_type") == "int") {
+					element_data = parseInt(element_data);
+				} else if (element.getAttribute("data_type") == "float") {
+					element_data = parseFloat(element_data);
+				} else if (element.getAttribute("data_type") == "bool") {
+					element_data = element.checked;
+				}
+				data[element.id.split("|")[1].replace("_value", "")] = element_data;
+			}
+		}
+		data = {...data, ...selected_model_data};
+		
+		data['plugin'] = document.getElementById("modelplugin").value;
+		data['valid_backends'] = getOptions("modelplugin");
+		
+		socket.emit("resubmit_model_info", data);
 	}
 }
 
