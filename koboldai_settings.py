@@ -37,12 +37,12 @@ def clean_var_for_emit(value):
         return value
 
 def process_variable_changes(socketio, classname, name, value, old_value, debug_message=None):
-    global multi_story
+    global multi_story, koboldai_vars_main
     if serverstarted and name != "serverstarted":
         transmit_time = str(datetime.datetime.now())
         if debug_message is not None:
             print("{} {}: {} changed from {} to {}".format(debug_message, classname, name, old_value, value))
-        if value != old_value:
+        if value != old_value and (not koboldai_vars_main.host or name not in ["horde_api_key", "privacy_password", "img_gen_api_password"]):
             #Get which room we'll send the messages to
             if multi_story:
                 if classname != 'story':

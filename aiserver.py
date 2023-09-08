@@ -657,6 +657,7 @@ logger.add(UI_2_log_history, serialize=True, colorize=True, enqueue=True, level=
 
 #logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
 koboldai_vars = koboldai_settings.koboldai_vars(socketio)
+koboldai_settings.koboldai_vars_main = koboldai_vars
 utils.koboldai_vars = koboldai_vars
 utils.socketio = socketio
 
@@ -7992,7 +7993,7 @@ def model_info():
 @require_allowed_ip
 @logger.catch
 def show_vars():
-    if args.no_ui:
+    if args.no_ui or koboldai_vars.host:
         return redirect('/api/latest')
     json_data = {}
     json_data['story_settings'] = json.loads(koboldai_vars.to_json("story_settings"))
