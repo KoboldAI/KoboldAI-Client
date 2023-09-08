@@ -6106,6 +6106,17 @@ function closePopups(userAction=false) {
 	if (allHidden) container.classList.add("hidden");
 }
 
+function hide_welcome_container() {
+		welcome_container = document.getElementById("welcome_container");
+		welcome_container.classList.add("hidden");
+		document.getElementById("Selected Text").focus();
+}
+
+function show_welcome_container() {
+	welcome_container = document.getElementById("welcome_container");
+	welcome_container.classList.remove("hidden");
+}
+
 $el("#popup-container").addEventListener("click", function(event) {
 	if (event.target === this) closePopups(true);
 });
