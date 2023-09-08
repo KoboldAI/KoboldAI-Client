@@ -1192,6 +1192,12 @@ def loadmodelsettings():
     if("rep_pen_range" in js):
         koboldai_vars.rep_pen_range = js["rep_pen_range"]
         koboldai_vars.default_preset['rep_pen_range'] = js["rep_pen_range"]
+    if("eps_cutoff" in js):
+        koboldai_vars.eps_cutoff = js["eps_cutoff"]
+        koboldai_vars.default_preset['eps_cutoff'] = js["eps_cutoff"]
+    if("eta_cutoff" in js):
+        koboldai_vars.eta_cutoff = js["eta_cutoff"]
+        koboldai_vars.default_preset['eta_cutoff'] = js["eta_cutoff"]
     if("adventure" in js):
         koboldai_vars.adventure = js["adventure"]
     if("chatmode" in js):
@@ -1275,6 +1281,10 @@ def processsettings(js):
         koboldai_vars.rep_pen_slope = js["rep_pen_slope"]
     if("rep_pen_range" in js):
         koboldai_vars.rep_pen_range = js["rep_pen_range"]
+    if("eps_cutoff" in js):
+        koboldai_vars.eps = js["eps_cutoff"]
+    if("eta_cutoff" in js):
+        koboldai_vars.eta = js["eta_cutoff"] 
     if("genamt" in js):
         koboldai_vars.genamt = js["genamt"]
     if("max_length" in js):
@@ -2251,6 +2261,8 @@ def lua_has_setting(setting):
         "setreppen",
         "setreppenslope",
         "setreppenrange",
+        "seteps_cutoff",
+        "seteta_cutoff",
         "settknmax",
         "setwidepth",
         "setuseprompt",
@@ -2271,6 +2283,8 @@ def lua_has_setting(setting):
         "reppen",
         "reppenslope",
         "reppenrange",
+        "eps_cutoff",
+        "eta_cutoff",
         "tknmax",
         "widepth",
         "useprompt",
@@ -2309,6 +2323,8 @@ def lua_get_setting(setting):
     if(setting in ("setreppen", "reppen")): return koboldai_vars.rep_pen
     if(setting in ("setreppenslope", "reppenslope")): return koboldai_vars.rep_pen_slope
     if(setting in ("setreppenrange", "reppenrange")): return koboldai_vars.rep_pen_range
+    if(setting in ("seteps_cutoff", "eps_cutoff")): return koboldai_vars.eps_cutoff
+    if(setting in ("seteta_cutoff", "eta_cutoff")): return koboldai_vars.eta_cutoff
     if(setting in ("settknmax", "tknmax")): return koboldai_vars.max_length
     if(setting == "anotedepth"): return koboldai_vars.andepth
     if(setting in ("setwidepth", "widepth")): return koboldai_vars.widepth
@@ -2347,6 +2363,8 @@ def lua_set_setting(setting, v):
     if(setting in ("setreppen", "reppen")): koboldai_vars.rep_pen = v
     if(setting in ("setreppenslope", "reppenslope")): koboldai_vars.rep_pen_slope = v
     if(setting in ("setreppenrange", "reppenrange")): koboldai_vars.rep_pen_range = v
+    if(setting in ("seteps_cutoff", "eps_cutoff")): koboldai_vars.eps_cutoff = v
+    if(setting in ("seteta_cutoff", "eta_cutoff")): koboldai_vars.eta_cutoff = v
     if(setting in ("settknmax", "tknmax")): koboldai_vars.max_length = v; return True
     if(setting == "anotedepth"): koboldai_vars.andepth = v; return True
     if(setting in ("setwidepth", "widepth")): koboldai_vars.widepth = v; return True
@@ -2772,6 +2790,16 @@ def get_message(msg):
         emit('from_server', {'cmd': 'setlabelreppenrange', 'data': msg['data']}, broadcast=True, room="UI_1")
         settingschanged()
         refresh_settings()
+    elif(msg['cmd'] == 'seteps_cutoff'):
+        koboldai_vars.eps_cutoff = float(msg['data'])
+        emit('from_server', {'cmd': 'setlabeleps_cutoff', 'data': msg['data']}, broadcast=True, room="UI_1")
+        settingschanged()
+        refresh_settings()
+    elif(msg['cmd'] == 'seteta_cutoff'):
+        koboldai_vars.eta_cutoff = float(msg['data'])
+        emit('from_server', {'cmd': 'setlabeleta_cutoff', 'data': msg['data']}, broadcast=True, room="UI_1")
+        settingschanged()
+        refresh_settings()
     elif(msg['cmd'] == 'setoutput'):
         koboldai_vars.genamt = int(msg['data'])
         emit('from_server', {'cmd': 'setlabeloutput', 'data': msg['data']}, broadcast=True, room="UI_1")
@@ -2922,8 +2950,8 @@ def get_message(msg):
         sendUSStatItems()
     elif(msg['cmd'] == 'samplers'):
         sampler_order = msg["data"]
-        sampler_order_min_length = 6
-        sampler_order_max_length = 7
+        sampler_order_min_length = 8
+        sampler_order_max_length = 9
         if(not isinstance(sampler_order, list)):
             raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
         if(not (sampler_order_min_length <= len(sampler_order) <= sampler_order_max_length)):
@@ -3501,6 +3529,8 @@ def apiactionsubmit_tpumtjgenerate(txt, minimum, maximum):
         repetition_penalty=koboldai_vars.rep_pen,
         rpslope=koboldai_vars.rep_pen_slope,
         rprange=koboldai_vars.rep_pen_range,
+        eps_cutoff=koboldai_vars.eps_cutoff,
+        eta_cutoff=koboldai_vars.eta_cutoff,
         soft_embeddings=koboldai_vars.sp,
         soft_tokens=soft_tokens,
         sampler_order=koboldai_vars.sampler_order,
@@ -4148,6 +4178,8 @@ def refresh_settings():
         socketio.emit('from_server', {'cmd': 'updatereppen', 'data': koboldai_vars.rep_pen}, broadcast=True, room="UI_1")
         socketio.emit('from_server', {'cmd': 'updatereppenslope', 'data': koboldai_vars.rep_pen_slope}, broadcast=True, room="UI_1")
         socketio.emit('from_server', {'cmd': 'updatereppenrange', 'data': koboldai_vars.rep_pen_range}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updateeps_cutoff', 'data': koboldai_vars.eps_cutoff}, broadcast=True, room="UI_1")
+        socketio.emit('from_server', {'cmd': 'updateeta_cutoff', 'data': koboldai_vars.eta_cutoff}, broadcast=True, room="UI_1")
         socketio.emit('from_server', {'cmd': 'updateoutlen', 'data': koboldai_vars.genamt}, broadcast=True, room="UI_1")
         socketio.emit('from_server', {'cmd': 'updatetknmax', 'data': koboldai_vars.max_length}, broadcast=True, room="UI_1")
         socketio.emit('from_server', {'cmd': 'updatenumseq', 'data': koboldai_vars.numseqs}, broadcast=True, room="UI_1")
@@ -7146,7 +7178,7 @@ def UI_2_load_cookies():
 def UI_2_save_new_preset(data):
     preset = model_info()
     #Data to get from current settings
-    for item in ["genamt", "rep_pen", "rep_pen_range", "rep_pen_slope", "sampler_order", "temp", "tfs", "top_a", "top_k", "top_p", "typical"]:
+    for item in ["genamt", "rep_pen", "rep_pen_range", "rep_pen_slope", "sampler_order", "temp", "tfs", "top_a", "top_k", "top_p", "typical", "eps_cutoff", "eta_cutoff"]:
         preset[item] = getattr(koboldai_vars, item)
     #Data to get from UI
     for item in ['preset', 'description']:
@@ -8131,6 +8163,9 @@ class SamplerSettingsSchema(KoboldSchema):
     tfs: Optional[float] = fields.Float(validate=validate.Range(min=0, max=1), metadata={"description": "Tail free sampling value."})
     typical: Optional[float] = fields.Float(validate=validate.Range(min=0, max=1), metadata={"description": "Typical sampling value."})
     temperature: Optional[float] = fields.Float(validate=validate.Range(min=0, min_inclusive=False), metadata={"description": "Temperature value."})
+    eps_cutoff: Optional[float] = fields.Float(validate=validate.Range(min=0, max=1000.0), metadata={"description": "Epsilon sampling value."})
+    eta_cutoff: Optional[float] = fields.Float(validate=validate.Range(min=0,), metadata={"description": "Eta sampling value."})
+    
 
 def soft_prompt_validator(soft_prompt: str):
     if len(soft_prompt.strip()) == 0:
@@ -8181,7 +8216,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all input formatting options default to `false` instead of the value in the KoboldAI GUI"})
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     quiet: Optional[bool] = fields.Boolean(metadata={"description": "When enabled, Generated output will not be displayed in the console."})
-    sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 6 and the array must be a permutation of the first N non-negative integers."})
+    sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=8), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 8 and the array must be a permutation of the first N non-negative integers."})
     sampler_seed: Optional[int] = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), metadata={"description": "RNG seed to use for sampling. If not specified, the global RNG will be used."})
     sampler_full_determinism: Optional[bool] = fields.Boolean(metadata={"description": "If enabled, the generated text will always be the same as long as you use the same RNG seed, input and settings. If disabled, only the *sequence* of generated texts that you get when repeatedly generating text will be the same given the same RNG seed, input and settings."})
     stop_sequence: Optional[List[str]] = fields.List(fields.String(),metadata={"description": "An array of string sequences where the API will stop generating further tokens. The returned text WILL contain the stop sequence."})
@@ -8299,7 +8334,7 @@ def _generate_text(body: GenerationInputSchema):
                 torch.manual_seed(body.sampler_seed)
         koboldai_vars.rng_states[body.sampler_seed] = tpu_mtj_backend.get_rng_state() if koboldai_vars.use_colab_tpu else torch.get_rng_state()
     if hasattr(body, "sampler_order"):
-        if len(body.sampler_order) < 7:
+        if len(body.sampler_order) < 9:
             body.sampler_order = [6] + body.sampler_order
     # This maps each property of the setting to use when sending the generate idempotently
     # To the object which typically contains it's value
@@ -8317,6 +8352,8 @@ def _generate_text(body: GenerationInputSchema):
         "tfs": ("koboldai_vars", "tfs", None),
         "typical": ("koboldai_vars", "typical", None),
         "temperature": ("koboldai_vars", "temp", None),
+        "eps_cutoff": ("koboldai_vars", "eps_cutoff", None),
+        "eta_cutoff": ("koboldai_vars", "eta_cutoff", None),
         "frmtadsnsp": ("koboldai_vars", "frmtadsnsp", "input"),
         "frmttriminc": ("koboldai_vars", "frmttriminc", "output"),
         "frmtrmblln": ("koboldai_vars", "frmtrmblln", "output"),
@@ -10763,6 +10800,26 @@ class TemperatureSamplingSettingSchema(KoboldSchema):
         example_yaml_value = "0.5"
 
 @config_endpoint_schema
+class EpsilonSamplingSettingSchema(KoboldSchema):
+    value = fields.Float(validate=validate.Range(min=0, max=1000), required=True)
+    class KoboldMeta:
+        route_name = "eps_cutoff"
+        obj = "koboldai_vars"
+        var_name = "eps_cutoff"
+        name = "Epsilon sampling"
+        example_yaml_value = "0.0"
+
+@config_endpoint_schema
+class EtaSamplingSettingSchema(KoboldSchema):
+    value = fields.Float(validate=validate.Range(min=0), required=True)
+    class KoboldMeta:
+        route_name = "eta_cutoff"
+        obj = "koboldai_vars"
+        var_name = "eta_cutoff"
+        name = "Eta sampling"
+        example_yaml_value = "0.0"
+
+@config_endpoint_schema
 class GensPerActionSettingSchema(KoboldSchema):
     value = fields.Integer(validate=validate.Range(min=0, max=5), required=True)
     class KoboldMeta:
@@ -10870,7 +10927,7 @@ class SamplerOrderSettingSchema(KoboldSchema):
         obj = "koboldai_vars"
         var_name = "sampler_order"
         name = "sampler order"
-        example_yaml_value = "[6, 0, 1, 2, 3, 4, 5]"
+        example_yaml_value = "[6, 0, 1, 2, 3, 4, 5, 7, 8]"
 
 @config_endpoint_schema
 class SamplerFullDeterminismSettingSchema(KoboldSchema):

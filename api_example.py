@@ -23,7 +23,9 @@ def get_prompt(user_msg):
         "top_k": 0, # Keep the X most probable tokens
         "top_p": 0.9, # Top P sampling / Nucleus Sampling, https://arxiv.org/pdf/1904.09751.pdf
         "typical": 1.0, # Typical Sampling, https://arxiv.org/pdf/2202.00666.pdf
-        "sampler_order": [6,0,1,3,4,2,5], # Order to apply the samplers, our default in this script is already the optimal one. KoboldAI Lite contains an easy list of what the
+        "eps": 0.0, # Discard tokens with low probability, from https://arxiv.org/pdf/2210.15191.pdf
+        "eta": 0.0, # Entropy adaptive epsilon, from the same work as epsilon
+        "sampler_order": [6,0,7,1,3,8,4,2,5], # Order to apply the samplers, our default in this script is already the optimal one. KoboldAI Lite contains an easy list of what the
         "stop_sequence": [f"{user}"], # When should the AI stop generating? In this example we stop when it tries to speak on behalf of the user.
         #"sampler_seed": 1337, # Use specific seed for text generation? This helps with consistency across tests.
         "singleline": "False", # Only return a response that fits on a single line, this can help with chatbots but also makes them less verbose

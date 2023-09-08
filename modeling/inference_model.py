@@ -134,6 +134,8 @@ class GenerationSettings:
             "rep_pen",
             "rep_pen_slope",
             "rep_pen_range",
+            "eps_cutoff",
+            "eta_cutoff",
             "sampler_order",
         ]:
             setattr(

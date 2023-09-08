@@ -1315,6 +1315,8 @@ function buildSamplerList(samplers) {
 		"Typical Sampling",
 		"Temperature",
 		"Repetition Penalty",
+		"Epsilon Sampling",
+		"Eta Sampling"
 	]
 	for(i=0; i<samplers.length; i++) {
 		samplerslist.append("<div class=\"flex\">\
@@ -2640,6 +2642,14 @@ $(document).ready(function(){
 			// Send current rep pen value to input
 			$("#setreppenrangecur").val(msg.data);
 			$("#setreppenrange").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updateeps_cutoff") {
+			// Send current epsilon value to input
+			$("#seteps_cutoffcurr").val(msg.data);
+			$("#seteps_cutoff").val(parseFloat(msg.data)).trigger("change");
+		} else if(msg.cmd == "updateeta_cutoff") {
+			// Send current eta value to input
+			$("#seteta_cutoffcur").val(msg.data);
+			$("#seteta_cutoff").val(parseFloat(msg.data)).trigger("change");
 		} else if(msg.cmd == "updateoutlen") {
 			// Send current output amt value to input
 			$("#setoutputcur").val(msg.data);
@@ -2679,6 +2689,12 @@ $(document).ready(function(){
 		} else if(msg.cmd == "setlabelreppenrange") {
 			// Update setting label with value from server
 			$("#setreppenrangecur").val(msg.data);
+		} else if(msg.cmd == "setlabeleps_cutoff") {
+			// Update setting label with value from server
+			$("#seteps_cutoffcur").val(msg.data);
+		} else if(msg.cmd == "setlabeleta_cutoff") {
+			// Update setting label with value from server
+			$("#seteta_cutoffcur").val(msg.data);
 		} else if(msg.cmd == "setlabeloutput") {
 			// Update setting label with value from server
 			$("#setoutputcur").val(msg.data);

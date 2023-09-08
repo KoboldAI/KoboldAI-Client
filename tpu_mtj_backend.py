@@ -104,6 +104,8 @@ def settings_callback() -> dict:
         "repetition_penalty": 1.0,
         "rpslope": 0.0,
         "rprange": 0,
+        "eps_cutoff": 0.0,
+        "eta_cutoff": 0.0,
     }
 
 def started_compiling_callback() -> None:
@@ -208,10 +210,10 @@ def apply_repetition_penalty_dynamic(logits, tokens, repetition_penalty, generat
     logits[tokens] = penalty_logits
     return logits
 
-def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0):
+def kobold_sample_dynamic(key, logits, rpargs, sampler_order: Optional[np.ndarray] = None, top_p=0.9, temp=0.5, top_k=0, tfs=1.0, typical=1.0, top_a=0.0, eps_cutoff=0.0, eta_cutoff=0.0):
     '''
-    This gets called by generate_loop_fn to apply a series of 6 filters
-    to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
+    This gets called by generate_loop_fn to apply a series of 8 filters
+    to the logits (top-k, eps, top-a, top-p, TFS, eta, typical, temperature)
     before picking one token using the modified logits
     '''
     for sid in jnp.array(sampler_order, int):
@@ -243,10 +245,12 @@ def kobold_sample_static(
     tfs=1.0,
     typical=1.0,
     top_a=0.0,
+    eps_cutoff=0.0,
+    eta_cutoff=0.0
 ):
     '''
-    This gets called by generate_loop_fn to apply a series of 6 filters
-    to the logits (top-k, then top-a, then top-p, then TFS, then typical, then temperature)
+    This gets called by generate_loop_fn to apply a series of 8 filters
+    to the logits (top-k, eps, top-a, top-p, TFS, eta, typical, temperature)
     before picking one token using the modified logits
     '''
 
@@ -307,6 +311,33 @@ def kobold_sample_static(
             sorted_indices_to_remove,
         )
         return jnp.where(indices_to_remove, -jnp.inf, scores)
+    
+    def sample_eps(scores: jnp.array) -> jnp.array:
+        probabilities = jax.nn.softmax(scores)
+        indices_to_remove = probabilities < (eps_cutoff * 1e-4)
+        
+        # Seems like JAX doesn't like if-s, so it's done this way
+        topk_idx = jnp.argmax(probabilities)
+        indices_to_remove = indices_to_remove.at[topk_idx].set(False)
+
+        return jnp.where(
+            indices_to_remove, -jnp.inf, scores
+        )
+    
+    def sample_eta(scores: jnp.array) -> jnp.array:
+        shifted_logits = jax.nn.log_softmax(scores)
+        probabilities = jnp.exp(shifted_logits)
+        neg_entropy = jnp.nansum(probabilities * shifted_logits)
+
+        eps = jax.lax.min(eta_cutoff * 1e-4, jnp.sqrt(eta_cutoff*1e-4)*jnp.exp(neg_entropy))
+        indices_to_remove = probabilities < eps
+        # Seems like JAX doesn't like if-s, so it's done this way
+        topk_idx = jnp.argmax(probabilities)
+        indices_to_remove = indices_to_remove.at[topk_idx].set(False)
+
+        return jnp.where(
+            indices_to_remove, -jnp.inf, scores
+        )
 
 
     def sample_typical(scores: jnp.array) -> jnp.array:
@@ -411,6 +442,8 @@ def kobold_sample_static(
         logits = jax.lax.cond(jnp.logical_and(k == 4, typical < 1.0), sample_typical, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 5, temp != 1.0), sample_temperature, lambda x: x, logits)
         logits = jax.lax.cond(jnp.logical_and(k == 6, rpargs[1] != 1.0), lambda x: sample_repetition_penalty(*x), lambda x: x[0], (logits, *rpargs))
+        logits = jax.lax.cond(jnp.logical_and(k == 7, eps_cutoff > 0.0), sample_eps, lambda x: x, logits)
+        logits = jax.lax.cond(jnp.logical_and(k == 8, eta_cutoff > 0.0), sample_eta, lambda x: x, logits)
     return jax.random.categorical(key, logits, -1).astype(jnp.uint32)
 
 pad_token_id = 50256
@@ -749,6 +782,8 @@ def infer_static(
     repetition_penalty=1.0,
     rpslope=0.0,
     rprange=0,
+    eps_cutoff=0.0,
+    eta_cutoff=0.0,
     numseqs=1,
     gen_len=80,
     soft_embeddings: Optional[np.array] = None,
@@ -759,7 +794,7 @@ def infer_static(
     if sampler_order is None:
         sampler_order = utils.default_sampler_order.copy()
     sampler_order = sampler_order[:]
-    if len(sampler_order) < 7:  # Add repetition penalty at beginning if it's not present
+    if len(sampler_order) < 9:  # Add repetition penalty at beginning if it's not present
         sampler_order = [6] + sampler_order
     sampler_order = np.uint32(sampler_order)
     total_batch = 1
@@ -781,7 +816,9 @@ def infer_static(
         "repetition_penalty": repetition_penalty * np.ones(total_batch),
         "rpslope": rpslope * np.ones(total_batch),
         "rprange": np.full(total_batch, rprange, dtype=np.uint32),
-        "top_k": np.full(total_batch, top_k, dtype=np.uint32)
+        "top_k": np.full(total_batch, top_k, dtype=np.uint32),
+        "eps_cutoff": eps_cutoff * np.ones(total_batch),
+        "eta_cutoff": eta_cutoff * np.ones(total_batch)
     }
     output = network.generate_static(
         batched_tokens,
