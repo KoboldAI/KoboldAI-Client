@@ -49,12 +49,12 @@
 		<div class="gamescreen" id="gamescreen" context-menu="gamescreen">
 			<div id="disconnect_message"><center><h1>Disconnected</h1></center></div>
 
-			<div id="welcome_container" class="welcome_container">
+			<div id="welcome_container" class="welcome_container" onclick="hide_welcome_container();">
 				<div id="welcome_text" class="var_sync_model_welcome" draggable="False"></div>
 			</div>
 
 			<div class="gametext" id="Selected Text" contenteditable="false" tabindex="0" onkeyup="return set_edit(event);">
-				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext hidden" chunk="-1"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext" chunk="-1"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
 		</div>
 
 		<!------------ Sequences --------------------->

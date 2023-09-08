@@ -957,7 +957,6 @@ function var_changed(data) {
 		if (current_action <= 0) {
 			//console.log("setting action_count to "+current_action);
 			const storyPrompt = $el("#story_prompt");
-			if (storyPrompt) storyPrompt.classList.remove("hidden");
 			scroll_trigger_element = undefined;
 			document.getElementById("Selected Text").onscroll = undefined;
 		}
@@ -1807,31 +1806,6 @@ function model_settings_checker() {
 			valid = (check_value < this.check_data['value']);
 		}
 		if (valid || missing_element) {
-			//if we are supposed to refresh when this value changes we'll resubmit
-			if ((this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
-				//get an object of all the input settings from the user
-				data = {}
-				settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
-				if (settings_area) {
-					for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
-						var element_data = element.value;
-						if (element.getAttribute("data_type") == "int") {
-							element_data = parseInt(element_data);
-						} else if (element.getAttribute("data_type") == "float") {
-							element_data = parseFloat(element_data);
-						} else if (element.getAttribute("data_type") == "bool") {
-							element_data = element.checked;
-						}
-						data[element.id.split("|")[1].replace("_value", "")] = element_data;
-					}
-				}
-				data = {...data, ...selected_model_data};
-				
-				data['plugin'] = document.getElementById("modelplugin").value;
-				data['valid_backends'] = getOptions("modelplugin");
-				
-				socket.emit("resubmit_model_info", data);
-			}
 			if ('sum' in this.check_data) {
 				for (const temp of this.check_data['sum']) {
 					if (document.getElementById(this.id.split("|")[0] +"|"  + temp + "_value")) {
@@ -1899,6 +1873,32 @@ function model_settings_checker() {
 		}
 		
 		
+	}
+	
+	//if we are supposed to refresh when this value changes we'll resubmit
+	if ((this != window) && (this.getAttribute("refresh_model_inputs") == "true") && !missing_element && !this.noresubmit) {
+		//get an object of all the input settings from the user
+		data = {}
+		settings_area = document.getElementById(document.getElementById("modelplugin").value + "_settings_area");
+		if (settings_area) {
+			for (const element of settings_area.querySelectorAll(".model_settings_input:not(.hidden)")) {
+				var element_data = element.value;
+				if (element.getAttribute("data_type") == "int") {
+					element_data = parseInt(element_data);
+				} else if (element.getAttribute("data_type") == "float") {
+					element_data = parseFloat(element_data);
+				} else if (element.getAttribute("data_type") == "bool") {
+					element_data = element.checked;
+				}
+				data[element.id.split("|")[1].replace("_value", "")] = element_data;
+			}
+		}
+		data = {...data, ...selected_model_data};
+		
+		data['plugin'] = document.getElementById("modelplugin").value;
+		data['valid_backends'] = getOptions("modelplugin");
+		
+		socket.emit("resubmit_model_info", data);
 	}
 }
 
@@ -3388,6 +3388,10 @@ function gametextwatcher(records) {
 			if (!dirty_chunks.includes("game_text")) {
 				dirty_chunks.push("game_text");
 			}
+		} else if ((record.target.nodeName == "#text") && (record.target.parentNode == game_text)) {
+			if (!dirty_chunks.includes("game_text")) {
+				dirty_chunks.push("game_text");
+			}
 		}
 	}
 }
@@ -3427,17 +3431,20 @@ function fix_dirty_game_text() {
 				} else {
 					node_text = node.data;
 				}
-				if (!(node.nextElementSibling) || !(dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) || dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
+								if ((!(node.nextElementSibling) || !(dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) || dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) && (node.previousElementSibling)) {
 					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node_text;
 					if (!dirty_chunks.includes(node.previousElementSibling.getAttribute("chunk"))) {
 						dirty_chunks.push(node.previousElementSibling.getAttribute("chunk"));
 					}
 				} else {
 					node.nextElementSibling.innerText = node.nextElementSibling.innerText + node_text;
+					if (!dirty_chunks.includes(node.nextElementSibling.getAttribute("chunk"))) {
+						dirty_chunks.push(node.nextElementSibling.getAttribute("chunk"));
+					}
 				}
 				
 				//Looks like sometimes it splits the parent. Let's look for that and fix it too
-				if (node.nextElementSibling && (node.nextElementSibling.getAttribute("chunk") == node.previousElementSibling.getAttribute("chunk"))) {
+				if (node.nextElementSibling && node.previousElementSibling && (node.nextElementSibling.getAttribute("chunk") == node.previousElementSibling.getAttribute("chunk"))) {
 					node.previousElementSibling.innerText = node.previousElementSibling.innerText + node.nextElementSibling.innerText;
 					node.nextElementSibling.remove();
 				}
@@ -6098,6 +6105,17 @@ function closePopups(userAction=false) {
 	}
 
 	if (allHidden) container.classList.add("hidden");
+}
+
+function hide_welcome_container() {
+		welcome_container = document.getElementById("welcome_container");
+		welcome_container.classList.add("hidden");
+		document.getElementById("Selected Text").focus();
+}
+
+function show_welcome_container() {
+	welcome_container = document.getElementById("welcome_container");
+	welcome_container.classList.remove("hidden");
 }
 
 $el("#popup-container").addEventListener("click", function(event) {
