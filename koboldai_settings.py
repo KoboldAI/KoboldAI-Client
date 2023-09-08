@@ -1774,7 +1774,7 @@ class KoboldStoryRegister(object):
         self.show_options(len(self.get_current_options()) > 1)
 
         if len(self.get_current_options()) == 1:
-            logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
+            logger.debug("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
             self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
 
     def use_option(self, option_number, action_step=None):
