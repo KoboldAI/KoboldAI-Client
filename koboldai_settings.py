@@ -25,6 +25,8 @@ enable_whitelist = False
 if importlib.util.find_spec("tortoise") is not None:
     from tortoise import api
     from tortoise.utils.audio import load_voices
+    
+password_vars = ["horde_api_key", "privacy_password", "img_gen_api_password"]
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -42,7 +44,7 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
         transmit_time = str(datetime.datetime.now())
         if debug_message is not None:
             print("{} {}: {} changed from {} to {}".format(debug_message, classname, name, old_value, value))
-        if value != old_value and (not koboldai_vars_main.host or name not in ["horde_api_key", "privacy_password", "img_gen_api_password"]):
+        if value != old_value:
             #Get which room we'll send the messages to
             if multi_story:
                 if classname != 'story':
@@ -83,14 +85,20 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
-                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, {"include_self":True, "broadcast":True, "room":room}]
+                    if not koboldai_vars_main.host or name not in password_vars:
+                        data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, {"include_self":True, "broadcast":True, "room":room}]
+                    else:
+                        data = ["var_changed", {"classname": classname, "name": name, "old_value": "*" * len(old_value) if old_value is not None else "", "value": "*" * len(value) if value is not None else "", "transmit_time": transmit_time}, {"include_self":True, "broadcast":True, "room":room}]
                     if queue is not None:
                         #logger.debug("Had to use queue")
                         queue.put(data)
                         
                 else:
                     if socketio is not None:
-                        socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
+                        if not koboldai_vars_main.host or name not in password_vars:
+                            socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
+                        else:
+                            socketio.emit("var_changed", {"classname": classname, "name": name, "old_value":  "*" * len(old_value) if old_value is not None else "", "value": "*" * len(value) if value is not None else "", "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
 
 class koboldai_vars(object):
     def __init__(self, socketio):
