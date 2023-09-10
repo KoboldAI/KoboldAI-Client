@@ -221,7 +221,7 @@ class model_backend(InferenceModel):
         self.tokenizer._koboldai_header = self.tokenizer.encode("")
 
     def unload(self):
-        self.model_config = None
+        #self.model_config = None # This breaks more than it fixes - Henk
 
         self.model = None
         self.tokenizer = None
@@ -289,7 +289,7 @@ class model_backend(InferenceModel):
             torch.manual_seed(seed)
 
         bad_words_ids = [self.tokenizer.bos_token_id]
-        if utils.koboldai_vars.use_default_badwordids:
+        if utils.koboldai_vars.use_default_badwordsids:
             bad_words_ids.append(self.tokenizer.eos_token_id)
             bad_words_ids.extend(self.bracket_tokens)
         if single_line:
