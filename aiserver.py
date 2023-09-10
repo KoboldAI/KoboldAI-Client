@@ -7356,7 +7356,7 @@ def generate_image(prompt: str) -> Optional[Image.Image]:
     if koboldai_vars.img_gen_priority == 4:
         # Check if stable-diffusion-webui API option selected and use that if found.
         return text2img_api(prompt)
-    elif ((not koboldai_vars.hascuda or not os.path.exists("functional_models/stable-diffusion")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
+    elif ((not koboldai_vars.hascuda or not os.path.exists("functional_models/stable-diffusion/model_index.json")) and koboldai_vars.img_gen_priority != 0) or koboldai_vars.img_gen_priority == 3:
         # If we don't have a GPU, use horde if we're allowed to
         return text2img_horde(prompt)
 
@@ -7382,7 +7382,10 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     logger.debug("Generating Image")
     from diffusers import StableDiffusionPipeline
     if koboldai_vars.image_pipeline is None:
-        pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "XpucT/Deliberate", safety_checker=None, torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("cuda")
+        if not os.path.exists("functional_models/stable-diffusion/model_index.json"):
+            from huggingface_hub import snapshot_download
+            snapshot_download("XpucT/Deliberate", local_dir="functional_models/stable-diffusion", local_dir_use_symlinks=False, cache_dir="cache/", ignore_patterns=["*.safetensors"])
+        pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "functional_models/stable-diffusion", safety_checker=None, torch_dtype=torch.float16).to("cuda")
     else:
         pipe = koboldai_vars.image_pipeline.to("cuda")
     logger.debug("time to load: {}".format(time.time() - start_time))
