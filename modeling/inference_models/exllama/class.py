@@ -1,36 +1,40 @@
 from __future__ import annotations
+try:
+    import time, json
+    import torch
+    import requests
+    import numpy as np
+    from typing import List, Optional, Union
+    import os
+    import glob
+    from pathlib import Path
+    import re
+    import warnings
+    import gc
 
-import time, json
-import torch
-import requests
-import numpy as np
-from typing import List, Optional, Union
-import os
-import glob
-from pathlib import Path
-import re
-import warnings
-import gc
+    import utils
+    from logger import logger
 
-import utils
-from logger import logger
+    from modeling import warpers
+    from modeling.warpers import Warper
+    from modeling.stoppers import Stoppers
+    from modeling.post_token_hooks import PostTokenHooks
+    from modeling.inference_model import (
+        GenerationResult,
+        GenerationSettings,
+        InferenceModel,
+        ModelCapabilities,
+    )
 
-from modeling import warpers
-from modeling.warpers import Warper
-from modeling.stoppers import Stoppers
-from modeling.post_token_hooks import PostTokenHooks
-from modeling.inference_model import (
-    GenerationResult,
-    GenerationSettings,
-    InferenceModel,
-    ModelCapabilities,
-)
+    from modeling.tokenizer import GenericTokenizer
 
-from modeling.tokenizer import GenericTokenizer
 
-from exllama.model import ExLlama, ExLlamaCache, ExLlamaConfig
-from transformers import LlamaTokenizer
-from exllama.generator import ExLlamaGenerator
+    from exllama.model import ExLlama, ExLlamaCache, ExLlamaConfig
+    from transformers import LlamaTokenizer
+    from exllama.generator import ExLlamaGenerator
+    load_failed = False
+except:
+    load_failed = True
 
 model_backend_type = "GPTQ"
 model_backend_name = "ExLlama"
@@ -101,10 +105,11 @@ class model_backend(InferenceModel):
             stopper_hooks=True,
             post_token_probs=False,
         )
+        self.disable = load_failed
 
     def is_valid(self, model_name, model_path, menu_path):
-        gptq_model, _ = load_model_gptq_settings(model_path)
         try:
+            gptq_model, _ = load_model_gptq_settings(model_path)
             self.model_config = self._load_config(model_name, model_path)
             return self.model_config and gptq_model
         except:
