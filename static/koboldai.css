@@ -906,6 +906,10 @@ border-top-right-radius: var(--tabs_rounding);
 	grid-area: lefticon;
 }
 
+.high_z.right_menu_icon {
+	z-index: 51;
+}
+
 @media only screen and (max-aspect-ratio: 5/6) {
 /* mobile */
 .right_menu_icon.hidden {
@@ -930,6 +934,10 @@ border-top-right-radius: var(--tabs_rounding);
 	width: var(--flyout_menu_width);
 	left: 100%;
 	will-change: transform;
+}
+
+.high_z.rightSideMenu {
+	z-index: 50;
 }
 
 .rightSideMenu.open {
