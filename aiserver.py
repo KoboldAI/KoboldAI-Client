@@ -3929,7 +3929,8 @@ def generate(txt, minimum, maximum, found_entries=None, gen_mode=GenerationMode.
         return
 
     for i in range(koboldai_vars.numseqs):
-        koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(genout[i, -1].item())
+        if len(genout[i]) > 0:
+            koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(genout[i, -1].item())
         koboldai_vars.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
 
     execute_outmod()
