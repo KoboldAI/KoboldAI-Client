@@ -2,7 +2,6 @@ name: koboldai
 channels:
   - pytorch
   - nvidia
-  - xformers
   - conda-forge
   - defaults
 dependencies:
@@ -27,7 +26,6 @@ dependencies:
   - termcolor
   - Pillow
   - psutil
-  - xformers=0.0.21
   - pip:
     - flask-cloudflared==0.0.10
     - flask-ngrok
@@ -60,3 +58,4 @@ dependencies:
     - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - windows-curses; sys_platform == 'win32'
     - pynvml
+    - xformers==0.0.21
