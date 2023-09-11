@@ -2,6 +2,7 @@ name: koboldai
 channels:
   - pytorch
   - nvidia
+  - xformers
   - conda-forge
   - defaults
 dependencies:
@@ -26,6 +27,7 @@ dependencies:
   - termcolor
   - Pillow
   - psutil
+  - xformers=0.0.21
   - pip:
     - flask-cloudflared==0.0.10
     - flask-ngrok
