@@ -56,7 +56,7 @@ dependencies:
     - einops
     - peft==0.3.0
     - scipy
-    - https://github.com/0cc4m/exllama/releases/download/0.0.6/exllama-0.0.6-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
-    - https://github.com/henk717/KoboldAI/releases/download/Snapshot-11-08-23/exllama-0.0.6-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
+    - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - windows-curses; sys_platform == 'win32'
     - pynvml
