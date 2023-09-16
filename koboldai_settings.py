@@ -1378,6 +1378,8 @@ class system_settings(settings):
                         bridge_data.horde_url = self._koboldai_var.horde_url
                         bridge_data.api_key = self._koboldai_var.horde_api_key
                         bridge_data.scribe_name = self._koboldai_var.horde_worker_name
+                        bridge_data.max_length = self._koboldai_var.genamt
+                        bridge_data.max_context_length = self._koboldai_var.max_length
                         bridge_data.disable_terminal_ui = self._koboldai_var.host
                         if bridge_data.worker_name == "My Awesome Instance":
                             bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
