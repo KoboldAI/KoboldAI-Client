@@ -2121,7 +2121,7 @@ class KoboldStoryRegister(object):
         sample_rate = 24000
         speaker = 'train_daws'
         if self.tortoise is None and importlib.util.find_spec("tortoise") is not None:
-           self.tortoise=api.TextToSpeech()
+           self.tortoise=api.TextToSpeech(use_deepspeed=True, kv_cache=True, half=True)
         
         if importlib.util.find_spec("tortoise") is not None:
             voice_samples, conditioning_latents = load_voices([speaker])
