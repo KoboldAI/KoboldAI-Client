@@ -2114,7 +2114,8 @@ class KoboldStoryRegister(object):
                         output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                     else:
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
-                output.export(filename, format="ogg", bitrate="16k")
+                if output is not None:
+                    output.export(filename, format="ogg", bitrate="16k")
     
     def create_wave_slow(self, make_audio_queue_slow):
         import pydub
@@ -2133,7 +2134,7 @@ class KoboldStoryRegister(object):
                 if text.strip() == "":
                     shutil.copy("data/empty_audio.ogg", filename)
                 else:
-                    if len(text) > 20000:
+                    if len(text) > 400:
                         text = self.sentence_re.findall(text)
                     else:
                         text = [text]
