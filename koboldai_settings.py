@@ -2134,8 +2134,17 @@ class KoboldStoryRegister(object):
                 if text.strip() == "":
                     shutil.copy("data/empty_audio.ogg", filename)
                 else:
-                    if len(text) > 400:
+                    if len(self.tortoise.tokenizer.encode(text)) > 400:
                         text = self.sentence_re.findall(text)
+                        i=0
+                        while i <= len(text)-2:
+                            if len(self.tortoise.tokenizer.encode(text[i] + text[i+1])) < 400:
+                                text[i] = text[i] + text[i+1]
+                                del text[i+1]
+                            else:
+                                i+=1
+                                    
+                        
                     else:
                         text = [text]
                 output = None
