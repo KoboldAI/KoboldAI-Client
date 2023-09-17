@@ -2145,7 +2145,8 @@ class KoboldStoryRegister(object):
                         output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                     else:
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
-                output.export(filename, format="ogg", bitrate="16k")
+                if output is not None:
+                    output.export(filename, format="ogg", bitrate="16k")
                 logger.info("Slow audio took {} for {} characters".format(time.time()-start_time, text_length))
     
     def gen_all_audio(self, overwrite=False):
