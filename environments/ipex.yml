@@ -24,18 +24,22 @@ dependencies:
   - psutil
   - pip:
     - -f https://developer.intel.com/ipex-whl-stable-xpu
-    - torch==2.0.1a0
-    - intel_extension_for_pytorch==2.0.110+xpu
+    - torch==2.0.1a0; sys_platform == 'linux'
+    - torch==2.0.0a0; sys_platform == 'win32'
+    - intel_extension_for_pytorch==2.0.110+xpu; sys_platform == 'linux'
+    - intel_extension_for_pytorch==2.0.110+gitba7f6c1; sys_platform == 'win32'
+    - intel-extension-for-transformers
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
     - lupa==1.10
     - transformers[sentencepiece]==4.33.1
     - huggingface_hub==0.16.4
-    - optimum[onnxruntime]==1.12.0
+    - optimum[openvino,nncf,neural-compressor]==1.12.0
     - safetensors==0.3.3
-    - accelerate==0.20.3
+    - accelerate==0.21.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
+    - flask-session
     - ansi2html
     - flask_compress
     - ijson
@@ -43,7 +47,14 @@ dependencies:
     - pydub
     - diffusers
     - git+https://github.com/0cc4m/hf_bleeding_edge/
+    - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
+    - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - einops
     - peft==0.3.0
+    - scipy
+    - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - windows-curses; sys_platform == 'win32'
     - pynvml
