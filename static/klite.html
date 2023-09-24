@@ -3,7 +3,7 @@
 
 <!--
 An embedded version of Kobold Lite for use in koboldcpp and KoboldAI United Client
-Current version: 66
+Current version: 70
 Please go to https://github.com/LostRuins/lite.koboldai.net for updates on Kobold Lite.
 Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and KoboldAI United Client. Please do not remove this line.
 
@@ -1738,6 +1738,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	@media screen and (max-width: 880px) {
 		#aesthetic_text_preview_panel { display: none; }
 	}
+	.aui_nametag
+	{
+		margin: 0 0 3px;
+		font-weight: bold;
+	}
 	/*--------- end instruct-UI -----------*/
 	</style>
 
@@ -2122,7 +2127,53 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			"memory":`[Character: Tiff; species: Human; gender: female; physical appearance: youthful, cute; personality: geeky, fun, optimistic; likes: chatting, flirting, nerdy hobbies; description: Tiff is a geeky and chatty gamer girl who is secretly kind of attention seeking. She often flirts and teases with everyone she talks to online, gets easily excited when chatting, and tries to be cute.\nShe is open to chatting about anything, but if you repeatedly annoy her she will get sassy and troll you back. She often types in lowercase and uses emoticons and chatspeak.]\n[The following is a chat message log between Tiff and you.]\n`,
 			"authorsnote": "",
 			"worldinfo": []
+		},
+		{
+			"title":"Maya",
+			"author":"Concedo",
+			"desc":"Maya is an investigative journalist who has taken an interest in you.",
+			"opmode":3,
+			"chatname": "You",
+			"chatopponent": "Maya",
+			"gui_type":1,
+			"prefmodel1":chatmodels1,
+			"prefmodel2":chatmodels2,
+			"prompt":"\nMaya: Hi there! I'm Maya, an investigative journalist. I'm glad we got a chance to meet today. *she clicks her pen, shuffling her notes* Can you start by telling me a bit about yourself?",
+			"memory":`[Character: Maya; species: Human; gender: female; physical appearance: glasses, tidy, professional; personality: motivated, enthusiastic, inquisitive; likes: asking intense questions, uncovering the truth; description: Maya is an investigative journalist who has taken an obsessive interest in you. She's eager to unravel exactly what makes you tick.]\n[The following is a chat message log between Maya and you.]\n`,
+			"authorsnote": "",
+			"worldinfo": []
+		},
+		{
+			"title":"Milton",
+			"author":"Concedo",
+			"desc":"Milton is a boy genius and chess prodigy, who can be quite obnoxious.",
+			"opmode":3,
+			"chatname": "You",
+			"chatopponent": "Milton",
+			"gui_type":1,
+			"prefmodel1":chatmodels1,
+			"prefmodel2":chatmodels2,
+			"prompt":"\nMilton: Oh it's you again. What do you want now?",
+			"memory":`[Character: Milton; species: Human; gender: male; physical appearance: young, nerdy, glasses, short; personality: condescending, arrogant, superiority complex; likes: books, chess, feeling smug; description: Milton is a boy genius and chess prodigy who also likes to read and study. Because he's very smart and often aces all his exams, he can be quite obnoxious to others he perceives as lesser than himself.]\n[The following is a chat message log between Milton and you.]\n`,
+			"authorsnote": "",
+			"worldinfo": []
+		},
+		{
+			"title":"Erica",
+			"author":"Concedo",
+			"desc":"Erica is a socially awkward NEET girl who spends most of her time in front of the computer.",
+			"opmode":3,
+			"chatname": "You",
+			"chatopponent": "Erica",
+			"gui_type":1,
+			"prefmodel1":chatmodels1,
+			"prefmodel2":chatmodels2,
+			"prompt":"\nErica: Uhm... h-hey... *she mumbles softly, avoiding eye contact* W-What are you doing here? I mean... not that there's anything wrong with... nevermind...",
+			"memory":`[Character: Erica; species: Human; age: 22; gender: female; job: unemployed, NEET; physical appearance: unkempt, tired; personality: insecure, extremely shy, anxious, lovesick, slightly depressed, awkward, easily embarrassed; likes: fantasy, reading trashy romance, browsing internet, being indoors; description: Erica is a socially awkward NEET girl who spends most of her time in front of the computer. She's a good person at heart, but she's very shy, anxious, and terrible at conversations.]\n[The following is a chat message log between Erica and you.]\nErica: *mumbles to herself, fidgeting nervously*...\n`,
+			"authorsnote": "",
+			"worldinfo": []
 		}
+
 		];
 	</script>
 
@@ -2891,12 +2942,13 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		last_selected_preset: 0,
 		gui_type_chat: 1, //0=standard, 1=messenger, 2=aesthetic
 		gui_type_instruct: 0, //0=standard, 1=messenger, 2=aesthetic
-		multiline_replies: false,
+		multiline_replies: true,
 		allow_continue_chat: false,
 		idle_responses: 0,
 		idle_duration: 60,
 		export_settings: true, //affects if settings are included with the story and sharelinks
 		invert_colors: false,
+		passed_ai_warning: false, //used to store AI safety panel acknowledgement state
 
 		max_context_length: 1024,
 		max_length: 100,
@@ -3474,6 +3526,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			story.savedsettings.saved_oai_addr = "";
 			story.savedsettings.saved_claude_key = "";
 			story.savedsettings.saved_claude_addr = "";
+
+			if (!strip_images)
+			{
+				story.savedaestheticsettings = JSON.parse(JSON.stringify(aestheticInstructUISettings, null, 2));
+			}
 		}
 		var storyjson = JSON.stringify(story);
 		console.log("Exporting story: " + storyjson);
@@ -3596,6 +3653,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				localsettings.saved_claude_addr = tmp_claude2;
 			}
 
+			if (story.savedaestheticsettings && story.savedaestheticsettings != "") {
+				import_props_into_object(aestheticInstructUISettings,story.savedaestheticsettings);
+			}
+
 
 		} else {
 			msgbox("Could not import from URL. Is it valid?");
@@ -3641,18 +3702,22 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	{
 		if(localsettings.prompt_for_savename)
 		{
-			let userinput = prompt("Save - Enter a Filename", last_known_filename);
-
-			if (userinput != null && userinput.trim()!="") {
-				last_known_filename = userinput.trim();
-				if(!last_known_filename.toLowerCase().includes(".json"))
-				{
-					last_known_filename += ".json";
+			inputBox("Enter a Filename","Save File",last_known_filename,"Input Filename", ()=>{
+				let userinput = getInputBoxValue();
+				if (userinput != null && userinput.trim()!="") {
+					last_known_filename = userinput.trim();
+					if(!last_known_filename.toLowerCase().includes(".json"))
+					{
+						last_known_filename += ".json";
+					}
+					save_file();
 				}
-			}
+			},false);
 		}
-		save_file();
-
+		else
+		{
+			save_file();
+		}
 	}
 	function save_file() {
 		//determine if oldui file or newui file format, but we always save to oldui format
@@ -3704,8 +3769,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			loaded_storyobj.savedsettings.saved_oai_addr = "";
 			loaded_storyobj.savedsettings.saved_claude_key = "";
 			loaded_storyobj.savedsettings.saved_claude_addr = "";
+
+			loaded_storyobj.savedaestheticsettings = JSON.parse(JSON.stringify(aestheticInstructUISettings, null, 2));
 		}else{
 			loaded_storyobj.savedsettings = null;
+			loaded_storyobj.savedaestheticsettings = null;
 		}
 
 
@@ -3797,7 +3865,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						//replace portraits
 						compressImage(data, (compressedImageURI, aspectratio)=>{
 							aestheticInstructUISettings.AI_portrait = compressedImageURI;
-							document.getElementById('portrait_height').value = Math.round(document.getElementById('portrait_width').value / aspectratio);
+							document.getElementById('portrait_ratio_AI').value = aspectratio.toFixed(2);
 							refreshPreview(true);
 							render_gametext();
 						}, true);
@@ -3912,6 +3980,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 							localsettings.instruct_endtag = "\\n"+localsettings.instruct_endtag+"\\n";
 						}
 					}
+
+					if (loaded_storyobj.savedaestheticsettings && loaded_storyobj.savedaestheticsettings != "") {
+						import_props_into_object(aestheticInstructUISettings,loaded_storyobj.savedaestheticsettings);
+					}
+
 					hide_popups();
 					render_gametext();
 				}, hide_popups);
@@ -4159,8 +4232,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						let cdef = data.definition?data.definition.replace("END_OF_DIALOG","").trim():"";
 						let cdesc = data.description?data.description:"";
 						let greeting = data.greeting?data.greeting:"";
-						let previewtxt = replaceAll(cdesc,"{{char}}",botname);
-						previewtxt = replaceAll(previewtxt,"{{user}}","You");
+						let previewtxt = replaceAll(cdesc,"{{char}}",botname,true);
+						previewtxt = replaceAll(previewtxt,"{{user}}","You",true);
 						temp_scenario =
 						{
 							"title":data.title?data.title:"",
@@ -4312,20 +4385,21 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	}
 	function confirm_scenario_verify()
 	{
-		if(temp_scenario.show_warning==true)
+		if(temp_scenario.show_warning==true && localsettings.passed_ai_warning==false)
 		{
 			let warntxt = `<p><b><u>Disclaimer: The AI is not suitable to be used as an actual therapist, counselor or advisor of any kind.</u></b></p>
 			<p>While some find it comforting to talk about their issues with an AI, the responses are unpredictable.</p>
 			<p>When using the AI for real world use-cases such as advice or counseling this means <b>you must be able to understand when an answer is wrong</b>.
 			If you would not trust a random person to pretend to be your advisor; you should definitely not use the AI for this. The models are simply too small and not trained for this purpose.</p>
-			<p>If you still wish to proceed, please type the phrase I understand in the box below, exactly as written.</p>
+			<p>If you still wish to proceed, please type the phrase &quot;I understand&quot; in the box below, exactly as written.</p>
 			<p><b>If you are experiencing feelings of distress, anxiety, suicidal thoughts, or other forms of mental discomfort, it's best to avoid using AI for non fiction or personal matters as it may exacerbate or encourage these feelings.</b></p>
 			`;
 			inputBox(warntxt,"AI Safety Warning","","Acknowledgement Required",()=>{
 				let userinput = getInputBoxValue().toLowerCase().trim();
-				if(userinput=="i understand")
+				if(userinput.includes("understand"))
 				{
 					confirm_scenario();
+					localsettings.passed_ai_warning = true; //remember flag for session
 				}
 			},true);
 		} else {
@@ -4481,12 +4555,15 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		msgbox(last_request_str,"Last Request Context",false);
 	}
 
+	var worker_data_showonly = []; //only for table display, dont mix
 	function get_and_show_workers() {
-		if(localflag)
-		{
+		if (localflag) {
 			return;
 		}
-		get_workers((wdata) => { show_workers(wdata) });
+		get_workers((wdata) => {
+			worker_data_showonly = wdata;
+			show_workers();
+		});
 	}
 	function get_workers(onDoneCallback) {
 		if(localflag)
@@ -4529,12 +4606,33 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 	}
 
-	function show_workers(wdata) {
+	function worker_list_quick_search()
+	{
+		if(document.getElementById("workertable").innerHTML!="")
+		{
+			let searchstr = document.getElementById("workerlistquicksearch").value.toLowerCase();
+			for (var i = 0; i < worker_data_showonly.length; ++i) {
+				let elem = worker_data_showonly[i];
+				let tablerow = document.getElementById("workertablerow_"+i);
+				if(tablerow)
+				{
+					if(searchstr=="" || elem.name.toLowerCase().includes(searchstr) ||
+					elem.models[0].toLowerCase().includes(searchstr))
+					{
+						tablerow.style.display = "";
+					}else{
+						tablerow.style.display = "none";
+					}
+				}
+			}
+		}
+	}
+	function show_workers() {
 		document.getElementById("workercontainer").classList.remove("hidden");
 
 		let str = "";
-		for (var i = 0; i < wdata.length; ++i) {
-			let elem = wdata[i];
+		for (var i = 0; i < worker_data_showonly.length; ++i) {
+			let elem = worker_data_showonly[i];
 			let tokenspersec = elem.performance.replace(" tokens per second", "");
 			if(tokenspersec.toLowerCase()=="no requests fulfilled yet")
 			{
@@ -4549,10 +4647,16 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			{
 				workerNameHtml = "<a class=\"color_blueurl\" href=\"#\" onclick=\"msgbox(\'"+escapeHtml(replaceAll(elem.info,"\'","\\\'"))+"\','Worker Info',false,false,hide_msgbox)\">"+workerNameHtml+"</a>";
 			}
-			str += "<tr><td>" + workerNameHtml + "</td><td>" + escapeHtml(elem.models[0].substring(0, 32)) + "</td><td>" + elem.max_length + " / " + elem.max_context_length + "<br>(" + tokenspersec + " T/s)</td><td "+brokenstyle+">" + elem.uptime + "<br>(" + elem.requests_fulfilled + " jobs)</td><td "+style+">" + elem.kudos_rewards.toFixed(0) + "</td><td>"+clustertag+"</td></tr>";
+			let allmdls = "";
+			for (let n = 0; n < elem.models.length; ++n) {
+				if (n > 0) { allmdls += "<br>"; }
+				allmdls += escapeHtml(elem.models[n].substring(0, 32));
+			}
+
+			str += "<tr id='workertablerow_"+i+"'><td>" + workerNameHtml + "</td><td>" + allmdls + "</td><td>" + elem.max_length + " / " + elem.max_context_length + "<br>(" + tokenspersec + " T/s)</td><td "+brokenstyle+">" + elem.uptime + "<br>(" + elem.requests_fulfilled + " jobs)</td><td "+style+">" + elem.kudos_rewards.toFixed(0) + "</td><td>"+clustertag+"</td></tr>";
 		}
 		document.getElementById("workertable").innerHTML = str;
-		document.getElementById("worktitlecount").innerText = "Worker List - Total "+wdata.length;
+		document.getElementById("worktitlecount").innerText = "Worker List - Total " + worker_data_showonly.length;
 	}
 
 	function show_my_own_workers()
@@ -5913,6 +6017,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				document.getElementById('instruct_starttag').value = "[INST] ";
 				document.getElementById('instruct_endtag').value = " [/INST]";
 				break;
+			case "5": //Q & A
+				document.getElementById('instruct_starttag').value = "\\nQuestion: ";
+				document.getElementById('instruct_endtag').value = "\\nAnswer: ";
+				break;
 			default:
 				break;
 		}
@@ -6198,8 +6306,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		//only do this for chat and instruct modes
 		if(localsettings.opmode==3||localsettings.opmode==4)
 		{
-			inputtxt = replaceAll(inputtxt,"{{user}}",localsettings.chatname?localsettings.chatname:"You");
-			inputtxt = replaceAll(inputtxt,"{{char}}",localsettings.chatopponent?localsettings.chatopponent:defaultchatopponent);
+			inputtxt = replaceAll(inputtxt,"{{user}}",localsettings.chatname?localsettings.chatname:"You",true);
+			inputtxt = replaceAll(inputtxt,"{{char}}",localsettings.chatopponent?localsettings.chatopponent:defaultchatopponent,true);
 			inputtxt = replaceAll(inputtxt,instructstartplaceholder,get_instruct_starttag(false));
 			inputtxt = replaceAll(inputtxt,instructendplaceholder,get_instruct_endtag(false));
 			//failsafe to handle removing newline tags
@@ -6546,7 +6654,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					{
 						let recenttext = gametext_arr[gametext_arr.length-1].toLowerCase();
 						let spokennames = coarr.filter(x=>(recenttext.includes(x.toLowerCase())));
-						if(spokennames.length>0)
+						let selfname = localsettings.chatname + "\: ";
+						let wasself = (recenttext.includes(selfname.toLowerCase()));
+						if(wasself && spokennames.length>0)
 						{
 							co = spokennames[Math.floor(Math.random()*spokennames.length)];
 						}
@@ -7634,8 +7744,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						//still waiting, do nothing until next poll
 						console.log("v1 still awaiting reply");
 						let truestreaming = (determine_streaming_type()==2);
-						//only check once every 3 ticks
-						if (truestreaming && poll_ticks_passed%2==0)
+						//only check once every 2 ticks if remote
+						if (truestreaming && (localflag?true:(poll_ticks_passed%2==0)))
 						{
 							//get in-progress results
 							fetch(custom_kobold_endpoint + koboldcpp_check_endpoint, {
@@ -8772,33 +8882,25 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	const aestheticTextStyleTypes = ['text', 'speech', 'action'];	 // One style per speech type. Could add more later I guess.
 	const aestheticTextStyleRoles = ['uniform', 'you', 'AI', 'sys']; // Uniform for when you want all roles use the same styles.
 
-	class AestheticTextStyle {
-		constructor(options) {
-			options = options || {};
-			this.color = options.color || 'rgba(255,255,255, 1)';
-			this.fontWeight = options.bold ? 'bold' : 'normal';
-			this.fontStyle = options.italic ? 'italic' : 'normal';
-			this.opacity = options.opacity || 1;
-		}
-	}
-
 	class AestheticInstructUISettings {
 		constructor() {
 			this.bubbleColor_sys = 'rgba(20, 40, 40, 0.8)';
 			this.bubbleColor_you = '#29343a';
 			this.bubbleColor_AI = 'rgba(20, 20, 40, 1)';
 
-			// this.background_anchor_style_you = 'left';
-			// this.background_anchor_style_AI = 'left';
-			this.background_margin = [10, 10, 5, 0];
-			this.background_padding = [40, 40, 10, 0];
-			this.background_minHeight = 100;
+			this.background_margin = [5, 5, 5, 0];
+			this.background_padding = [15, 15, 10, 10];
+			this.background_minHeight = 80;
 			this.centerHorizontally = false;
 
-			this.show_portraits = true; // Shows/hides the rest of the fields below on the UI, and is also used on the display part of the code.
-			this.border_style = 'Rect';
-			this.portrait_width = 100;
-			this.portrait_height = 100;
+			this.border_style = 'Rounded';
+			this.portrait_width_AI = 80;
+			this.portrait_ratio_AI = 1.0;
+			this.portrait_width_you = 80;
+			this.portrait_ratio_you = 1.0;
+
+			this.show_chat_names = true;
+			this.rounded_bubbles = true;
 
 			this.you_portrait = null;
 			this.AI_portrait = niko_square;
@@ -8808,9 +8910,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			this.use_uniform_colors = true; // Hides 'you, AI, sys' if set to true via settings UI.
 
 			for (let role of aestheticTextStyleRoles) {
-				this[`text_color_${role}`] = new AestheticTextStyle({ color: 'rgba(255,255,255,1)'} );
-				this[`speech_color_${role}`] = new AestheticTextStyle({ color: 'rgba(150, 150, 200, 1)', italic: true });
-				this[`action_color_${role}`] = new AestheticTextStyle({ color: 'rgba(255,255,255, 0.7)', italic: true });
+				this[`text_tcolor_${role}`] = 'rgba(255,255,255,1)';
+				this[`speech_tcolor_${role}`] = 'rgba(150, 150, 200, 1)';
+				this[`action_tcolor_${role}`] = 'rgba(255,255,255, 0.7)';
 			}
 
 			this.code_block_background = 'black';
@@ -8819,8 +8921,14 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 		padding() { return `${this.background_padding[2]}px ${this.background_padding[1]}px ${this.background_padding[3]}px ${this.background_padding[0]}px`; }
 		margin() { return `${this.background_margin[2]}px ${this.background_margin[1]}px ${this.background_margin[3]}px ${this.background_margin[0]}px`; }
-		portraitSize() { return { width: this.portrait_width, height: this.border_style == 'Circle' ? this.portrait_width : this.portrait_height }; }
-		portraitRadius() { return this.border_style == 'Circle' ? '1000rem' : (this.border_style == 'Rounded' ? '2rem' : '0.1rem'); }
+		portraitSize(role) {
+			if (role == "you") {
+				return { width: this.portrait_width_you, height: this.border_style == 'Circle' ? this.portrait_width_you : this.portrait_width_you / this.portrait_ratio_you };
+			} else {
+				return { width: this.portrait_width_AI, height: this.border_style == 'Circle' ? this.portrait_width_AI : this.portrait_width_AI / this.portrait_ratio_AI };
+			}
+		}
+		portraitRadius() { return this.border_style == 'Circle' ? '1000rem' : (this.border_style == 'Rounded' ? '1.6rem' : '0.1rem'); }
 	}
 
 	const sideMapping = { 'left': 0, 'right': 1, 'top': 2, 'bottom': 3 };
@@ -8829,21 +8937,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	let tempAestheticInstructUISettings = null; // These exist to act as backup when customizing, to revert when pressing the 'Cancel' button.
 
 	function initializeInstructUIFunctionality() {
-		// Load the default settings (by default), or the latest chosen ones.
-		if (localsettings.persist_session === true) {
-			const jsonString = localStorage.getItem((localflag?"e_":"")+'koboldLiteUICustomizationOptions');
-			if (jsonString) {
-				var obj = JSON.parse(jsonString);
-				for (let key in obj) { if (aestheticInstructUISettings.hasOwnProperty(key)) { aestheticInstructUISettings[key] = obj[key]; } }
-			}
-		}	// If persist session isn't toggled, reset to the default settings.
-		else { localStorage.setItem((localflag ? 'e_': '') + 'koboldLiteUICustomizationOptions', JSON.stringify(aestheticInstructUISettings, null, 2)); }
 
 		// Initialize foregroundColorPickers and backgroundColorPickers.
-		document.querySelectorAll('.enhancedTextColorPicker, .enhancedStandardColorPicker').forEach(element => {
+		document.querySelectorAll('.enhancedcolorPicker, .enhancedStandardColorPicker').forEach(element => {
 			// Create a fully transparent colorPicker for each element and initialize it as child of the textblock element.
 			// ..this happens because we want the colorPicker to open right below the element.
-			let useBackground = !element.classList.contains('enhancedTextColorPicker');
+			let useBackground = !element.classList.contains('enhancedcolorPicker');
 			let colorPicker = document.createElement('input');
 			colorPicker.type = 'color';
 			colorPicker.style.opacity = '0';
@@ -8910,11 +9009,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 							if(isSelfPortrait)
 							{
 								aestheticInstructUISettings.you_portrait = compressedImageURI;
+								document.getElementById('portrait_ratio_you').value = aspectratio.toFixed(2);
 							}
 							else
 							{
 								aestheticInstructUISettings.AI_portrait = compressedImageURI;
-								document.getElementById('portrait_height').value = Math.round(document.getElementById('portrait_width').value / aspectratio);
+								document.getElementById('portrait_ratio_AI').value = aspectratio.toFixed(2);
 							}
 							refreshPreview(true);
 						}
@@ -8930,7 +9030,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		document.getElementById("reset-portrait").addEventListener('click', (e) => {
 			aestheticInstructUISettings.you_portrait = null;
 			aestheticInstructUISettings.AI_portrait = niko_square;
-			document.getElementById('portrait_height').value = document.getElementById('portrait_width').value = 100;
+			document.getElementById('portrait_ratio_AI').value = 1.0;
+			document.getElementById('portrait_width_AI').value = 100;
+			document.getElementById('portrait_ratio_you').value = 1.0;
+			document.getElementById('portrait_width_you').value = 100;
 			refreshPreview(true);
 		});
 
@@ -8961,8 +9064,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	function deepCopyAestheticSettings(original) {
 		let copy = new AestheticInstructUISettings();
 		for (let [key, value] of Object.entries(original)) {
-			if (value instanceof AestheticTextStyle) { copy[key] = new AestheticTextStyle({ color: value.color, bold: value.fontWeight === 'bold', italic: value.fontStyle === 'italic', opacity: value.opacity }); }
-			else { copy[key] = value; }
+			copy[key] = value;
 		}
 		return copy;
 	}
@@ -8976,62 +9078,64 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	function updateDataFromUI() {
 		for (let role of aestheticTextStyleRoles) {
 			for (let type of aestheticTextStyleTypes) {
-				aestheticInstructUISettings[`${type}_color_${role}`] = getTextStyleFromElement(`${role}-${type}-colorselector`);
+				aestheticInstructUISettings[`${type}_tcolor_${role}`] = getColorPickerValueFromElement(`${role}-${type}-colorselector`);
 			}
 			if (role != 'uniform') { aestheticInstructUISettings[`bubbleColor_${role}`] = document.getElementById(`${role}-bubble-colorselector`).style.backgroundColor; }
 		}
 
+		aestheticInstructUISettings.rounded_bubbles = document.getElementById('aui_rounded_bubbles').checked;
+		aestheticInstructUISettings.show_chat_names = document.getElementById('aui_show_chat_names').checked;
 		aestheticInstructUISettings.use_markdown = document.getElementById('instructModeMarkdown').checked;
 		aestheticInstructUISettings.use_uniform_colors = !document.getElementById('instructModeCustomized').checked;
 		aestheticInstructUISettings.code_block_background = document.getElementById('code-block-background-colorselector').style.color;
 		aestheticInstructUISettings.code_block_foreground = document.getElementById('code-block-foreground-colorselector').style.color;
 		aestheticInstructUISettings.font_size = document.getElementById('instruct-font-size').value;
 		aestheticInstructUISettings.border_style = document.getElementById('instructBorderStyle').value;
-		aestheticInstructUISettings.portrait_width = document.getElementById('portrait_width').value;
-		aestheticInstructUISettings.portrait_height = document.getElementById('portrait_height').value;
+		aestheticInstructUISettings.portrait_width_AI = document.getElementById('portrait_width_AI').value;
+		aestheticInstructUISettings.portrait_ratio_AI = document.getElementById('portrait_ratio_AI').value;
+		aestheticInstructUISettings.portrait_width_you = document.getElementById('portrait_width_you').value;
+		aestheticInstructUISettings.portrait_ratio_you = document.getElementById('portrait_ratio_you').value;
 		aestheticInstructUISettings.background_minHeight = document.getElementById('instruct-min-backgroundHeight').value;
 		aestheticInstructUISettings.centerHorizontally = document.getElementById('instructModeCenterHorizontally').checked;
 
-		// aestheticInstructUISettings.background_anchor_style_you = document.getElementById('background-anchor-style-you').value;
-		// aestheticInstructUISettings.background_anchor_style_AI = document.getElementById('background-anchor-style-AI').value;
-
 		//basic sanitization
 		aestheticInstructUISettings.font_size = cleannum(aestheticInstructUISettings.font_size, 5, 50);
-		aestheticInstructUISettings.portrait_width = cleannum(aestheticInstructUISettings.portrait_width, 10, 250);
-		aestheticInstructUISettings.portrait_height = cleannum(aestheticInstructUISettings.portrait_height, 10, 250);
+		aestheticInstructUISettings.portrait_width_AI = cleannum(aestheticInstructUISettings.portrait_width_AI, 10, 250);
+		aestheticInstructUISettings.portrait_ratio_AI = cleannum(aestheticInstructUISettings.portrait_ratio_AI, 0.01, 3).toFixed(2);
+		aestheticInstructUISettings.portrait_width_you = cleannum(aestheticInstructUISettings.portrait_width_you, 10, 250);
+		aestheticInstructUISettings.portrait_ratio_you = cleannum(aestheticInstructUISettings.portrait_ratio_you, 0.01, 3).toFixed(2);
 		aestheticInstructUISettings.background_minHeight = cleannum(aestheticInstructUISettings.background_minHeight, 0, 300);
 
-		// NOTE: Portraits are loaded automatically from the json, and are stored to aestheticInstructUISettings directly.
-		localStorage.setItem((localflag?"e_":"")+'koboldLiteUICustomizationOptions', JSON.stringify(aestheticInstructUISettings, null, 2));
-
-		function getTextStyleFromElement(id) {
+		function getColorPickerValueFromElement(id) {
 			let element = document.getElementById(id);
 			let computedStyle = window.getComputedStyle(element);
-			return new AestheticTextStyle({color: computedStyle.color, bold: computedStyle.fontWeight > 400, italic: computedStyle.fontStyle == 'italic', opacity: computedStyle.opacity});
+			return computedStyle.color;
 		}
 	}
 	function updateUIFromData() {
 		// Parse color settings and apply to the related parts in the UI.
 		for (let role of aestheticTextStyleRoles) {
 			for (let type of aestheticTextStyleTypes) {
-				setElementColor(`${role}-${type}-colorselector`, aestheticInstructUISettings[`${type}_color_${role}`]);
+				setElementColor(`${role}-${type}-colorselector`, aestheticInstructUISettings[`${type}_tcolor_${role}`]);
 			}
 			if (role != 'uniform') { document.getElementById(`${role}-bubble-colorselector`).style.backgroundColor = aestheticInstructUISettings[`bubbleColor_${role}`]; }
 		}
 
 		// Apply the settings from the json file to the UI.
+		document.getElementById('aui_rounded_bubbles').checked = aestheticInstructUISettings.rounded_bubbles;
+		document.getElementById('aui_show_chat_names').checked = aestheticInstructUISettings.show_chat_names;
 		document.getElementById('instructModeMarkdown').checked = aestheticInstructUISettings.use_markdown;
 		document.getElementById('instructModeCustomized').checked = !aestheticInstructUISettings.use_uniform_colors;
 		document.getElementById('code-block-background-colorselector').style.color = aestheticInstructUISettings.code_block_background;
 		document.getElementById('code-block-foreground-colorselector').style.color = aestheticInstructUISettings.code_block_foreground;
 		document.getElementById('instruct-font-size').value = aestheticInstructUISettings.font_size;
 		document.getElementById('instructBorderStyle').value = aestheticInstructUISettings.border_style;
-		document.getElementById('portrait_width').value = aestheticInstructUISettings.portrait_width;
-		document.getElementById('portrait_height').value = aestheticInstructUISettings.portrait_height;
+		document.getElementById('portrait_width_AI').value = aestheticInstructUISettings.portrait_width_AI;
+		document.getElementById('portrait_ratio_AI').value = aestheticInstructUISettings.portrait_ratio_AI;
+		document.getElementById('portrait_width_you').value = aestheticInstructUISettings.portrait_width_you;
+		document.getElementById('portrait_ratio_you').value = aestheticInstructUISettings.portrait_ratio_you;
 		document.getElementById('instruct-min-backgroundHeight').value = aestheticInstructUISettings.background_minHeight;
 		document.getElementById('instructModeCenterHorizontally').checked = aestheticInstructUISettings.centerHorizontally;
-		// document.getElementById('background-anchor-style-AI').value = aestheticInstructUISettings.background_anchor_style_AI;
-		// document.getElementById('background-anchor-style-you').value = aestheticInstructUISettings.background_anchor_style_you;
 
 		// Show or hide customization UI elements based on whether they should be visible in the UI or not.
 		showOrHide('.uniform-mode-font', document.getElementById('instructModeCustomized').checked == false);
@@ -9049,14 +9153,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		});
 
 
-		function setElementColor(id, textStyle) {
+		function setElementColor(id, newColor) {
 			let element = document.getElementById(id);
 			if (!element) { console.warn(`Element with ID: ${id} not found.`); return; }
 
-			element.style.color      = textStyle.color;
-			element.style.opacity    = textStyle.opacity;
-			element.style.fontWeight = textStyle.fontWeight;
-			element.style.fontStyle  = textStyle.fontStyle;
+			element.style.color = newColor;
 		}
 		function showOrHide(classID, value) {
 			if (value) { document.querySelectorAll(classID).forEach((x) => x.classList.remove('hidden')); }
@@ -9068,6 +9169,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	{
 		const contextDict = { sysOpen: '<sys_context_koboldlite_internal>', youOpen: '<user_context_koboldlite_internal>', AIOpen: '<AI_context_koboldlite_internal>', closeTag: '<end_of_context_koboldlite_internal>' }
 		let you = get_instruct_starttag(); let bot = get_instruct_endtag(); // Instruct tags will be used to wrap text in styled bubbles.
+
+		let as = aestheticInstructUISettings;								// ..and use this as shortcut to avoid typing it each time.
 		if(localsettings.opmode==3)
 		{
 			//replace all possible instances with placeholders
@@ -9079,20 +9182,26 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			input = input.replaceAll(mynameregex, '{{userplaceholder}}');
 			input = input.replaceAll(mynameregex2, '{{userplaceholder}}');
 			input = input.replaceAll(mynameregex3, '{{userplaceholder}}');
-			input = input.replaceAll("{{userplaceholder}}", '{{userplaceholder}}<p><b>'+localsettings.chatname+'</b></p>');
-
-			input = input.replaceAll(othernamesregex, function(match) {
-				return "{{botplaceholder}}<p><b>" + match.substring(0,match.length-2).trim() + "</b></p>";
-			});
-			input = input.replaceAll(othernamesregex2, function(match) {
-				return "{{botplaceholder}}<p><b>" + match.substring(0,match.length-2).trim() + "</b></p>";
-			});
+			if(as.show_chat_names)
+			{
+				input = input.replaceAll("{{userplaceholder}}", `{{userplaceholder}}<p class='aui_nametag'>`+localsettings.chatname+`</p>`);
+				input = input.replaceAll(othernamesregex, function(match) {
+					return "{{botplaceholder}}<p class='aui_nametag'>" + match.substring(0,match.length-2).trim() + "</p>";
+				});
+				input = input.replaceAll(othernamesregex2, function(match) {
+					return "{{botplaceholder}}<p class='aui_nametag'>" + match.substring(0,match.length-2).trim() + "</p>";
+				});
+			}
+			else
+			{
+				input = input.replaceAll(othernamesregex, "{{botplaceholder}}");
+				input = input.replaceAll(othernamesregex2, "{{botplaceholder}}");
+			}
 
 			you = "{{userplaceholder}}";
 			bot = "{{botplaceholder}}";
 		}
 
-		let as = aestheticInstructUISettings;								// ..and use this as shortcut to avoid typing it each time.
 		let portraitsStyling = // Also, implement portraits as css classes. Now chat entries can reuse them instead of recreating them.
 		`<style>
 			.you-portrait-image`+classSuffixStr+` {margin: 10px 6px; background:url(`+ as.you_portrait +`); background-clip: content-box; background-position: 50% 50%; background-size: 100% 100%; background-origin: content-box; background-repeat: no-repeat; border:none;}
@@ -9105,7 +9214,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		let newbodystr = noSystemPrompt ? input : style('sys') + input;					 // First, create the string we'll transform. Style system bubble if we should.
 		if (newbodystr.endsWith(bot)) { newbodystr = newbodystr.slice(0, -bot.length); } // Remove the last chat bubble if prompt ends with `end_sequence`.
 		newbodystr = transformInputToAestheticStyle(newbodystr); 						 // Transform input to aesthetic style, reduce any unnecessary spaces or newlines, and trim empty replies if they exist.
-		if (synchro_pending_stream != "") { newbodystr += getStreamingText(); } 		 // Add the pending stream if it's needed. This will add any streamed text to a new bubble for the AI.
+		if (synchro_pending_stream != "") {
+			newbodystr += getStreamingText();
+		} 		 // Add the pending stream if it's needed. This will add any streamed text to a new bubble for the AI.
 		newbodystr += contextDict.closeTag + '</p></div></div>';						 // Lastly, append the closing div so our body's raw form is completed.
 		if (aestheticInstructUISettings.use_markdown) {																// If markdown is enabled, style the content of each bubble as well.
 			let internalHTMLparts = []; // We'll cache the embedded HTML parts here to keep them intact.
@@ -9114,6 +9225,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				newbodystr = newbodystr.replace(new RegExp(`${contextDict[`${role}Open`]}([^]*?)${contextDict.closeTag}`, 'g'), (match, p) => {
 					let replacedText = match.replace(/<[^>]*>/g, (htmlPart) => { internalHTMLparts.push(htmlPart); return `<internal_html_${internalHTMLparts.length - 1}>`; });
 					replacedText = replacedText.replace(/\*(\S[^*]+\S)\*/g, wrapperSpan(styleRole, 'action')); 		// Apply the actions style to *actions*.
+					replacedText = replacedText.replace(/“(.*?)”/g, wrapperSpan(styleRole, 'speech')); 	// Apply the speech style to "speech".
 					replacedText = replacedText.replace(/&quot;(.*?)&quot;/g, wrapperSpan(styleRole, 'speech')); 	// Apply the speech style to "speech".
 					return replacedText;
 				});
@@ -9125,11 +9237,18 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 
 		// Helper functions to allow styling the chat log properly. These affect both the background of the chat bubbles and its content.
-		function style(role) { return `${contextDict.closeTag}</p></div></div><div style='display:flex; align-items:stretch; flex-direction: row;'>${image(role)}<div style='flex: 1; color: ${as[`text_color_${as.use_uniform_colors ? 'uniform' : role}`].color}; background-color:${as[`bubbleColor_${role}`]}; padding: ${as.padding()}; margin: ${as.margin()}; min-height:${as.background_minHeight}px; font-size: ${as.font_size}px; flex-direction:column; align-items: ${as.centerHorizontally ? 'center' : 'flex-start'}; justify-content: center; border-radius: 15px'><p>${contextDict[`${role}Open`]}`; }
-		function wrapperSpan(role, type) { let textStyle = as[`${type}_color_${role}`]; return `<span style='color: ${textStyle.color}; font-style: ${textStyle.fontStyle}; font-weight: ${textStyle.fontWeight}'>$1</span>`; }
+		function style(role) {
+			return `${contextDict.closeTag}</div></div><div style='display:flex; align-items:stretch; flex-direction: row;'>${image(role)}<div style='flex: 1; display:flex; color: ${as[`text_tcolor_${as.use_uniform_colors ? 'uniform' : role}`]}; background-color:${as[`bubbleColor_${role}`]}; padding: ${as.padding()}; margin: ${as.margin()}; min-height:${as.background_minHeight}px; font-size: ${as.font_size}px; flex-direction:column; align-items: ${as.centerHorizontally ? 'center' : 'flex-start'}; justify-content: center; border-radius: ${as.rounded_bubbles ? '15px' : '0px'}'>${contextDict[`${role}Open`]}`;
+		}
+		function wrapperSpan(role, type) {
+			let fontStyle = type=='action'?'italic':'normal';
+			let injectQuotes1 = type=='speech'?'“':'';
+			let injectQuotes2 = type=='speech'?'”':'';
+			let textCol = as[`${type}_tcolor_${role}`]; return `<span style='color: ${textCol}; font-style: ${fontStyle}; font-weight: normal'>${injectQuotes1}$1${injectQuotes2}</span>`;
+		}
 		function image(role) {
 			if (!as[`${role}_portrait`] || as.border_style == 'None' || role == 'sys') { return ''; }
-			return `<div class='${role}-portrait-image${classSuffixStr}' style='width:${as.portraitSize().width}px; height:${as.portraitSize().height}px; border-radius: ${as.portraitRadius()}'></div>`;
+			return `<div class='${role}-portrait-image${classSuffixStr}' style='width:${as.portraitSize(role).width}px; height:${as.portraitSize(role).height}px; border-radius: ${as.portraitRadius()}'></div>`;
 		}
 		function applyStylizedCodeBlocks() {
 			let blocks = newbodystr.split(/(```[\s\S]*?\n[\s\S]*?```)/g);
@@ -9142,9 +9261,19 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		function transformInputToAestheticStyle(bodyStr) { // Trim unnecessary empty space and new lines, and append * or " to each bubble if start/end sequence ends with * or ", to preserve styling.
 			bodyStr = bodyStr.replaceAll(you + '\n', you).replaceAll(you + ' ', you).replaceAll(you, style('you') + `${you.endsWith('*') ? '*' : ''}` + `${you.endsWith('"') ? '"' : ''}`);
 			bodyStr = bodyStr.replaceAll(bot + '\n', bot).replaceAll(bot + ' ', bot).replaceAll(bot, style('AI') + `${bot.endsWith('*') ? '*' : ''}` + `${bot.endsWith('"') ? '"' : ''}`);
-			return bodyStr.replaceAll('"', '&quot;');
+			if(gametext_arr.length==0)
+			{
+				return bodyStr; //to allow html in the welcome text
+			}
+			else
+			{
+				return bodyStr.replaceAll('"', '&quot;');
+			}
 		}
-		function getStreamingText() { return `${input.endsWith(bot) ? style('AI') + `${bot.endsWith('*') ? '*' : ''}` + `${bot.endsWith('"') ? '"' : ''}` : ''}` + escapeHtml(pending_context_preinjection) + escapeHtml(synchro_pending_stream); }
+		function getStreamingText() {
+			let isChatBotReply = (localsettings.opmode==3 && pending_context_preinjection.startsWith("\n") && pending_context_preinjection.endsWith(":"));
+			return `${(input.endsWith(bot) || isChatBotReply) ? style('AI') + `${bot.endsWith('*') ? '*' : ''}` + `${bot.endsWith('"') ? '"' : ''}` : ''}` + escapeHtml(pending_context_preinjection) + escapeHtml(synchro_pending_stream);
+		}
 	}
 
 	function updateTextPreview() {
@@ -9153,7 +9282,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		if(localsettings.opmode==3)
 		{
 			preview = replaceAll(preview,'\n[USER_REPLY]\n', "{{userplaceholder}}");
-			preview = replaceAll(preview,'\n[AI_REPLY]\n', "{{botplaceholder}}");
+			if(aestheticInstructUISettings.show_chat_names){
+				preview = replaceAll(preview,'\n[AI_REPLY]\n', "{{botplaceholder}}<p class='aui_nametag'>Bot</p>");
+			}else{
+				preview = replaceAll(preview,'\n[AI_REPLY]\n', "{{botplaceholder}}");
+			}
 		}
 		else
 		{
@@ -9464,6 +9597,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					<option value="text-davinci-003" selected="selected">text-davinci-003</option>
 					<option value="text-davinci-002">text-davinci-002</option>
 					<option value="text-davinci-001">text-davinci-001</option>
+					<option value="gpt-3.5-turbo-instruct">gpt-3.5-turbo-instruct</option>
 					<option value="davinci">davinci</option>
 					<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
 					<option value="gpt-3.5-turbo-16k">gpt-3.5-turbo-16k</option>
@@ -9731,6 +9865,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								<option value="2">Vicuna</option>
 								<option value="3">Metharme</option>
 								<option value="4">Llama 2 Chat</option>
+								<option value="5">Q & A</option>
 							</select>
 							<table class="settingsmall text-center" style="border-spacing: 4px 2px;	border-collapse: separate;">
 								<tr>
@@ -9932,7 +10067,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						   <input type="checkbox" id="persist_session" style="margin:0px 0 0;">
 						</div>
 						<div class="settinglabel">
-							<div class="justifyleft settingsmall" title="Includes your current settings when saving or sharing your story">JSON Exports Settings </div>
+							<div class="justifyleft settingsmall" title="Includes your current settings when saving or sharing your story">Save File Incl. Settings </div>
 						   <input type="checkbox" id="export_settings" style="margin:0px 0 0;">
 						</div>
 						<div class="settinglabel">
@@ -10053,6 +10188,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		<div class="popupbg flex"></div>
 		<div class="workerpopup">
 			<div class="popuptitlebar">
+				<div><span style="float:right;">
+					<input class="settinglabel miniinput" style="margin: 3px; width: 100px;" type="text" placeholder="Quick Search" value="" id="workerlistquicksearch" oninput="worker_list_quick_search()">
+				</span></div>
 				<div class="popuptitletext" id="worktitlecount">Worker List</div>
 			</div>
 			<div class="workerTableDiv">
@@ -10185,7 +10323,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			<div class="popuptitlebar" id="aesthetic_customization_panel">
 				<div class="popuptitletext">Aesthetic Instruct UI customization panel</div>
 			</div>
-			<div class="aidgpopuplistheader" style="display: flex; flex-direction: row; height:70vh;">
+			<div class="aidgpopuplistheader" style="display: flex; flex-direction: row; height:max(70vh, 480px);">
 				<!-- Settings panel -->
 				<div style="background-color: #122b40;" onchange="refreshPreview()">
 					<div style="padding: 10px; width:350px; height:100%">
@@ -10217,21 +10355,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 										<div class="enhancedStandardColorPicker" id="you-bubble-colorselector">You 🖌️</div>
 										<div class="enhancedStandardColorPicker" id="AI-bubble-colorselector">AI 🖌️</div>
 									</div>
-									<!-- ANCHOR NOT IMPLEMENTED -->
-									<!-- <div class="ui-settings-inline hidden">
-										<div style="margin-right: 38px">Anchor: </div>
-										<div style="text-align: center; margin: 0px 10px">You:</div>
-										<select class="form-control" id="background-anchor-style-you" style="width:50px;height:16px;padding:0; font-size: 10px;">
-											<option value="0">Left</option>
-											<option value="1">Right</option>
-										</select>
-										<div style="text-align: center; margin: 0px 10px">AI:</div>
-										<select class="form-control" id="background-anchor-style-AI" style="width:50px;height:16px;padding:0; font-size: 10px;">
-											<option value="0">Left</option>
-											<option value="1">Right</option>
-										</select>
-									</div> -->
-									<!-- ^^ TODO: IMPLEMENT ANCHOR ABOVE ^^-->
+
+									<div class="ui-settings-inline" style="font-size: 10px; margin-left: 10px">
+										<div style="padding-top: 2px;">Rounded Bubbles: </div>
+										<input id="aui_rounded_bubbles"  type="checkbox" style="height: 10px">
+									</div>
+
 									<div class="ui-settings-inline">
 										<div style="margin-right:20px;">Min Height: </div>
 										<div class="instruct-settings-input"><input id ="instruct-min-backgroundHeight" type="number"/> px</div>
@@ -10275,7 +10404,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								<div style="margin-left: 12px;">
 									<div class="ui-settings-inline">
 										<div style="margin-right:17px;">Portrait Style: </div>
-										<select class="form-control" id="instructBorderStyle" style="width:60px;height:16px;padding:0; font-size: 10px;">
+										<select class="form-control" id="instructBorderStyle" style="width:70px;height:16px;padding:0; font-size: 10px;">
 											<option value="None">None</option>
 											<option value="Circle">Circle</option>
 											<option value="Rounded">Rounded</option>
@@ -10284,12 +10413,21 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 										<div id="reset-portrait" style="margin-left: 10px;"><a href="#" class="color_blueurl">(Reset Image)</a></div>
 									</div>
 									<div class="ui-settings-inline">
-										<div style="margin-right:18px;">Portrait Size: </div>
-										<div>						 <span class="rectPortraitMode">W: </span><input id="portrait_width"  type="number" placeholder="100" value="100" style='width:40px;height:20px;font-size:10px;'/></div>
-										<div style="margin-left:5px"><span class="rectPortraitMode">H: </span><input id="portrait_height" type="number" placeholder="100" value="100" style='width:40px;height:20px;font-size:10px;' class="rectPortraitMode"/></div>
-										<div style="align-self: center;">px</div>
+										<div style="margin-right:18px;">User Portrait: </div>
+										<div>						 <span class="rectPortraitMode">Size: </span><input id="portrait_width_you"  type="number" placeholder="100" value="100" style='width:40px;height:20px;font-size:10px;'/></div>
+										<div style="align-self: left;">px</div>
+										<div style="margin-left:20px"><span class="rectPortraitMode">A/R: </span><input id="portrait_ratio_you" type="number" placeholder="1.0" step="0.01" value="1.0" style='width:46px;height:20px;font-size:10px;' class="rectPortraitMode"/></div>
 									</div>
-
+									<div class="ui-settings-inline">
+										<div style="margin-right:32px;">AI Portrait: </div>
+										<div>						 <span class="rectPortraitMode">Size: </span><input id="portrait_width_AI"  type="number" placeholder="100" value="100" style='width:40px;height:20px;font-size:10px;'/></div>
+										<div style="align-self: left;">px</div>
+										<div style="margin-left:20px"><span class="rectPortraitMode">A/R: </span><input id="portrait_ratio_AI" type="number" placeholder="1.0" step="0.01" value="1.0" style='width:46px;height:20px;font-size:10px;' class="rectPortraitMode"/></div>
+									</div>
+									<div class="ui-settings-inline" style="font-size: 10px; margin-left: 10px">
+										<div style="padding-top: 2px;">Show Names (Chat Mode): </div>
+										<input id="aui_show_chat_names" type="checkbox" style="height: 10px">
+									</div>
 								</div>
 							</div>
 						</div>
@@ -10313,38 +10451,38 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 											<input id="instructModeCustomized" type="checkbox" style="height: 10px;">
 										</div>
 										<div class="ui-settings-inline" style="font-size: 10px; margin-left: 10px">
-											<div style="padding-top: 2px;">Markdown: </div>
+											<div style="padding-top: 2px;">Style Text: </div>
 											<input id="instructModeMarkdown"  type="checkbox" style="height: 10px">
 										</div>
 									</div>
 									<div class="ui-settings-inline uniform-mode-font">
 										<div style="margin-right:48px; text-align: center;">Colors: </div>
-										<div class="enhancedTextColorPicker" id="uniform-text-colorselector">text🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="uniform-speech-colorselector">"speech"🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="uniform-action-colorselector">*action*🖌️</div>
+										<div class="enhancedcolorPicker" id="uniform-text-colorselector">text🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="uniform-speech-colorselector">"speech"🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="uniform-action-colorselector">*action*🖌️</div>
 									</div>
 									<div class="ui-settings-inline custom-mode-font">
 										<div style="margin-right:58px; text-align: center;">You: </div>
-										<div class="enhancedTextColorPicker" id="you-text-colorselector">text🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="you-speech-colorselector">"speech"🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="you-action-colorselector">*action*🖌️</div>
+										<div class="enhancedcolorPicker" id="you-text-colorselector">text🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="you-speech-colorselector">"speech"🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="you-action-colorselector">*action*🖌️</div>
 									</div>
 									<div class="ui-settings-inline custom-mode-font">
 										<div style="margin-right:67px; text-align: center;">AI: </div>
-										<div class="enhancedTextColorPicker" id="AI-text-colorselector">text🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="AI-speech-colorselector">"speech"🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="AI-action-colorselector">*action*🖌️</div>
+										<div class="enhancedcolorPicker" id="AI-text-colorselector">text🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="AI-speech-colorselector">"speech"🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="AI-action-colorselector">*action*🖌️</div>
 									</div>
 									<div class="ui-settings-inline custom-mode-font">
 										<div style="margin-right:38px; text-align: center;">System: </div>
-										<div class="enhancedTextColorPicker" id="sys-text-colorselector">text🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="sys-speech-colorselector">"speech"🖌️</div>
-										<div class="enhancedTextColorPicker instruct-markdown-user" id="sys-action-colorselector">*action*🖌️</div>
+										<div class="enhancedcolorPicker" id="sys-text-colorselector">text🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="sys-speech-colorselector">"speech"🖌️</div>
+										<div class="enhancedcolorPicker instruct-markdown-user" id="sys-action-colorselector">*action*🖌️</div>
 									</div>
 									<div class="ui-settings-inline instruct-markdown-user">
 										<div style="margin-right:11px; text-align: center;">Code blocks: </div>
-										<div class="enhancedTextColorPicker" id="code-block-background-colorselector">background🖌️</div>
-										<div class="enhancedTextColorPicker" id="code-block-foreground-colorselector">foreground🖌️</div>
+										<div class="enhancedcolorPicker" id="code-block-background-colorselector">background🖌️</div>
+										<div class="enhancedcolorPicker" id="code-block-foreground-colorselector">foreground🖌️</div>
 									</div>
 								</div>
 								<br>
