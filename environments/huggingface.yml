@@ -59,3 +59,4 @@ dependencies:
     - windows-curses; sys_platform == 'win32'
     - pynvml
     - xformers==0.0.21
+    - omegaconf

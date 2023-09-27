@@ -46,3 +46,4 @@ dependencies:
     - peft==0.3.0
     - windows-curses; sys_platform == 'win32'
     - pynvml
+    - omegaconf

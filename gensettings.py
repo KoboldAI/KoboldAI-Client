@@ -795,8 +795,6 @@ gensettingstf = [
     "sub_path": "UI",
     "classname": "story",
     "name": "gen_audio",
-    "extra_classes": "var_sync_alt_system_experimental_features"
-    ,
     "ui_level": 1
  	},
     {
