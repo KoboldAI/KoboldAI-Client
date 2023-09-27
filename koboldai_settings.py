@@ -2099,7 +2099,7 @@ class KoboldStoryRegister(object):
             if text.strip() == "":
                 shutil.copy("data/empty_audio.ogg", filename)
             else:
-                if len(text) > 2000:
+                if len(text) > 1000:
                     text = self.sentence_re.findall(text)
                 else:
                     text = [text]
