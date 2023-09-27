@@ -351,7 +351,6 @@ class HFTorchInferenceModel(HFInferenceModel):
                     bad_words_ids=self.active_badwordsids,
                     use_cache=True,
                     num_return_sequences=batch_count,
-                    pad_token_id=self.tokenizer.eos_token_id,
                 )
             else:
                  genout = self.model.generate(

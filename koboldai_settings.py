@@ -21,6 +21,7 @@ queue = None
 multi_story = False
 global enable_whitelist
 enable_whitelist = False
+slow_tts_message_shown = False
 
 if importlib.util.find_spec("tortoise") is not None:
     from tortoise import api
@@ -2119,10 +2120,14 @@ class KoboldStoryRegister(object):
     
     def create_wave_slow(self, make_audio_queue_slow):
         import pydub
+        global slow_tts_message_shown
         sample_rate = 24000
         speaker = 'train_daws'
+        if importlib.util.find_spec("tortoise") is None and not slow_tts_message_shown:
+            logger.info("Disabling slow (and higher quality) tts as it's not installed")
+            slow_tts_message_shown=True
         if self.tortoise is None and importlib.util.find_spec("tortoise") is not None:
-           self.tortoise=api.TextToSpeech(use_deepspeed=os.environ.get('deepspeed', "true").lower()=="true", kv_cache=os.environ.get('kv_cache', "true").lower()=="true", half=True)
+           self.tortoise=api.TextToSpeech(use_deepspeed=os.environ.get('deepspeed', "false").lower()=="true", kv_cache=os.environ.get('kv_cache', "true").lower()=="true", half=True)
         
         if importlib.util.find_spec("tortoise") is not None:
             voice_samples, conditioning_latents = load_voices([speaker])
