@@ -7940,6 +7940,7 @@ def UI_2_audio_full():
     if args.no_ui:
         return redirect('/api/latest')
     
+    logger.info("Downloading complete audio file")
     combined_audio = None
     for action_id in range(-1, koboldai_vars.actions.action_count+1):
         filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
@@ -7957,6 +7958,7 @@ def UI_2_audio_full():
             else:
                 combined_audio = combined_audio + AudioSegment.from_file(filename, format="ogg")
         else:
+            logger.info("Action {} has no audio. Generating now".format(action_id))
             koboldai_vars.actions.gen_audio(action_id)
             while not os.path.exists(filename) and time.time()-start_time < 60: #Waiting up to 60 seconds for the file to be generated
                 time.sleep(0.1)
@@ -7968,6 +7970,7 @@ def UI_2_audio_full():
             else:
                 show_error_notification("Error generating audio chunk", f"Something happened. Maybe check the log?")
         
+    logger.info("Sending audio file")
     file_handle = combined_audio.export(complete_filename, format="ogg")
     
     return send_file(
