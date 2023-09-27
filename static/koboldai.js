@@ -1387,6 +1387,29 @@ function redrawPopup() {
 				}
 				this.parentElement.classList.add("selected");
 			};
+			td.ondblclick = function () {
+				let accept = document.getElementById("popup_accept");
+				if (this.getAttribute("valid") == "true") {
+					accept.classList.remove("disabled");
+					accept.disabled = false;
+					accept.setAttribute("selected_value", this.id);
+					socket.emit(document.getElementById("popup_accept").getAttribute("emit"), this.id);
+					closePopups();
+				} else {
+					accept.setAttribute("selected_value", "");
+					accept.classList.add("disabled");
+					accept.disabled = true;
+					if (this.getAttribute("folder") == "true") {
+						socket.emit("popup_change_folder", this.id);
+					}
+				}
+
+				let popup_list = document.getElementById('popup_list').getElementsByClassName("selected");
+				for (item of popup_list) {
+					item.classList.remove("selected");
+				}
+				this.parentElement.classList.add("selected");
+			};
 			tr.append(td);
 		}
 
