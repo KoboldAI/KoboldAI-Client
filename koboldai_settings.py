@@ -2058,7 +2058,6 @@ class KoboldStoryRegister(object):
             if action_id is None:
                 action_id = self.action_count
 
-            logger.info("Got request to generate audio for {}".format(action_id))
             if self.tts_model is None:
                 language = 'en'
                 model_id = 'v3_en'
@@ -2072,15 +2071,14 @@ class KoboldStoryRegister(object):
             filename = os.path.join(self._koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
             filename_slow = os.path.join(self._koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
                 
-            logger.info("Got request to generate audio for {}".format(filename))
             if overwrite or not os.path.exists(filename):
                 if action_id == -1:
                     self.make_audio_queue.put((self._koboldai_vars.prompt, filename))
                 else:
                     self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
-                if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
-                    self.make_audio_thread_slow = threading.Thread(target=self.create_wave_slow, args=(self.make_audio_queue_slow, ))
-                    self.make_audio_thread_slow.start()
+                if self.make_audio_thread is None or not self.make_audio_thread.is_alive():
+                    self.make_audio_thread = threading.Thread(target=self.create_wave, args=(self.make_audio_queue, ))
+                    self.make_audio_thread.start()
             
             if overwrite or not os.path.exists(filename_slow):
                 if action_id == -1:

@@ -3790,6 +3790,13 @@ function stop_tts() {
 	}
 }
 
+function download_tts() {
+	var link = document.createElement("a");
+    link.download = document.getElementsByClassName("var_sync_story_story_name ")[0].text+".ogg";
+    link.href = "/audio_full";
+    link.click();
+}
+
 function finished_tts() {
 	next_action = parseInt(document.getElementById("reader").getAttribute("action_id"))+1;
 	action_count = parseInt(document.getElementById("action_count").textContent);

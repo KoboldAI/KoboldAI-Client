@@ -7929,6 +7929,52 @@ def UI_2_audio():
                 mimetype="audio/ogg")
     show_error_notification("Error generating audio chunk", f"Something happened. Maybe check the log?")
 
+#==================================================================#
+# Download complete audio file
+#==================================================================#
+@app.route("/audio_full")
+@require_allowed_ip
+@logger.catch
+def UI_2_audio_full():
+    from pydub import AudioSegment
+    if args.no_ui:
+        return redirect('/api/latest')
+    
+    combined_audio = None
+    for action_id in range(-1, koboldai_vars.actions.action_count+1):
+        filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
+        filename_slow = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
+        complete_filename = os.path.join(koboldai_vars.save_paths.generated_audio, "complete.ogg")
+        
+        if os.path.exists(filename_slow):
+            if combined_audio is None:
+                combined_audio = AudioSegment.from_file(filename_slow, format="ogg")
+            else:
+                combined_audio = combined_audio + AudioSegment.from_file(filename_slow, format="ogg")
+        elif os.path.exists(filename):
+            if combined_audio is None:
+                combined_audio = AudioSegment.from_file(filename, format="ogg")
+            else:
+                combined_audio = combined_audio + AudioSegment.from_file(filename, format="ogg")
+        else:
+            koboldai_vars.actions.gen_audio(action_id)
+            while not os.path.exists(filename) and time.time()-start_time < 60: #Waiting up to 60 seconds for the file to be generated
+                time.sleep(0.1)
+            if os.path.exists(filename):
+                if combined_audio is None:
+                    combined_audio = AudioSegment.from_file(filename, format="ogg")
+                else:
+                    combined_audio = combined_audio + AudioSegment.from_file(filename, format="ogg")
+            else:
+                show_error_notification("Error generating audio chunk", f"Something happened. Maybe check the log?")
+        
+    file_handle = combined_audio.export(complete_filename, format="ogg")
+    
+    return send_file(
+             complete_filename, 
+             as_attachment=True,
+             download_name = koboldai_vars.story_name,
+             mimetype="audio/ogg")
 
 #==================================================================#
 # Download of the image for an action
