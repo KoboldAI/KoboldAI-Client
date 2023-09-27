@@ -26,6 +26,7 @@ dependencies:
   - termcolor
   - Pillow
   - psutil
+  - ffmpeg
   - pip:
     - flask-cloudflared==0.0.10
     - flask-ngrok

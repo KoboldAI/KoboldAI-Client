@@ -22,6 +22,7 @@ dependencies:
   - termcolor
   - Pillow
   - psutil
+  - ffmpeg
   - pip:
     - -f https://developer.intel.com/ipex-whl-stable-xpu
     - torch==2.0.1a0
