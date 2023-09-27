@@ -2058,6 +2058,7 @@ class KoboldStoryRegister(object):
             if action_id is None:
                 action_id = self.action_count
 
+            logger.info("Got request to generate audio for {}".format(action_id))
             if self.tts_model is None:
                 language = 'en'
                 model_id = 'v3_en'
@@ -2071,6 +2072,7 @@ class KoboldStoryRegister(object):
             filename = os.path.join(self._koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
             filename_slow = os.path.join(self._koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
                 
+            logger.info("Got request to generate audio for {}".format(filename))
             if overwrite or not os.path.exists(filename):
                 if action_id == -1:
                     self.make_audio_queue.put((self._koboldai_vars.prompt, filename))

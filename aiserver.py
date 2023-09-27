@@ -7923,9 +7923,11 @@ def UI_2_audio():
         start_time = time.time()
         while not os.path.exists(filename) and time.time()-start_time < 60: #Waiting up to 60 seconds for the file to be generated
             time.sleep(0.1)
-    return send_file(
-             filename, 
-             mimetype="audio/ogg")
+    if os.path.exists(filename):
+        return send_file(
+                filename, 
+                mimetype="audio/ogg")
+    show_error_notification("Error generating audio chunk", f"Something happened. Maybe check the log?")
 
 
 #==================================================================#
