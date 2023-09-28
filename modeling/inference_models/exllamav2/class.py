@@ -36,7 +36,7 @@ try:
 except:
     load_failed = True
 
-model_backend_type = "Exl2"
+model_backend_type = "GPTQ"
 model_backend_name = "ExLlama V2"
 
 # When set to true, messages will appear in the console if samplers are not
@@ -99,6 +99,11 @@ class model_backend(InferenceModel):
         return config
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
+        if not self.get_local_model_path():
+            from huggingface_hub import snapshot_download
+            target_dir = "models/" + self.model_name.replace("/", "_")
+            print(self.model_name)
+            snapshot_download(self.model_name, local_dir=target_dir, local_dir_use_symlinks=False, cache_dir="cache/", revision=utils.koboldai_vars.revision)
         self.model = self._get_model(self.get_local_model_path(), {})
         #TODO support GPU split
         self.model.load(None)
