@@ -3791,10 +3791,18 @@ function stop_tts() {
 }
 
 function download_tts() {
-	var link = document.createElement("a");
-    link.download = document.getElementsByClassName("var_sync_story_story_name ")[0].text+".ogg";
-    link.href = "/audio_full";
-    link.click();
+	document.getElementById("download_tts").innerText = "hourglass_empty";
+	socket.emit("gen_full_audio", {}, download_actual_file_tts);
+}
+
+function download_actual_file_tts(data) {
+	if (data) {
+		var link = document.createElement("a");
+		link.download = document.getElementsByClassName("var_sync_story_story_name ")[0].text+".ogg";
+		link.href = "/audio_full";
+		link.click();
+		document.getElementById("download_tts").innerText = "download";
+	}
 }
 
 function finished_tts() {

@@ -7932,20 +7932,19 @@ def UI_2_audio():
 #==================================================================#
 # Download complete audio file
 #==================================================================#
-@app.route("/audio_full")
-@require_allowed_ip
-@logger.catch
-def UI_2_audio_full():
+@socketio.on("gen_full_audio")
+def UI_2_gen_full_audio(data):
     from pydub import AudioSegment
     if args.no_ui:
         return redirect('/api/latest')
     
-    logger.info("Downloading complete audio file")
+    logger.info("Generating complete audio file")
     combined_audio = None
+    complete_filename = os.path.join(koboldai_vars.save_paths.generated_audio, "complete.ogg")
     for action_id in range(-1, koboldai_vars.actions.action_count+1):
         filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
         filename_slow = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
-        complete_filename = os.path.join(koboldai_vars.save_paths.generated_audio, "complete.ogg")
+        
         
         if os.path.exists(filename_slow):
             if combined_audio is None:
@@ -7972,12 +7971,22 @@ def UI_2_audio_full():
         
     logger.info("Sending audio file")
     file_handle = combined_audio.export(complete_filename, format="ogg")
+    return True
     
-    return send_file(
-             complete_filename, 
-             as_attachment=True,
-             download_name = koboldai_vars.story_name,
-             mimetype="audio/ogg")
+
+@app.route("/audio_full")
+@require_allowed_ip
+@logger.catch
+def UI_2_audio_full():
+    logger.info("Downloading complete audio file")
+    complete_filename = os.path.join(koboldai_vars.save_paths.generated_audio, "complete.ogg")
+    if os.path.exists(complete_filename):
+        return send_file(
+                 complete_filename, 
+                 as_attachment=True,
+                 download_name = koboldai_vars.story_name,
+                 mimetype="audio/ogg")
+             
 
 #==================================================================#
 # Download of the image for an action
