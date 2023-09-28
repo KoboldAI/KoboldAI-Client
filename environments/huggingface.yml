@@ -1,7 +1,7 @@
 name: koboldai
 channels:
   - pytorch
-  - nvidia
+  - nvidia/label/cuda-11.8.0
   - conda-forge
   - defaults
 dependencies:
@@ -13,6 +13,7 @@ dependencies:
   - pytorch=2.0.*
   - python=3.8.*
   - pytorch-cuda=11.8
+  - cuda-nvcc=11.8
   - eventlet=0.33.3
   - dnspython=2.2.1
   - markdown
@@ -59,3 +60,4 @@ dependencies:
     - windows-curses; sys_platform == 'win32'
     - pynvml
     - xformers==0.0.21
+    - https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.0/flash_attn-2.3.0+cu118torch2.0cxx11abiTRUE-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
