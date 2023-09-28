@@ -63,4 +63,4 @@ dependencies:
     - windows-curses; sys_platform == 'win32'
     - pynvml
     - xformers==0.0.21
-    - https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.0/flash_attn-2.3.0+cu118torch2.0cxx11abiTRUE-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.0/flash_attn-2.3.0+cu118torch2.0cxx11abiFALSE-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
