@@ -2166,6 +2166,7 @@ class KoboldStoryRegister(object):
     
     def gen_all_audio(self, overwrite=False):
         if self.story_settings.gen_audio:
+            logger.info("Generating audio for any missing actions")
             for i in reversed([-1]+list(self.actions.keys())):
                 self.gen_audio(i, overwrite=False)
         #else:
