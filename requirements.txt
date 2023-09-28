@@ -47,3 +47,6 @@ https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu
 https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
 windows-curses; sys_platform == 'win32'
 pynvml
+flash_attn==2.3.0
+xformers==0.0.21
+exllamav2==0.0.4
