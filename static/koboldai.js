@@ -45,6 +45,7 @@ socket.on("show_error_notification", function(data) { reportError(data.title, da
 socket.on("generated_wi", showGeneratedWIData);
 socket.on("stream_tokens", stream_tokens);
 socket.on("show_options", show_options);
+socket.on("set_audio_status", set_audio_status);
 //socket.onAny(function(event_name, data) {console.log({"event": event_name, "class": data.classname, "data": data});});
 
 // Must be done before any elements are made; we track their changes.
@@ -601,6 +602,7 @@ function create_options(action) {
 
 function process_actions_data(data) {
 	start_time = Date.now();
+	console.log(data);
 	if (Array.isArray(data.value)) {
 		actions = data.value;
 	} else {
@@ -637,6 +639,7 @@ function process_actions_data(data) {
 		actions_data[parseInt(action.id)] = action.action;
 		do_story_text_updates(action);
 		create_options(action);
+		set_audio_status(action);
 	}
 	
 	clearTimeout(game_text_scroll_timeout);
@@ -646,6 +649,27 @@ function process_actions_data(data) {
 	hide_show_prompt();
 	//console.log("Took "+((Date.now()-start_time)/1000)+"s to process");
 	
+}
+
+function set_audio_status(action) {
+	if (!('audio_gen' in action.action)) {
+		action.action.audio_gen = 0;
+	}
+	if (!(document.getElementById("audio_gen_status_"+action.id))) {
+		sp = document.createElement("SPAN");
+		sp.id = "audio_gen_status_"+action.id
+		sp.classList.add("audio_status_action");
+		sp.setAttribute("status", -1);
+		document.getElementById("audio_status").appendChild(sp);
+	}
+	document.getElementById("audio_gen_status_"+action.id).setAttribute("status", action.action.audio_gen);
+	
+	//Delete empty actions
+	if (action.action['Selected Text'] == "") {
+		console.log("disabling status");
+		document.getElementById("audio_gen_status_"+action.id).setAttribute("status", -1);
+	}
+	console.log("Setting " + action.id + " to " + action.action.audio_gen);
 }
 
 function parseChatMessages(text) {

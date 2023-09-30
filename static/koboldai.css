@@ -1932,7 +1932,7 @@ body {
 }
 
 .tts_controls.hidden[story_gen_audio="true"] {
-	display: inherit !important; 
+	display: flex !important; 
 }
 
 .inputrow .tts_controls {
@@ -1942,6 +1942,49 @@ body {
 	width: 100%;
 	text-align: center;
 	overflow: hidden;
+	flex-direction: row;
+}
+.inputrow .tts_controls div {
+	padding: 0px;
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	/*flex-basis: 100%;*/
+}
+
+.audio_status_action {
+	flex-basis: 100%;
+}
+
+.audio_status_action[status="2"] {
+	background-color: green;
+}
+
+.audio_status_action[status="1"] {
+	background-color: yellow;
+}
+
+.audio_status_action[status="0"] {
+	background-color: red;
+}
+
+.audio_status_action[status="-1"] {
+	display: none;
+}
+
+.inputrow .tts_controls div button {
+	flex-basis: 100%;
+}
+
+.inputrow .tts_controls .audio_status {
+	padding: 0px;
+	height: 100%;
+	width: 2px;
+	display: flex;
+	flex-direction: column;
 }
 
 .inputrow .back {
