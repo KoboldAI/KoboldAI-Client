@@ -7588,6 +7588,19 @@ def UI2_clear_generated_image(data):
     koboldai_vars.picture = ""
     koboldai_vars.picture_prompt = ""
 
+#==================================================================#
+# Retrieve previous images
+#==================================================================#
+@socketio.on("get_story_image")
+@logger.catch
+def UI_2_get_story_image(data):
+    action_id = data['action_id']
+    (filename, prompt) = koboldai_vars.actions.get_picture(action_id)
+    print(filename)
+    if filename is not None:
+        with open(filename, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode("utf-8") 
+
 #@logger.catch
 def get_items_locations_from_text(text):
     # load model and tokenizer

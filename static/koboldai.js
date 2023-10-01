@@ -149,6 +149,7 @@ const context_menu_actions = {
 		{label: "Add to World Info Entry", icon: "auto_stories", enabledOn: "SELECTION", click: push_selection_to_world_info},
 		{label: "Add as Bias", icon: "insights", enabledOn: "SELECTION", click: push_selection_to_phrase_bias},
 		{label: "Retry from here", icon: "refresh", enabledOn: "CARET", click: retry_from_here},
+		{label: "Generate image for here", icon: "image", enabledOn: "CARET", click: generate_image},
 		null,
 		{label: "Take Screenshot", icon: "screenshot_monitor", enabledOn: "SELECTION", click: screenshot_selection},
 		// Not implemented! See view_selection_probabiltiies
@@ -602,7 +603,6 @@ function create_options(action) {
 
 function process_actions_data(data) {
 	start_time = Date.now();
-	console.log(data);
 	if (Array.isArray(data.value)) {
 		actions = data.value;
 	} else {
@@ -669,7 +669,6 @@ function set_audio_status(action) {
 		console.log("disabling status");
 		document.getElementById("audio_gen_status_"+action.id).setAttribute("status", -1);
 	}
-	console.log("Setting " + action.id + " to " + action.action.audio_gen);
 }
 
 function parseChatMessages(text) {
@@ -727,9 +726,9 @@ function do_story_text_updates(action) {
 			item.classList.add("rawtext");
 			item.setAttribute("chunk", action.id);
 			item.setAttribute("tabindex", parseInt(action.id)+1);
-			//item.addEventListener("focus", (event) => {
-			//	set_edit(event.target);
-			//});
+			item.addEventListener("focus", (event) => {
+				set_image_action(action.id);
+			});
 			
 			//need to find the closest element
 			closest_element = document.getElementById("story_prompt");
@@ -3467,7 +3466,7 @@ function fix_dirty_game_text() {
 
 	if (dirty_chunks.includes("game_text")) {
 		dirty_chunks = dirty_chunks.filter(item => item != "game_text");
-		console.log("Firing Fix messed up text");
+		//console.log("Firing Fix messed up text");
 		//Fixing text outside of chunks
 		for (node of game_text.childNodes) {
 			if ((!(node instanceof HTMLElement) || !node.hasAttribute("chunk")) && (node.textContent.trim() != "")) {
@@ -3859,6 +3858,29 @@ function tts_playing() {
 	}
 	if (action) {
 		action.classList.add("tts_playing");
+	}
+}
+
+function set_image_action(action_id) {
+	console.log(action_id);
+	socket.emit("get_story_image", {action_id: action_id}, change_image);
+}
+
+function change_image(data) {
+	image_area = document.getElementById("action image");
+
+	let maybeImage = image_area.getElementsByClassName("action_image")[0];
+	if (maybeImage) maybeImage.remove();
+
+	$el("#image-loading").classList.add("hidden");
+
+	if (data != undefined) {
+		var image = new Image();
+		image.src = 'data:image/png;base64,'+data;
+		image.classList.add("action_image");
+		image.setAttribute("context-menu", "generated-image");
+		image.addEventListener("click", imgGenView);
+		image_area.appendChild(image);
 	}
 }
 
@@ -7088,6 +7110,22 @@ $el("#generate-image-button").addEventListener("click", function() {
 	$el("#image-loading").classList.remove("hidden");
 	socket.emit("generate_image", {});
 });
+
+function generate_image() {
+	let chunk = null;
+	for (element of document.getElementsByClassName("editing")) {
+		if (element.id == 'story_prompt') {
+			chunk = -1
+		} else {
+			chunk = parseInt(element.id.split(" ").at(-1));
+		}
+	}
+	if (chunk != null) {
+		socket.emit("generate_image", {action_id: chunk});
+	}
+	
+	
+}
 
 /* -- Shiny New Chat -- */
 function addMessage(author, content, actionId, afterMsgEl=null, time=null) {
