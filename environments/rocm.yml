@@ -29,9 +29,9 @@ dependencies:
     - flask-ngrok
     - flask-cors
     - lupa==1.10
-    - transformers[sentencepiece]==4.33.1
+    - transformers[sentencepiece]==4.34.0
     - huggingface_hub==0.16.4
-    - optimum[onnxruntime]==1.12.0
+    - optimum[onnxruntime]==1.13.2
     - safetensors==0.3.3
     - accelerate==0.21.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
@@ -46,3 +46,4 @@ dependencies:
     - peft==0.3.0
     - windows-curses; sys_platform == 'win32'
     - pynvml
+    - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+rocm5.4.2-cp38-cp38-linux_x86_64.whl
