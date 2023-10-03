@@ -23,7 +23,7 @@ dependencies:
   - Pillow
   - psutil
   - pip:
-    - -f https://developer.intel.com/ipex-whl-stable-xpu
+    - --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
     - torch==2.0.1a0; sys_platform == 'linux'
     - torch==2.0.0a0; sys_platform == 'win32'
     - intel_extension_for_pytorch==2.0.110+xpu; sys_platform == 'linux'
@@ -35,7 +35,7 @@ dependencies:
     - lupa==1.10
     - transformers[sentencepiece]==4.34.0
     - huggingface_hub==0.16.4
-    - optimum[openvino,nncf,neural-compressor]==1.12.0
+    - optimum[onnxruntime,openvino,nncf,neural-compressor]==1.13.2
     - safetensors==0.3.3
     - accelerate==0.21.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
