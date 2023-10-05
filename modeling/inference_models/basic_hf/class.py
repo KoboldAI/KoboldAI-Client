@@ -148,6 +148,13 @@ class model_backend(InferenceModel):
                 self.get_local_model_path(ignore_existance=True),
             )
 
+        if not self.get_local_model_path():
+            print(self.get_local_model_path())
+            from huggingface_hub import snapshot_download
+            target_dir = "models/" + self.model_name.replace("/", "_")
+            print(self.model_name)
+            snapshot_download(self.model_name, local_dir=target_dir, local_dir_use_symlinks=False, cache_dir="cache/", revision=utils.koboldai_vars.revision)
+            
         self.init_model_config()
 
         self.model = AutoModelForCausalLM.from_pretrained(
