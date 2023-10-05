@@ -29,50 +29,20 @@ try:
     from modeling.tokenizer import GenericTokenizer
 
 
-    from exllama.model import ExLlama, ExLlamaCache, ExLlamaConfig
+    from exllamav2.model import ExLlamaV2, ExLlamaV2Cache, ExLlamaV2Config
     from transformers import LlamaTokenizer
-    from exllama.generator import ExLlamaGenerator
+    from exllamav2.generator import ExLlamaV2StreamingGenerator
     load_failed = False
 except:
     load_failed = True
 
 model_backend_type = "GPTQ"
-model_backend_name = "ExLlama"
+model_backend_name = "ExLlama V2"
 
 # When set to true, messages will appear in the console if samplers are not
 # changing the scores. Keep in mind some samplers don't always change the
 # scores for each token.
 LOG_SAMPLER_NO_EFFECT = False
-
-
-def load_model_gptq_settings(path):
-    try:
-        js = json.load(open(path + "/config.json", "r"))
-    except Exception as e:
-        return False, False
-
-    gptq_model = False
-    gptq_file = False
-    gptq_in_config = False
-
-    try:
-        if js['quantization_config']['quant_method'] == "gptq":
-            gptq_in_config = True
-    except:
-        pass
-
-    gptq_legacy_files = glob.glob(os.path.join(path, "*4bit*.safetensors"))
-    if "gptq_bits" in js or gptq_in_config:
-        gptq_model = True
-        gptq_file = os.path.join(path, "model.safetensors")
-    elif gptq_legacy_files:
-        gptq_model = True
-        gptq_file = gptq_legacy_files[0]
-        fname = Path(gptq_file).parts[-1]
-        g = re.findall("(?:4bit)(?:-)(\\d+)(?:g-?)", fname)
-
-    return gptq_model, gptq_file
-
 
 class model_backend(InferenceModel):
     def __init__(self) -> None:
@@ -109,9 +79,9 @@ class model_backend(InferenceModel):
 
     def is_valid(self, model_name, model_path, menu_path):
         try:
-            gptq_model, _ = load_model_gptq_settings(model_path)
             self.model_config = self._load_config(model_name, model_path)
-            return self.model_config and gptq_model
+            #TODO check if model is valid
+            return True
         except:
             return False
 
@@ -119,11 +89,12 @@ class model_backend(InferenceModel):
         return self.path or os.path.join("models", self.model_name.replace("/", "_"))
 
     def _load_config(self, model_name, model_path):
-        config = False
+        config = ExLlamaV2Config()
         if model_path is not None and os.path.exists(model_path):
-            config = ExLlamaConfig(os.path.join(model_path, "config.json"))
-        if not config and os.path.exists("models/{}".format(model_name.replace('/', '_'))):
-            config = ExLlamaConfig(os.path.join("models/{}".format(model_name.replace('/', '_')), "config.json"))
+            config.model_dir = model_path
+        elif os.path.exists("models/{}".format(model_name.replace('/', '_'))):
+            config.model_dir = "models/{}".format(model_name.replace('/', '_'))
+        config.prepare()
 
         return config
 
@@ -133,13 +104,14 @@ class model_backend(InferenceModel):
             target_dir = "models/" + self.model_name.replace("/", "_")
             print(self.model_name)
             snapshot_download(self.model_name, local_dir=target_dir, local_dir_use_symlinks=False, cache_dir="cache/", revision=utils.koboldai_vars.revision)
-            
         self.model = self._get_model(self.get_local_model_path(), {})
+        #TODO support GPU split
+        self.model.load(None)
         self.tokenizer = self._get_tokenizer(self.get_local_model_path())
 
-        self.cache = ExLlamaCache(self.model)
+        self.cache = ExLlamaV2Cache(self.model)
 
-        self.generator = ExLlamaGenerator(self.model, self.tokenizer.tokenizer, self.cache)
+        self.generator = ExLlamaV2StreamingGenerator(self.model, self.cache, self.tokenizer.tokenizer)
 
     def _post_load(self) -> None:
         # Note: self.tokenizer is a GenericTokenizer, and self.tokenizer.tokenizer is the actual LlamaTokenizer
@@ -274,7 +246,7 @@ class model_backend(InferenceModel):
 
             if warper == warpers.RepetitionPenalty:
                 # Rep pen needs more data than other samplers
-                scores = warper.torch(scores, input_ids=input_ids)
+                scores = warper.torch(scores, input_ids=input_ids.cuda())
             else:
                 scores = warper.torch(scores)
 
@@ -311,10 +283,10 @@ class model_backend(InferenceModel):
         else:
             gen_in = prompt_tokens
 
-        self.generator.gen_begin_reuse(gen_in)
+        self.generator._gen_begin_reuse(gen_in, None)
 
         for i in range(max_new):
-            logits = self.model.forward(self.generator.sequence[:, -1:], self.generator.cache)
+            logits = self.model.forward(self.generator.sequence_ids[:, -1:], self.generator.cache)
             for bad_word_id in bad_words_ids:
                 logits[:, :, bad_word_id] = -10000.0
 
@@ -336,22 +308,25 @@ class model_backend(InferenceModel):
             if (token == self.tokenizer.eos_token_id).any():
                 break
 
-            self.generator.gen_accept_token(token)
+            if self.generator.sequence_ids is None:
+                self.generator.sequence_ids = token
+            else:
+                self.generator.sequence_ids = torch.cat([self.generator.sequence_ids, token.cpu()], dim=1)
 
-            self._post_token_gen(self.generator.sequence)
+            self._post_token_gen(self.generator.sequence_ids)
 
             utils.koboldai_vars.generated_tkns += 1
 
             # Apply stoppers
             do_stop = False
             for stopper in self.stopper_hooks:
-                do_stop = stopper(self, self.generator.sequence)
+                do_stop = stopper(self, self.generator.sequence_ids)
                 if do_stop:
                     break
             if do_stop:
                 break
 
-        seq = self.generator.sequence[:, gen_in.size(1):]
+        seq = self.generator.sequence_ids[:, gen_in.size(1):]
 
         return GenerationResult(
             model=self,
@@ -363,11 +338,12 @@ class model_backend(InferenceModel):
 
     def _get_model(self, location: str, tf_kwargs: Dict):
         if not self.model_config:
-            ExLlamaConfig(os.path.join(location, "config.json"))
+            self.model_config = ExLlamaV2Config()
+            self.model_config.model_dir = location
+            self.model_config.prepare()
 
-        _, self.model_config.model_path = load_model_gptq_settings(location)
         # self.model_config.gpu_peer_fix = True
-        return ExLlama(self.model_config)
+        return ExLlamaV2(self.model_config)
 
     def _get_tokenizer(self, location: str):
         tokenizer = GenericTokenizer(LlamaTokenizer.from_pretrained(location))
@@ -377,35 +353,6 @@ class model_backend(InferenceModel):
         requested_parameters = []
         gpu_count = torch.cuda.device_count()
         layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
-        requested_parameters.append({
-                                        "uitype": "Valid Display",
-                                        "unit": "text",
-                                        "label": "Current Allocated Layers: %1/{}".format(layer_count), #%1 will be the validation value
-                                        "id": "valid_layers",
-                                        "max": layer_count,
-                                        "step": 1,
-                                        "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)], "value": layer_count, 'check': "="},
-                                        "menu_path": "Layers",
-                                        "extra_classes": "",
-                                        "refresh_model_inputs": False
-                                    })
-        for i in range(gpu_count):
-            requested_parameters.append({
-                                            "uitype": "slider",
-                                            "unit": "int",
-                                            "label": "{} Layers".format(torch.cuda.get_device_name(i)),
-                                            "id": "{}_Layers".format(i),
-                                            "min": 0,
-                                            "max": layer_count,
-                                            "step": 1,
-                                            "check": {"sum": ["{}_Layers".format(i) for i in range(gpu_count)], "value": layer_count, 'check': "="},
-                                            "check_message": "The sum of assigned layers must equal {}".format(layer_count),
-                                            "default": [layer_count if i == 0 else 0],
-                                            "tooltip": "The number of layers to put on {}.".format(torch.cuda.get_device_name(i)),
-                                            "menu_path": "Layers",
-                                            "extra_classes": "",
-                                            "refresh_model_inputs": False
-                                        })
 
         requested_parameters.append({
             "uitype": "slider",
@@ -456,27 +403,10 @@ class model_backend(InferenceModel):
 
     def set_input_parameters(self, parameters):
         gpu_count = torch.cuda.device_count()
-        layers = []
-        for i in range(gpu_count):
-            if isinstance(parameters["{}_Layers".format(i)], str) and parameters["{}_Layers".format(i)].isnumeric():
-                layers.append(int(parameters["{}_Layers".format(i)]))
-            elif isinstance(parameters["{}_Layers".format(i)], str):
-                 layers.append(None)
-            else:
-                layers.append(parameters["{}_Layers".format(i)])
-
-        self.layers = layers
-        self.model_config.device_map.layers = []
-        for i, l in enumerate(layers):
-            if l > 0:
-                self.model_config.device_map.layers.extend([f"cuda:{i}"] * l)
-        self.model_config.device_map.lm_head = "cuda:0"
-        self.model_config.device_map.norm = "cuda:0"
 
         self.model_config.max_seq_len = parameters["max_ctx"]
         self.model_config.compress_pos_emb = parameters["compress_emb"]
         self.model_config.alpha_value = parameters["ntk_alpha"]
-        self.model_config.calculate_rotary_embedding_base()
 
         # Disable half2 for HIP
         self.model_config.rmsnorm_no_half2 = bool(torch.version.hip)
