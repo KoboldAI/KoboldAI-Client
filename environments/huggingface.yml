@@ -32,6 +32,7 @@ dependencies:
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
+    - Werkzeug==2.3.7
     - lupa==1.10
     - transformers[sentencepiece]==4.34.0
     - huggingface_hub==0.16.4
