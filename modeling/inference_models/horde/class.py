@@ -29,7 +29,7 @@ class model_backend(InferenceModel):
         super().__init__()
         self.url = "https://horde.koboldai.net"
         self.key = "0000000000"
-        self.models = self.get_cluster_models()
+        self.models = []
         self.model_name = "Horde"
         self.model = []
         self.request_id = None
@@ -39,10 +39,12 @@ class model_backend(InferenceModel):
         self.capabilties = ModelCapabilities(api_host=False)
 
     def is_valid(self, model_name, model_path, menu_path):
+        self.models = self.get_cluster_models()
         logger.debug("Horde Models: {}".format(self.models))
         return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
     
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+        self.models = self.get_cluster_models()
         if os.path.exists("settings/horde.model_backend.settings") and 'base_url' not in vars(self):
             with open("settings/horde.model_backend.settings", "r") as f:
                 temp = json.load(f)
