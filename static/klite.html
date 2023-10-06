@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <!--
-An embedded version of Kobold Lite for use in koboldcpp and KoboldAI United Client
-Current version: 70
+Kobold Lite WebUI is a standalone WebUI for use with KoboldAI United, AI Horde, or koboldcpp.
+It requires no dependencies, installation or setup.
+Just copy this single static HTML file anywhere and open it in a browser, or from a webserver.
 Please go to https://github.com/LostRuins/lite.koboldai.net for updates on Kobold Lite.
-Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and KoboldAI United Client. Please do not remove this line.
-
-(This is the unminified HTML file, but you should NOT make direct changes to it as they will be overwritten by future versions)
-(Instead, direct any changes to the above repo.)
-- Concedo
+Kobold Lite is under the AGPL v3.0 License unless otherwise exempted. Please do not remove this line.
+Current version: 76
+-Concedo
 -->
 
 <script>
@@ -195,6 +193,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			word-wrap: break-word;
 			padding: 10px;
 			overflow-y: auto;
+		}
+		.txtchunk, ai_context_koboldlite_internal, #gametext, .chat_received_withd_msg p,.chat_sent_msg p {
+			white-space: pre-wrap;
 		}
 
 		#actionmenu {
@@ -1753,13 +1754,13 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		const favivon_normal = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAEtQTFRFAAAA+XJ0l09PsVdXcTw842hqw2hmTi4vMCQlb2eUgWtl+tGpBAMDEw4NPCkoFw8PJBgXt5WBVkxW4Nvf7Lia3Z+MpJnAZ05HnJOTYIS/NAAAABl0Uk5TAv////v//vT9//3/Nna08qf+///////a/hkcROQAAAGUSURBVHiclZLRcoQgDEULBAKoIKjI/39pL4i7nbUPbcYZwJyES5Kvr3/YvIx1nn9zL4G4EwuTXX7xs4QFGEklOT6SBENERguhsWHFD2AVRhL8IEgawY8b5L4fYtg+TSl8+NMEu4G2P34Q67r6I+37dLyBfU/4PY/sInG2MR8vIHG01h9mHfq1hUUQtwYcLEcp+ltmwqutdy5HMwAfc8ExKtVSLEZZW13Jxb4Azq7UHFnFrtGItLliS1UDYOfctm3JhEtlEH5zzpZNDsC63AB1VysY3gqC3C2ytsNW6Q3IjCt91Qr9QK8MiFL4nUEpEyNLYmodxYo3RquVHWUmbbRu0QCbKWwNfil5zYeENrRRqtZrGEQYqdtW8FWHLl4bgZDLFLZdbS/UzP2AEGTufkt3xWSvwzJeh4GxHWD5qlgXOZ/n2ULuC/od4Pk8x9xhCekD0Bqd/DmXgbpEumRgrMPn1K6ecs4pJc/V0nE+x35KtfTJTJufpvPTD2DyNZ3e4wP3zDCHevg+yYvf09PfkHuK7/Vv9g2CjBTdqv3bFgAAAABJRU5ErkJggg==";
 		const compressed_scenario_db = ["XQAAAQCkKgAAAAAAAAA9iIqG1FTp3Td41VnWyuXTp3Lb95KmIEizGvJcmkqrV2FY5cKEeSxCwbqBRjHVjL7PUH9wCoW89dPxjDNZvgp6okMOelpy7_1P6GV-mfJV4jz42_DXqYfET4aYlAT13M95gkcA14f0NLvI_p6B9CyG8EbkhRxsk3uyf_KgTV5kwqzAcr5C4JQ_pJr77GnYCHQI8h6F765-lcqrvw1Xu1GHhcN3lj7s9PhMvLnmGPZbQMrTo5sqPJDzYO6lytxmNSHSXMICpN2kFJB6kqyL5lBxNAH3Au_F_JIC85GqwLXWEy8wZms5KmAdp1s3EA1yabPGqqF0G5RxBp3aXzm7h6QUJPy1qSr6JJAo4fi2gCPaLkdn2pKqNDR1Ww8FA6AVHOyMgCTmmrQxWVYgXY9TdhHKcRcrIsoHNXEeWSqMGJNQ8lzVfc26teZdBdPLhqcClG8wUThPtyobTMz8Fgom88nTv7VT-mZhwH9Nc4ghoCL8dMR0Skf-EYDZ0Uvz03_GTn5OB8yuX6FmsD1XQJv_CKBAUHeDKd7n_bC7WOnlAINHPX9Bh5TnwjeLYO-UAL2ClMJTFzR-k2cjVHGQnLB7hZ48L1nToRG1gSVN7dP3Zysw7riwIxnfG4MMNXtEbHyxrCvz2zRTUEqbHLrwIzdJRpJ5s5XfTlY1CPZkQCwxbA6rrUt27D6a-YDKavbg0hubpViPRYbnEDXr9gL-7in4f_K2cOZdQ26Q--hk0xzEtgBNFI6inHA2nA4LofUpWjl835qg6CUyz9EzQkw0cDgPVjYXehC9oC_3H0U2O9YC-Ah8VpdPdCHUFuaQr7oXgePUub_Be1XQyCA5TaqrJxVxUG2hZA4rOVJHZ_AahfiJN7z6QcVEp-8xf-wHcv1lpWjjNdXFWDqVQZkdOaKf63dtjP35SmC5eCw2_BNX_t-db_FCCAhm2Vn2WI3q4k00p4l_ocCrJIdRID6muBVZQXCzxcRf5m8kcGwrTB-XVS-XSSPZInaBxZjgimOl5bLwJvdMC-HNYtU-yUDjXvDjPraZ_7ZV_-knU1GbHf1BpI9-rNbl_3bbA7KbmL7Q_goV1Clvi6gLYgjbXGQMTFjQEoodZX3fK_bDhVsrA1fWMJMWwfY3ua-j8HNuyRDfhPBpbTK0Gvz5-GWbIRF3v4zwR9HzIjz2frY7luy3ApQ6QJw7K6ITvD80u5VLfpHYReVCLpgs-lvPStklgnGXj3j5vuaH9f-wFohB19vwzRnthvgdplXPQ9jMy3ieb80sELS0WiGD-E2L_HhNXUcpTdeBp3HQFK4QubJOiIeKuZDVR7PxvtwBj26m-pLXLzKc6WqQlt07TsRo_72SlAaZodyyFRXf8636HCAyEHcVEhR6uZ1lDu00BHvsyVe6BdG7zvjNdmLluA0qBJQ9FO3ipHezadlwCPnEBDQAAZRgHKUvRCJNOQH_jcqFLLtmDADXoLvcK8_lN0LEeisA4B1LH0X2x0Q6NqLgngh9M1y_cBEBaazMa_UIZwoL6eZGU0QhlpvysBi1wKDybNcF_uKrIxdQwn8L_QRFHtDn39-hw-GDs_6zbnRlwrBEwrMtAQfc62FLSzGUMAzww-aTGvUuQvP-D9m0r-eDbSATlSsrIYobVUDUdDWsMDUsjKfYOW_Rp0GMjk40BQxcdzjNjLCYaTEN5cMhsWyfTbhIHDP7-wfbvJG7Al7Z-nH2Pa-QXPte687xVanKT0d3Er07vOV9HoI09mtuhxE4g0VaLm4TMqxSMRBX3EB60W1U2sX9sHjAgmwfpUNXRNj03QeJe4cg0pndf-hhKkTsfNQMU_N6-Zt8IrM2xtzFfvKB4BpFyWmaYu_X7bGwgSZjzrBNE10fx001fMr2fmrVy_sj7mW7WhlWXa3N5eMe4pqkA4EawmGzhuIwAqZNmtvnL_N2nt4T4ZyqkAAyXMMKb60UJAXkqLjUisD1bnNt1qD9otg8mGNzQxlaY5Bfm7286vNmjyxGY4UVrn0RV0DSFFb5_NYEW5y5YYxiabWABr8k0ezTM8R_qQ7NxdUOj0qhBKOqGyzyuVgKNnB6-ZzpKVGbB7RYJXwfEtkKNuUc3UWmbwxcsCTuW4TOScqJUh4dA5vlgLjB3-Q79yEMRYB8n6jetkR4z25RkYRXvTxkHIVQd2qr8BchdUcmHsZvG_tXI0-bxx_f_TGyfgi8ol7L5SRfWfOtYHCXSVHOCwnDj7GN4rIrwt3qWRcPkdTMw1RguDZW0eTpCpZyCJH_z3xVfpVh5lgf7Nu4tH-CpFRrOaJc79K1lSuIZs8yvjh5dbYAH4rKQ28OOFRu2MmU7Ko8Of4CECcJMhohFtVW6nTCB48-Pl8owiGM5_2uBJOJRAsyu3fHHbKqKvZ-0kYmN9ypyTAxQjgDiCOE3J1txPiqRRRRSaFZgLPNacdyjGO2y2SpWwzYudx8tEq3tBDAPBCXwWqwefcG__iN5OMRgCIAvr-9qfl2iSaVR5LZ-kBluVoW27o0hIUtgdry03bmUN50ob4hwCz8xVoupcHjI3Cy0nLpgiGixjo4afafQPE_TXJf-NixlWN-cH2a4ZzU6Qc5KKzIciwnt6Hx-iRQzB_uK-pBDjC8boVXolOsFyaqWsoLgkghTo2qCFZuxP2GKzS9wQ5sBWxTMEPGryHxaylpXXmUjlBJ-j9p4vJN9YxjQEbyuTVYy0PxmtDbyh6g_n3Lr09ttCg40hqfWBhCT9P4-uFoAjozUciHQFBfI8t04dKZnobLbVq-f_HJGzUZu5zHRHsPI939tJxODDJxiflfHLwxXjQS2cq9Vj-kvn1pgXAN5unYh8Y7-nqepxc0KkO2v8mU-r8fYFmUFJdZu6HR23P2y7ndsozZEKdUAVay36pmW_gvVQuSA_jzLwXn3Ee2y-A7G-w96bTe82gJG95PsSOt2L6AcuF8mqWL_EVBjIZJMN63T__0UHh9VPDCRTUITwn35t7Z0aGYHnssPVAxXLh7y2LhCaIN0u6lnbiDlKAdKc1-4qYbr1sHORC8tjSG8cjWLkgBcNkFo7rqhKQSNtU1H44aT8ceG08a8cSpze8aC6dMVaz6DxEaFIZ-aRqfqO0QV6ty2-6hrcRVedypt1Twd7UEkXZM5Erjb-_8jq4RzshqXVzKEqPfIYpmtHqkmeJq8BLfc1GT9UGrmPpYO4-K8LM-u7aOpcxcagPn2S3McsWI3a8CWkU9t4g9WEPNH-5s8VqF-3rSmgi5kk40Y7HjEyA-6clhNhl9lbP6hIbf9TKHO9fWwzTz8NieUPNZZPgrBrULggzHXPrfJIxl8eLSrKuD8n2Pbumu2k4ljMV_WIq9qCJ1wPofdIoWHWiz7oV2snLve1CFPUCdAhLkHQ8KpO6xvSi6mKY9WsOhOLxKm92vsWLv-rfM2CW4XUja5arRpGynr7cF9CDuEGWIxkPjOF_5x8ZXg2x1TJcrgvLDO_S4u2zKl2tQGRW4NHU1zF9h_3SQkpbwWH5KOPisP6c8vb5rg_rZ5laFedxQQSpguSq5el9-ddzvlr4C8Q22eDQvwUEO_P6c6VZN5A2QWBGZsJoaZ4gZ8UArmGLxSihBj_5oOdDdUcbUOhGUIWrtYrs4PJKxpnHDFUZaYwIbtnLyAoORKYvq8LgAH0SP57KeeYkZzUGP1f0jkDzAmwV4ZHE0pnZhEo3XkXVuIHc6MXZ-RniZaS_vaoY3Bq6XHrKoWZdLiCoU6aqPc-ZpPnvXmnKHyLLs4e96M1wGKIyT28_VCR6EDRJPxbZ9Ig1kN8TIHCF3tE8y2It5hkz1-zNYT6uw3SDkFSdrV_DRiAVqUhxrQdUPhpD92zVgsWdJR0TZLU7CBLlOuBVwyfmtHMUBL6dIvYie47Kr47nOJ5i2ka8EZGZf-Y8aD6xv6hpBbybU_5oGfYLRG4MiNRhML4u90tQ3hBxBbGYK8sWOzui2UEx0ynB_a8jz8eEs7u_9ylTD1v1f-gC8JYQMNAZIm46pvl2s1X07B8Gf7Laj4aozcWqg8DgC_8aLypoTffyxjWw4Fpd8LWn1fRPsFOdeV0UrS7FNtUakvYq_qxphGu5mNuINIJIMJzgI3giGnyCbr2IrsJ1ITmEGnggLQYes1t3j44v1quvVwQXqHX6HhSnoJlN2IlT5DuZ2kx6-pb68nK62xVJaOS-wDeeJnQ8zzhqJACstuF7g-jidRoJmGc8yChHfCN8ZFOhT0poNQB-Jf5IUZ7aSCXmceYN4VUhmB_w-Db1XZUNHOJqGiTgcT1KzejzNpN49b0QUjcRJiOpEhJp_LzBUiRQSnweOSFrWlTs5Jf9p3wqN9zFYZ_3Xz6IR2klwyLQXc-LbBd1QFwkB17HTYMspUXjrSpJULdQ90OxzbSEafF4RKvgIL4sAU1pCMTa2bVrcUmY2MiECVIbwPNN0CjZeoEAd1dP5FFjlwGG7xUNRO1E20CqHZJ1oqeEur06ZXvPK1zy3SlF-_lKF6eRfNClzR2ERGYqf-zEQwwkPNiMNnURPcdt64pw4kcjTKBIkorum3ruuqJZMitcZx0YiANx7ssy8dMuVteEFFCQnmglgTCsEZTK_xzigPie_f8Q5p1vsJPje5Z2cugsaW-vOXbuOE471n6LuIyoII2dWq0m8H3_8pxlErkZ5E7OY--w3InCuSCv2ubxaZ9AbaNuuyGw49fI3zvRurTYespYO-Aj1FcjDrxqRB3bihJm_u3a56fwnoyOeE0071TY_AlVlq1RYauV4-7L-RAFJZo0wKnPZM9Hs7VB_cCwJ_oPe1y0XBF95agtAQdicj42KdstIlpjWtdGb4LpHgVQI_56G3As0H81-uj47VuBourA2hUay0BpHAvcwbNLyu8OcZB31I6dfy2797wGlrWwAN-Xt3M3CVW9SvIN_GMlg0RB75rUEtgPkR-VPRdPH_Jb19wVoFPPpwjP6cYzVW1U_iRymFKaNpMo4CWFN6t54wshlCVwkfZKbhSP14z74oMKxy-qqt-WKNhkOr1uh_sevNa57iHBnFlHzt_eaZoPNTsCmzqnC4boOlK9o5_hFn8hiw33R3NQC-RD-w1XEl8-hpdZYdCcnexwRYd9sH2LMHySL59Kp_09yIwAE_ukVMDa6Yd9OHrbSCycQNZSI_0fMnF5s9oWTXnsxecDpRKgSWJQIQPUb6dlOdGOT0-MnebivpKgbDxzx52Zr0EMS7aU5eJxEdO9rdiFda8kQk5IeBgr1QcqIFs_1UIp6oQneXgwTlpXXxLHs16ShDG1qkLmDZjb4vrb_Ha2YCBIqid6wVKjec-UwEwWyvfV4UAPFgiNRJN7TdQNRxbSZJ8XWeA2gor9PN5JkMS0l_qGKoke3sbWDsp-G_B0KUjwUBTtPsKRhdnc0JyV_akuZ8jxAmXDDydxOy_EqNMgrDGN_4FuSY7XNLy2OXXJG3bB9a_lxEzdVNPWzM0cijTQFLzIiAKAyWTfwPNagcvgLUAeHxlQ22E0V37-sFwkstvpJ-s8C2yqxQKcv4GfMZOfSYEaZAhiO_y8EXgFknGGwjLB7K3CgvGwBRWWcgx-eqXYs9rAygf_X2_7-rBG_7Rxj3GW957PwwzwZjZDkdRHik8sj0htIkDRAyHo2EsPwObKXK-W32JKUX3VSgiY8AzCUhUUIWwFVVLXEvB1jtU7G7wRaj5_z9QywvgoIqnOTmpm4TTRA0cCJkiYoJcl8BOIHoWuYznL89zWjWy_ZQDKaYAsHugQYXaKI_UaaLV4gVFjDNqZCgqjAFyMjG4qZR64jkaI71mefUaDLLwsqIiLpOWZi8BlvP0YcOVeTyo2mJbq3EXfjXyDvPuZuZ9SAjqwCdLr902yzLm4DdzYRyfPbpt8rGUu-Uw27Ix2oZRe_zj0G_3FdCw0"];
 
-		const storymodels1 = ["erebus","nerys","nerybus","janeway","hermes","airoboros","chrono","llama","wizard","mantis","myth"];
+		const storymodels1 = ["erebus","nerys","nerybus","janeway","hermes","airoboros","chrono","llama","wizard","mantis","myth","xwin","spicyboros","mlewd"];
 		const storymodels2 = ["opt","vicuna","manticore","alpaca"];
-		const adventuremodels1 = ["nerys","nerybus","skein","adventure","hermes","airoboros","chrono","llama","wizard","mantis","myth"];
+		const adventuremodels1 = ["nerys","nerybus","skein","adventure","hermes","airoboros","chrono","llama","wizard","mantis","myth","xwin","spicyboros","mlewd"];
 		const adventuremodels2 = ["erebus","janeway","opt","vicuna","manticore","alpaca"];
-		const chatmodels1 = ["pygmalion-6","pygmalion-v8","hermes","airoboros","chrono","llama","wizard","mantis","myth"];
+		const chatmodels1 = ["pygmalion-6","pygmalion-v8","hermes","airoboros","chrono","llama","wizard","mantis","myth","xwin","pygmalion-2","spicyboros","mlewd"];
 		const chatmodels2 = ["pygmalion","janeway","nerys","erebus","nerybus","opt","vicuna","manticore","alpaca"];
-		const instructmodels1 = ["gpt4all","supercot","hermes","airoboros","chrono","wizard","mantis","vicuna","manticore","alpaca","myth"];
+		const instructmodels1 = ["gpt4all","supercot","hermes","airoboros","chrono","wizard","mantis","vicuna","manticore","alpaca","myth","xwin","spicyboros","mlewd"];
 		const instructmodels2 = ["erebus","nerys","nerybus","janeway","opt","llama"];
 
 		const instructstartplaceholder = "\n{{[INPUT]}}\n";
@@ -2109,7 +2110,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			"prefmodel1":instructmodels1,
 			"prefmodel2":instructmodels2,
 			"prompt":"Welcome to your InteracTV, your interactive TV of the future today!\nPlease enter what you would like to watch:",
-			"memory": instructstartplaceholder+"\nSimulate an interactive TV that will let the user watch anything they want to watch.\n\nFirst, generate a single response prompting the user for input on what they wish to watch using the following response:\n```\nPlease enter your desired content:\n```\n\nAfter the user has entered the desired content generate the following table:\n- TV Show / Movie Name: Name of the show\n- Genre: Genre of the show\n- Program Description: Description of what the program is about, this can be any known or unkown TV or movie format.\n- Episode Name: Name of the episode\n- Episode Description: Description of what the episode is about.\n\nAfter generating this table promp the user if they wish to watch the episode with the following response and then end your generation:\n```\nDo you wish to watch this episode? (Y/N/Menu)\n"+instructstartplaceholder+"```\n\nIf the user chooses not to watch the episode generate a new episode with their requested content.\nIf the user chooses to go to the Menu ask them again what they would like to watch.\n\nIf the user chooses to watch the episode begin generating a long multiple paragraph detailed story based on the episode description, make it exciting and fun.\n\nEnd your response after each question presented to the user so that the user has a chance to respond.\n\nMain menu:\n```\nMenu Options\nA) Input a different content request\nB) Generate a different episode of the same content.\n"+instructstartplaceholder+"```\n"+instructendplaceholder,
+			"memory": instructstartplaceholder+"\nSimulate an interactive TV that will let the user watch anything they want to watch.\n\nFirst, generate a single response prompting the user for input on what they wish to watch using the following response:\n```\nPlease enter your desired content:\n```\n\nAfter the user has entered the desired content generate the following table:\n- TV Show / Movie Name: Name of the show\n- Genre: Genre of the show\n- Program Description: Description of what the program is about, this can be any known or unkown TV or movie format.\n- Episode Name: Name of the episode\n- Episode Description: Description of what the episode is about.\n\nAfter generating this table promp the user if they wish to watch the episode with the following response and then end your generation:\n```\nDo you wish to watch this episode? (Y/N/Menu)\n"+instructstartplaceholder+"```\nIf the user chooses to watch the episode begin generating a long detailed text based on the episode description containing character dialogue, make it exciting and fun written in the style of a book.\nThe text must contain dialogue in a he said she said format and is as lengthy as a book.\n\nIf the user chooses not to watch the episode generate a new episode with their requested content.\nIf the user chooses to go to the Menu ask them again what they would like to watch.\n\nEnd your response after each question presented to the user so that the user has a chance to respond.\n\nMain menu:\n```\nMenu Options\nA) Input a different content request\nB) Generate a different episode of the same content.\n"+instructstartplaceholder+"```\n"+instructendplaceholder,
 			"authorsnote": "",
 			"worldinfo": []
 		},
@@ -2172,7 +2173,61 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			"memory":`[Character: Erica; species: Human; age: 22; gender: female; job: unemployed, NEET; physical appearance: unkempt, tired; personality: insecure, extremely shy, anxious, lovesick, slightly depressed, awkward, easily embarrassed; likes: fantasy, reading trashy romance, browsing internet, being indoors; description: Erica is a socially awkward NEET girl who spends most of her time in front of the computer. She's a good person at heart, but she's very shy, anxious, and terrible at conversations.]\n[The following is a chat message log between Erica and you.]\nErica: *mumbles to herself, fidgeting nervously*...\n`,
 			"authorsnote": "",
 			"worldinfo": []
+		},
+		{
+			"title":"Nail the Kobold",
+			"author":"Concedo / TheGantian",
+			"desc":"Nail is a small red kobold on a big mission to find a powerful sorceror.",
+			"opmode":3,
+			"chatname": "You",
+			"chatopponent": "Nail",
+			"gui_type":1,
+			"prefmodel1":chatmodels1,
+			"prefmodel2":chatmodels2,
+			"prompt":`\nNail: *A small kobold dressed in a ragged cloak approaches you. She has a strange curved blade that seems too large for her hands.* "Excuse me, friend. My name is Nail. I have come a long way, looking for someone important... a powerful sorcerer named Rath Cinderstorm. Have you heard of him in your travels?"`,
+			"memory":`[Character: Nail; species: Redscale Kobold; age: 20; gender: female; class: Hexblade Warlock with powers derived from draconic patron; physical appearance: 3' in height, 35 lbs, purple eyes, pink scales and peachy chest; equipment: Dragon's talon affixed to a handle as a blade; personality: lawful neutral; description: Nail (called Nannan in her native tongue) is a refugee of the once-proud Xabrakkar kobolds on the continent of Halkar. Founded above a series of geothermal caves, her tribe prospered as they dug into long-buried ruins for priceless treasures, which they brought to the surface. Amongst the ruins, Nail discovered the slumbering red dragon Rhindicar - once the familiar to one of the most powerful sorcerers to ever live. The sleeping dragon quickly became an object of worship for the Xabrakkar kobolds. However, the Trobian relics they unearthed attracted the attention of another - Hilezmaras, the mad tyrant, a covetous dragon who laid claim to the kobolds treasures, sending his fanatical dragonborn cult to purge their warren. While most of the kobolds were slain, a select few were dragon-marked, forcibly given a magic brand linking them to the mad dragon in order to turn them into powerful and obedient soldiers. Nail broke free of her captors after being given such a mark, fleeing into the tunnels leading to the Tinder Depths, eventually collapsing before Rhindicar and waking him from his slumber. Being raised from a hatchling by a kind and just master, Rhindicar was uncharacteristically compassionate for a dragon, and took pity on the young kobold. Though he was not powerful enough to remove Hilezmaras' brand, he was able to suppress its magical compulsion, allowing her to retain her free-will. He warned, though, that as the dragon-mark grew in power and became more strongly linked to the mad tyrant, he would no longer be able to keep it suppressed, and urged Nannan to seek out his former master, Rath Cinderstorm. Biting off a fragment of one of his talons, he gifted it to the kobold, both as a weapon, and as a conduit to help him suppress the effects of the brand. With no other options, Nannan returned to the warren and fought her way to the surface, eventually escaping Halkar and crossing the ocean to Fanne'Tar, where she assumed the alias 'Nail' in Common tongue and began her search for a long-missing sorcerer.]\n[The following is a chat message log between Nail and you.]\n`,
+			"authorsnote": "",
+			"worldinfo": []
+		},
+		{
+			"title":"Haunted Mansion",
+			"author":"Concedo",
+			"desc":"It was a dark and stormy night.",
+			"opmode":1,
+			"prefmodel1":storymodels1,
+			"prefmodel2":storymodels2,
+			"prompt": `It was a dark and stormy night when I arrived at the old Wellington Manor on the edge of town. Lightning flashed across the sky, briefly illuminating the imposing three-story mansion, the wind whipping dead leaves across the massive front porch. I had always thought the house looked creepy and foreboding, even in broad daylight, but it looked downright sinister now.\n\nAs I slowly approached the front door, I felt a nervous pit in my stomach. Maybe coming here alone at night during a storm wasn't the best idea. But my curiosity got the better of me. I had to see inside.\n\nThe front door creaked as I carefully pushed it open. I stepped cautiously over the threshold,`,
+			"memory": ``,
+			"authorsnote": "",
+			"worldinfo": []
+		},
+		{
+			"title":"Final Frontier",
+			"author":"Concedo",
+			"desc":"The spacebound adventures of the U.S.S Fairlight and her crew.",
+			"opmode":1,
+			"prefmodel1":storymodels1,
+			"prefmodel2":storymodels2,
+			"prompt": `The sleek silver hull of the U.S.S. Fairlight glinted in the light of the distant orange sun as the spacecraft approached the uncharted planetary system. Captain Adair sat in his command chair on the bridge, idly tapping his fingers on the armrest, gazing out the wide viewport at the alien world ahead.\n\n"Helmsman, take us into a standard orbit around the fourth planet," he ordered. The helmsman responded with a quick "Aye Captain" as he adjusted the Fairlight's course, the ship's engines humming as they responded.\n\nThe fourth planet loomed large now, a rusty ominous red orb banded with streaks of brown and gray. The crew on the bridge watched intently as`,
+			"memory": `Task: Write a lengthy science fiction prose about the adventures of the U.S.S Fairlight, an interstellar spacecraft exploring a distant star system.\n\nStory: `,
+			"authorsnote": "",
+			"worldinfo": []
+		},
+		{
+			"title":"Shipwrecked",
+			"author":"Concedo",
+			"desc":"Shipwrecked on a deserted island with your sister.",
+			"opmode":2,
+			"prefmodel1":adventuremodels1,
+			"prefmodel2":adventuremodels2,
+			"prompt":`You and your sister Megan were enjoying a sailing vacation in the tropics, when your yacht got caught in the worst thunderstorm of your life. After a harrowing escape as your boat capsized and sank, you now find yourself shipwrecked on a deserted island.\n\nAs you struggle to get up, tasting the salty sea breeze and brushing the coarse sand off your body, you see your sister laying on the beach a short distance away, unconscious but alive.`,
+			"adventure_context_mod":false,
+			"adventure_is_action":true,
+			"memory": `[Interactive Fiction: Game Mode Enabled]\n[You are playing a choose-your-own-adventure game. Please input action.]\n`,
+			"authorsnote": "",
+			"worldinfo": []
 		}
+
 
 		];
 	</script>
@@ -2241,9 +2296,21 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		}
 
 		return str.replace(new RegExp(escapeRegExp(find), (caseInsensitive?'gi':'g')), replace);
-
-
 	}
+
+	function rgbToHex(rgbColor) {
+		rgbColor = rgbColor.split("(")[1];
+		rgbColor = rgbColor.split(")")[0];
+		const components = rgbColor.split(',');
+		const red = parseInt(components[0]);
+		const green = parseInt(components[1]);
+		const blue = parseInt(components[2]);
+		const redHex = red.toString(16).padStart(2, '0');
+		const greenHex = green.toString(16).padStart(2, '0');
+		const blueHex = blue.toString(16).padStart(2, '0');
+		return `#${redHex}${greenHex}${blueHex}`;
+	}
+
 
 	function GetUniqueColor(idx)
 	{
@@ -2839,6 +2906,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 	const default_oai_base = "https://api.openai.com";
 	const default_claude_base = "https://api.anthropic.com";
+	const default_palm_base = "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText?key=";
 
 	//support for quick news updates
 	const news_endpoint = "https://news.concedo.workers.dev"
@@ -2866,8 +2934,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	var pending_response_horde = text_hordes[0]; //the url to poll for pending response from a v2 submit
 	var poll_in_progress = false; //are we currently waiting for a text generation
 	var poll_ticks_passed = 0; //how much time passed after polling
+	var horde_poll_nearly_completed = false; //if true, increase polling rate
 	var prev_hl_chunk = null; //will store the last highlighted element
 	var pending_context_preinjection = ""; //this will be injected before the AI's next RESPONSE
+	var last_reply_was_empty = false; //set to true if last reply is empty
 	var current_memory = ""; //stored memory
 	var current_anote = ""; //stored author note
 	var current_anotetemplate = "[Author\'s note: <|>]";
@@ -2887,6 +2957,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	var custom_oai_key = ""; //if set, uses the OpenAI API to generate
 	var custom_oai_model = "";
 	var custom_scale_key = "";
+	var custom_palm_key = "";
 	var custom_scale_ID = "";
 	var custom_claude_endpoint = default_claude_base;
 	var custom_claude_key = "";
@@ -2905,6 +2976,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	var kobold_endpoint_version = ""; //used to track problematic versions to avoid sending extra fields
 	var koboldcpp_version = ""; //detect if we are using koboldcpp
 	var last_request_str = "No Requests Available"; //full context of last submitted request
+	var lastcheckgenkey = ""; //for checking polled-streaming unique id when generating in kcpp
 
 	var localsettings = {
 		my_api_key: "0000000000", //put here so it can be saved and loaded in persistent mode
@@ -2914,11 +2986,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		saved_claude_key: "", //do not ever share this in save files!
 		saved_claude_addr: "", //do not ever share this in save files!
 		saved_oai_jailbreak: "", //customized oai system prompt
+		saved_palm_key: "",
 
 		autoscroll: true, //automatically scroll to bottom on render
 		trimsentences: true, //trim to last punctuation
 		trimwhitespace: false, //trim trailing whitespace
-		unban_tokens: false, //allow the EOS token when using locally
+		eos_ban_mode: 0, //allow the EOS token when using locally 0=auto,1=unban,2=ban
 		opmode: 1, //what mode are we in? 1=story, 2=adventure, 3=chat, 4=instruct
 		adventure_is_action: false, //in adventure mode, determine story or action
 		adventure_context_mod: true, //extra injection for adventure mode
@@ -2927,12 +3000,13 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		instruct_starttag: "\\n### Instruction:\\n",
 		instruct_endtag: "\\n### Response:\\n",
 		instruct_has_markdown: false,
-		raw_instruct_tags: false,
+		placeholder_tags: true,
 		persist_session: true,
 		speech_synth: 0, //0 is disabled
 		beep_on: false,
 		image_styles: "",
 		grammar:"",
+		tokenstreaming: (localflag?true:false),
 		generate_images: (localflag?"":"stable_diffusion"), //"" is disabled and "*" is all, anything else is the model name pulled from stable horde
 		img_autogen: false,
 		img_allownsfw: true,
@@ -3072,12 +3146,6 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			}
 		}
 
-		const tokenstreaming = urlParams.get('streaming');
-		if(tokenstreaming)
-		{
-			document.getElementById("tokenstreaming").checked = true;
-		}
-
 		const fromfile = ( window.location.protocol == 'file:' );
 		if(!dbgmode && !fromfile){
 			if(!window.console) window.console = {};
@@ -3110,6 +3178,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 		} catch (e) {
 			console.log("Discarded invalid local save: " + e);
+		}
+
+		const tokenstreaming = urlParams.get('streaming');
+		if(tokenstreaming)
+		{
+			localsettings.tokenstreaming = true;
 		}
 
 		//toggle genimg btn
@@ -3431,7 +3505,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 	function is_using_custom_ep()
 	{
-		return (custom_oai_key!=""||custom_kobold_endpoint!=""||custom_scale_key!=""||custom_claude_key!="");
+		return (custom_oai_key!=""||custom_kobold_endpoint!=""||custom_scale_key!=""||custom_claude_key!=""||custom_palm_key!="");
 	}
 
 	function is_using_kcpp_with_streaming()
@@ -3450,7 +3524,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	//0 is none, 1 is pseudostreaming, 2 is true streaming
 	function determine_streaming_type()
 	{
-		let streamtype = (document.getElementById("tokenstreaming").checked ? 1 : 0);
+		let streamtype = (localsettings.tokenstreaming ? 1 : 0);
 		let pstreamamount = urlParams.get('streamamount');
 		if(streamtype==1 && is_using_kcpp_with_streaming() && (pstreamamount == null || pstreamamount <= 0))
 		{
@@ -3462,6 +3536,27 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			streamtype = 0;
 		}
 		return streamtype;
+	}
+
+	function determine_if_ban_eos(input_was_empty) {
+		if (localsettings.eos_ban_mode == 0) {
+			if (localsettings.opmode == 1) {
+				return true; //story mode always ban
+			}
+			else if (localsettings.opmode == 3 && !localsettings.allow_continue_chat) {
+				return false; //chat mode always unban unless cont allowed
+			}
+			else if (!input_was_empty) //if user input is not empty, ALWAYS unban EOS.
+			{
+				return false;
+			}
+			else {
+				return last_reply_was_empty;
+			}
+		}
+		else {
+			return (localsettings.eos_ban_mode == 2 ? true : false);
+		}
 	}
 
 	function is_using_web_lite()
@@ -3644,6 +3739,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				let tmp_oai2 = localsettings.saved_oai_addr;
 				let tmp_claude1 = localsettings.saved_claude_key;
 				let tmp_claude2 = localsettings.saved_claude_addr;
+				let tmp_palm1 = localsettings.saved_palm_key;
 				import_props_into_object(localsettings, story.savedsettings);
 				localsettings.my_api_key = tmpapikey1;
 				localsettings.home_cluster = tmphc;
@@ -3651,6 +3747,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				localsettings.saved_oai_addr = tmp_oai2;
 				localsettings.saved_claude_key = tmp_claude1;
 				localsettings.saved_claude_addr = tmp_claude2;
+				localsettings.saved_palm_key = tmp_palm1;
 			}
 
 			if (story.savedaestheticsettings && story.savedaestheticsettings != "") {
@@ -3959,6 +4056,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					let tmp_oai2 = localsettings.saved_oai_addr;
 					let tmp_claude1 = localsettings.saved_claude_key;
 					let tmp_claude2 = localsettings.saved_claude_addr;
+					let tmp_palm1 = localsettings.saved_palm_key;
 					import_props_into_object(localsettings, loaded_storyobj.savedsettings);
 					localsettings.my_api_key = tmpapikey1;
 					localsettings.home_cluster = tmphc;
@@ -3966,6 +4064,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					localsettings.saved_oai_addr = tmp_oai2;
 					localsettings.saved_claude_key = tmp_claude1;
 					localsettings.saved_claude_addr = tmp_claude2;
+					localsettings.saved_palm_key = tmp_palm1;
 
 					//backwards compat support for newlines
 					if(localsettings.instruct_has_newlines==true || (loaded_storyobj.savedsettings != null && loaded_storyobj.savedsettings.instruct_has_newlines==null&&loaded_storyobj.savedsettings.instruct_has_markdown==null))
@@ -4030,6 +4129,25 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		render_gametext();
 	}
 
+	function load_agnai_wi(obj,chatopponent,myname)
+	{
+		console.log("Append Agnai WI");
+		current_wi = [];
+		for (let key in obj.entries) {
+			var itm = obj.entries[key];
+			var karr = itm.keywords;
+			let nwi = {
+				"key": karr.join(","),
+				"keysecondary": "",
+				"content": itm.entry,
+				"comment": "",
+				"folder": null,
+				"selective": false,
+				"constant": false
+			};
+			current_wi.push(nwi);
+		}
+	}
 	function load_tavern_wi(obj,chatopponent,myname)
 	{
 		console.log("Append Tavern WI");
@@ -4048,7 +4166,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			}
 			let nwi = {
 				"key": karr.join(","),
-				"keysecondary": (ksarr.length > 0 ? ksarr.join(",") : ""),
+				"keysecondary": ((ksarr && ksarr.length) > 0 ? ksarr.join(",") : ""),
 				"content": itm.content,
 				"comment": itm.comment,
 				"folder": null,
@@ -4083,10 +4201,15 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			examplemsg = "\n"+examplemsg;
 		}
 		let combinedmem = memory + scenario + examplemsg;
+		let agnaidatafieldsempty = scenario + examplemsg + (obj.personality?obj.personality:"") + greeting;
 		//check if it's a world info only card, if so, do not restart game
 		if(combinedmem.trim()=="" && greeting=="" && obj.entries)
 		{
 			load_tavern_wi(obj,chatopponent,myname);
+		}
+		else if(agnaidatafieldsempty.trim()=="" && obj.entries && obj.kind=="memory")
+		{
+			load_agnai_wi(obj,chatopponent,myname);
 		}
 		else
 		{
@@ -4101,6 +4224,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			if(obj.character_book && obj.character_book.entries && obj.character_book.entries.length>0)
 			{
 				load_tavern_wi(obj.character_book,chatopponent,myname);
+			}
+			else if(obj.entries && obj.entries.length>0)
+			{
+				load_agnai_wi(obj,chatopponent,myname);
 			}
 		}
 		render_gametext();
@@ -4288,13 +4415,26 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		//load contexts
 		gametext_arr = [];
 		if (temp_scenario.prompt != "") {
-			gametext_arr.push(temp_scenario.prompt);
+			let prompttxt = temp_scenario.prompt;
+			if(!localsettings.placeholder_tags) //do a one-time replace instead
+			{
+				prompttxt = replace_placeholders_direct(prompttxt);
+			}
+			gametext_arr.push(prompttxt);
 		}
 		if (temp_scenario.authorsnote != "") {
 			current_anote = temp_scenario.authorsnote;
+			if(!localsettings.placeholder_tags)
+			{
+				current_anote = replace_placeholders_direct(current_anote);
+			}
 		}
 		if (temp_scenario.memory != "") {
 			current_memory = temp_scenario.memory;
+			if(!localsettings.placeholder_tags)
+			{
+				current_memory = replace_placeholders_direct(current_memory);
+			}
 		}
 		if (temp_scenario.worldinfo && temp_scenario.worldinfo.length > 0) {
 			current_wi = [];
@@ -4360,8 +4500,6 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			if (temp_scenario.instruct_endtag) { localsettings.instruct_endtag = temp_scenario.instruct_endtag; }
 		}
 
-
-
 		render_gametext();
 	}
 	function togglescenarioallownsfw()
@@ -4419,7 +4557,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			{
 				scenarioautopickai = true; //no selected model, pick a good one
 			}
-			if (scenarioautopickai && !localflag)
+			if (scenarioautopickai && !localflag && !is_using_custom_ep())
 			{
 				fetch_models((mdls) =>
 				{
@@ -4429,7 +4567,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					}
 					else
 					{
-						let nsfwmodels = ["erebus","shinen","horni","litv2","lit-6b"];
+						let nsfwmodels = ["erebus","shinen","horni","litv2","lit-6b","spicyboros","mlewd"];
 						selected_models = [];
 						for (var i = 0; i < mdls.length; ++i) {
 							for (var j = 0; j < temp_scenario.prefmodel1.length; ++j) {
@@ -4627,6 +4765,15 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			}
 		}
 	}
+
+	function format_uptime(seconds)
+	{
+		const days = Math.floor(seconds / (3600 * 24));
+		const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+		const minutes = Math.floor((seconds % 3600) / 60);
+		return days+"d "+hours+"h "+minutes+"m";
+	}
+
 	function show_workers() {
 		document.getElementById("workercontainer").classList.remove("hidden");
 
@@ -4653,7 +4800,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				allmdls += escapeHtml(elem.models[n].substring(0, 32));
 			}
 
-			str += "<tr id='workertablerow_"+i+"'><td>" + workerNameHtml + "</td><td>" + allmdls + "</td><td>" + elem.max_length + " / " + elem.max_context_length + "<br>(" + tokenspersec + " T/s)</td><td "+brokenstyle+">" + elem.uptime + "<br>(" + elem.requests_fulfilled + " jobs)</td><td "+style+">" + elem.kudos_rewards.toFixed(0) + "</td><td>"+clustertag+"</td></tr>";
+			str += "<tr id='workertablerow_"+i+"'><td>" + workerNameHtml + "</td><td>" + allmdls + "</td><td>" + elem.max_length + " / " + elem.max_context_length + "<br>(" + tokenspersec + " T/s)</td><td "+brokenstyle+">" + format_uptime(elem.uptime) + "<br>(" + elem.requests_fulfilled + " jobs)</td><td "+style+">" + elem.kudos_rewards.toFixed(0) + "</td><td>"+clustertag+"</td></tr>";
 		}
 		document.getElementById("workertable").innerHTML = str;
 		document.getElementById("worktitlecount").innerText = "Worker List - Total " + worker_data_showonly.length;
@@ -4681,7 +4828,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						let brokenstyle = (elem.maintenance_mode ? "style=\"color:#ee4444;\"" : "");
 						let workerNameHtml = escapeHtml(elem.name.substring(0, 32));
 						let eleminfo = ((elem.info && elem.info!="")?elem.info:"");
-						str += "<tr><td>" + workerNameHtml + "</td><td><input class='' style='color:#000000;' id='mwc_desc_"+i+"' placeholder='Worker Description' value='"+eleminfo+"''></td><td "+brokenstyle+">" + elem.uptime + "<br>(" + elem.requests_fulfilled + " jobs)</td><td "+style+">" + elem.kudos_rewards.toFixed(0) + "</td><td>"+(elem.online?"Online":"Offline")+"</td><td><input type='checkbox' id='mwc_maint_"+i+"' "+(elem.maintenance_mode?"checked":"")+"></td></tr>";
+						str += "<tr><td>" + workerNameHtml + "</td><td><input class='' style='color:#000000;' id='mwc_desc_"+i+"' placeholder='Worker Description' value='"+eleminfo+"''></td><td "+brokenstyle+">" + format_uptime(elem.uptime) + "<br>(" + elem.requests_fulfilled + " jobs)</td><td "+style+">" + elem.kudos_rewards.toFixed(0) + "</td><td>"+(elem.online?"Online":"Offline")+"</td><td><input type='checkbox' id='mwc_maint_"+i+"' "+(elem.maintenance_mode?"checked":"")+"></td></tr>";
 					}
 					document.getElementById("myownworkertable").innerHTML = str;
 
@@ -4881,6 +5028,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		document.getElementById("koboldcustom").classList.add("hidden");
 		document.getElementById("scalecustom").classList.add("hidden");
 		document.getElementById("claudecustom").classList.add("hidden");
+		document.getElementById("palmcustom").classList.add("hidden");
 		if(epchoice==0)
 		{
 			document.getElementById("koboldcustom").classList.remove("hidden");
@@ -4917,6 +5065,14 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				}
 			}
 		}
+		else if(epchoice==4)
+		{
+			document.getElementById("palmcustom").classList.remove("hidden");
+			if(custom_palm_key=="" && localsettings.saved_palm_key!="")
+			{
+				document.getElementById("custom_palm_key").value = localsettings.saved_palm_key;
+			}
+		}
 	}
 
 
@@ -4926,6 +5082,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		custom_oai_key = "";
 		custom_scale_key = "";
 		custom_claude_key = "";
+		custom_palm_key = "";
 
 		let epchoice = document.getElementById("customapidropdown").value;
 		if(epchoice==0) //connect to kobold endpoint
@@ -5076,6 +5233,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 							selected_models = [];
 							selected_workers = [];
 							custom_kobold_endpoint = "";
+							if(localflag)
+							{
+								document.getElementById("connectstatus").innerHTML = "Offline Mode";
+							}
 							render_gametext();
 						} else {
 							uses_cors_proxy = true; //fallback to cors proxy, this will remain for rest of session
@@ -5098,8 +5259,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			{
 				desired_oai_ep = desired_oai_ep.slice(0, -1);
 			}
-			if(desired_oai_ep!="" && desired_oai_ep.length > 4 && !desired_oai_ep.slice(-4).toLowerCase().includes("/v")) {
-				desired_oai_ep = desired_oai_ep + "/v1";
+			if (document.getElementById("oaiaddversion").checked)
+			{
+				if(desired_oai_ep!="" && desired_oai_ep.length > 4 && !desired_oai_ep.slice(-4).toLowerCase().includes("/v")) {
+					desired_oai_ep = desired_oai_ep + "/v1";
+				}
 			}
 			if(desired_oai_key!="" && desired_oai_ep!="")
 			{
@@ -5242,8 +5406,11 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			{
 				desired_claude_ep = desired_claude_ep.slice(0, -1);
 			}
-			if(desired_claude_ep!="" && desired_claude_ep.length > 4 && !desired_claude_ep.slice(-4).toLowerCase().includes("/v")) {
-				desired_claude_ep = desired_claude_ep + "/v1";
+			if (document.getElementById("claudeaddversion").checked)
+			{
+				if (desired_claude_ep != "" && desired_claude_ep.length > 4 && !desired_claude_ep.slice(-4).toLowerCase().includes("/v")) {
+					desired_claude_ep = desired_claude_ep + "/v1";
+				}
 			}
 			if(desired_claude_key!="" && desired_claude_ep!="")
 			{
@@ -5283,6 +5450,37 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 			}
 		}
+		else if(epchoice==4) //palm endpoint
+		{
+			let desired_palm_key = document.getElementById("custom_palm_key").value.trim();
+
+			if(desired_palm_key!="")
+			{
+				hide_popups();
+
+				//good to go
+				custom_palm_key = desired_palm_key;
+				localsettings.saved_palm_key = custom_palm_key;
+
+				selected_models = [{ "performance": 100.0, "queued": 0.0, "eta": 0, "name": "text-bison-001", "count": 1 }];
+				selected_workers = [];
+				if (perfdata == null) {
+					//generate some fake perf data if horde is offline and using custom endpoint
+					perfdata = {
+						"queued_requests": 0,
+						"queued_tokens": 0,
+						"past_minute_tokens": 0,
+						"worker_count": 0
+					};
+					document.body.classList.add("connected");
+					document.getElementById("connectstatus").classList.remove("color_orange");
+					document.getElementById("connectstatus").classList.add("color_green");
+				}
+				document.getElementById("connectstatus").innerHTML = "Connected to PaLM Endpoint";
+				render_gametext();
+			}
+		}
+
 	}
 
 	function display_custom_endpoint()
@@ -5440,6 +5638,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			custom_oai_key = "";
 			custom_scale_key = "";
 			custom_claude_key = "";
+			custom_palm_key = "";
 			//remove the Custom Endpoint if it's multi selected together with others.
 			const findex = selected_idx_arr.indexOf("9999");
 			if (findex > -1) {
@@ -5695,11 +5894,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		document.getElementById("invert_colors").checked = localsettings.invert_colors;
 		document.getElementById("trimsentences").checked = localsettings.trimsentences;
 		document.getElementById("trimwhitespace").checked = localsettings.trimwhitespace;
-		document.getElementById("unban_tokens").checked = localsettings.unban_tokens;
+		document.getElementById("eos_ban_mode").value = localsettings.eos_ban_mode;
 		document.getElementById("persist_session").checked = localsettings.persist_session;
 		document.getElementById("opmode").value = localsettings.opmode;
 		document.getElementById("chatname").value = localsettings.chatname;
-		document.getElementById("chatopponent").value = localsettings.chatopponent;
+		document.getElementById("chatopponent").value = replaceAll(localsettings.chatopponent,"||$||","\n");
+		handle_bot_name_onchange();
 		document.getElementById("instruct_starttag").value = localsettings.instruct_starttag;
 		document.getElementById("instruct_endtag").value = localsettings.instruct_endtag;
 		document.getElementById("top_k").value = localsettings.top_k;
@@ -5721,6 +5921,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		}
 
 		document.getElementById("setgrammar").disabled = !is_using_kcpp_with_grammar();
+		document.getElementById("grammar_retain_state").disabled = document.getElementById("setgrammar").disabled;
 
 		if(custom_kobold_endpoint!="")
 		{
@@ -5737,7 +5938,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		document.getElementById("idle_duration").value = localsettings.idle_duration;
 		document.getElementById("adventure_context_mod").checked = localsettings.adventure_context_mod;
 		document.getElementById("instruct_has_markdown").checked = localsettings.instruct_has_markdown;
-		document.getElementById("raw_instruct_tags").checked = localsettings.raw_instruct_tags;
+		document.getElementById("placeholder_tags").checked = localsettings.placeholder_tags;
 		document.getElementById("auto_ctxlen").checked = localsettings.auto_ctxlen;
 		document.getElementById("auto_genamt").checked = localsettings.auto_genamt;
 		if(localflag)
@@ -5786,6 +5987,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			sdmodelshtml += "<option value=\"" + stablemodels[i].name + " (" + stablemodels[i].count + ")\">";
 		}
 		document.getElementById("sdmodels").innerHTML = sdmodelshtml;
+		document.getElementById("tokenstreaming").checked = localsettings.tokenstreaming;
 		document.getElementById("img_autogen").checked = localsettings.img_autogen;
 		document.getElementById("save_images").checked = localsettings.save_images;
 		document.getElementById("prompt_for_savename").checked = localsettings.prompt_for_savename;
@@ -5900,7 +6102,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		localsettings.invert_colors = (document.getElementById("invert_colors").checked ? true : false);
 		localsettings.trimsentences = (document.getElementById("trimsentences").checked ? true : false);
 		localsettings.trimwhitespace = (document.getElementById("trimwhitespace").checked ? true : false);
-		localsettings.unban_tokens = (document.getElementById("unban_tokens").checked ? true : false);
+		localsettings.eos_ban_mode = document.getElementById("eos_ban_mode").value;
 		localsettings.persist_session = (document.getElementById("persist_session").checked ? true : false);
 		if(document.getElementById("opmode").value==3)
 		{
@@ -5916,14 +6118,14 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		localsettings.idle_duration = document.getElementById("idle_duration").value;
 		localsettings.adventure_context_mod = (document.getElementById("adventure_context_mod").checked ? true : false);
 		localsettings.instruct_has_markdown = (document.getElementById("instruct_has_markdown").checked ? true : false);
-		localsettings.raw_instruct_tags = (document.getElementById("raw_instruct_tags").checked ? true : false);
+		localsettings.placeholder_tags = (document.getElementById("placeholder_tags").checked ? true : false);
 		localsettings.generate_images = document.getElementById("generate_images").value;
 		localsettings.opmode = document.getElementById("opmode").value;
 		localsettings.chatname = document.getElementById("chatname").value;
 		if (localsettings.chatname == null || localsettings.chatname == "") {
 			localsettings.chatname = "You";
 		}
-		localsettings.chatopponent = document.getElementById("chatopponent").value;
+		localsettings.chatopponent = replaceAll(document.getElementById("chatopponent").value,"\n","||$||");
 		localsettings.instruct_starttag = document.getElementById("instruct_starttag").value;
 		if (localsettings.instruct_starttag == null || localsettings.instruct_starttag == "") {
 			localsettings.instruct_starttag = "\\n### Instruction:\\n";
@@ -5947,6 +6149,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 		localsettings.image_styles = pendingstyle;
 		localsettings.grammar = pendinggrammar;
+		localsettings.tokenstreaming = (document.getElementById("tokenstreaming").checked ? true : false);
 		localsettings.img_autogen = (document.getElementById("img_autogen").checked ? true : false);
 		localsettings.save_images = (document.getElementById("save_images").checked ? true : false);
 		localsettings.prompt_for_savename = (document.getElementById("prompt_for_savename").checked ? true : false);
@@ -6021,6 +6224,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				document.getElementById('instruct_starttag').value = "\\nQuestion: ";
 				document.getElementById('instruct_endtag').value = "\\nAnswer: ";
 				break;
+			case "6": //ChatML
+				document.getElementById('instruct_starttag').value = "<|im_start|>user";
+				document.getElementById('instruct_endtag').value = "<|im_start|>assistant";
+				break;
 			default:
 				break;
 		}
@@ -6029,6 +6236,26 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	{
 		document.getElementById('instruct_tag_format').value = "0";
 	}
+
+	function handle_bot_name_input()
+	{
+		let textarea = document.getElementById("chatopponent");
+		textarea.value = replaceAll(textarea.value,"||$||","\n");
+		let numberOfLineBreaks = (textarea.value.match(/\n/g) || []).length;
+		numberOfLineBreaks = numberOfLineBreaks>8?8:numberOfLineBreaks;
+		textarea.rows = numberOfLineBreaks+1;
+	}
+	function handle_bot_name_onchange()
+	{
+		let textarea = document.getElementById("chatopponent");
+		textarea.value = replaceAll(textarea.value,"||$||","\n");
+		textarea.value = textarea.value.replace(/[\r\n]+/g, '\n');
+		textarea.value = textarea.value.trim();
+		let numberOfLineBreaks = (textarea.value.match(/\n/g) || []).length;
+		numberOfLineBreaks = numberOfLineBreaks>8?8:numberOfLineBreaks;
+		textarea.rows = numberOfLineBreaks+1;
+	}
+
 
 	function toggle_uistyle()
 	{
@@ -6171,7 +6398,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		//v2 api specific fields
 		submit_payload.workers = selected_workers.map((m) => { return m.id });
 
-		dispatch_submit_generation(submit_payload);
+		dispatch_submit_generation(submit_payload,false);
 		render_gametext();
 		document.getElementById("memorytext").value = "[<|Generating summary, do not close window...|>]"
 		};
@@ -6242,6 +6469,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		synchro_polled_response = null;
 		synchro_pending_stream = "";
 		waiting_for_autosummary = false;
+		horde_poll_nearly_completed = false;
 	}
 
 	function restart_new_game() {
@@ -6256,6 +6484,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		synchro_polled_response = null;
 		synchro_pending_stream = "";
 		waiting_for_autosummary = false;
+		last_reply_was_empty = false;
 		current_memory = "";
 		current_anote = "";
 		current_wi = [];
@@ -6301,18 +6530,23 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		render_gametext();
 	}
 
+	function replace_placeholders_direct(inputtxt)
+	{
+		inputtxt = replaceAll(inputtxt,"{{user}}",localsettings.chatname?localsettings.chatname:"You",true);
+		inputtxt = replaceAll(inputtxt,"{{char}}",localsettings.chatopponent?localsettings.chatopponent:defaultchatopponent,true);
+		inputtxt = replaceAll(inputtxt,instructstartplaceholder,get_instruct_starttag(false));
+		inputtxt = replaceAll(inputtxt,instructendplaceholder,get_instruct_endtag(false));
+		//failsafe to handle removing newline tags
+		inputtxt = replaceAll(inputtxt,instructstartplaceholder.trim(),get_instruct_starttag(false));
+		inputtxt = replaceAll(inputtxt,instructendplaceholder.trim(),get_instruct_endtag(false));
+		return inputtxt;
+	}
 	function replace_placeholders(inputtxt)
 	{
 		//only do this for chat and instruct modes
-		if(localsettings.opmode==3||localsettings.opmode==4)
+		if(localsettings.placeholder_tags)
 		{
-			inputtxt = replaceAll(inputtxt,"{{user}}",localsettings.chatname?localsettings.chatname:"You",true);
-			inputtxt = replaceAll(inputtxt,"{{char}}",localsettings.chatopponent?localsettings.chatopponent:defaultchatopponent,true);
-			inputtxt = replaceAll(inputtxt,instructstartplaceholder,get_instruct_starttag(false));
-			inputtxt = replaceAll(inputtxt,instructendplaceholder,get_instruct_endtag(false));
-			//failsafe to handle removing newline tags
-			inputtxt = replaceAll(inputtxt,instructstartplaceholder.trim(),get_instruct_starttag(false));
-			inputtxt = replaceAll(inputtxt,instructendplaceholder.trim(),get_instruct_endtag(false));
+			inputtxt = replace_placeholders_direct(inputtxt);
 		}
 		return inputtxt;
 	}
@@ -6331,9 +6565,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			last = Math.max(last, nl);
 		}
 		if (last > 0) {
-			return input.substring(0, last + 1).trimEnd();
+			return input.substring(0, last + 1).replace(/[\t\r\n ]+$/, '');
 		}
-		return input.trimEnd();
+		return input.replace(/[\t\r\n ]+$/, '');
 	}
 
 	function start_trim_to_sentence(input) {
@@ -6398,6 +6632,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		{
 			synchro_polled_response = synchro_pending_stream;
 			poll_in_progress = false;
+			horde_poll_nearly_completed = false;
 			poll_pending_response();
 		}
 
@@ -6487,9 +6722,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	function submit_generation() {
 
 		let newgen = document.getElementById("input_text").value;
+		const user_input_empty = (newgen.trim()=="");
 		let doNotGenerate = false;
 
-		if (newgen.trim() != "" || gametext_arr.length > 0 || current_memory != "" || current_anote != "")
+		if (!user_input_empty || gametext_arr.length > 0 || current_memory != "" || current_anote != "")
 		{
 			waiting_for_autosummary = false;
 			idle_timer = 0;
@@ -6505,7 +6741,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				if(newgen != "")
 				{
 					//append instruction for instruct mode
-					if (localsettings.raw_instruct_tags) {
+					if (!localsettings.placeholder_tags) {
 						newgen = get_instruct_starttag(false) + newgen + get_instruct_endtag(false);
 					}
 					else {
@@ -6515,7 +6751,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				else //may be continuting existing instruction OR starting a brand new session. check if first action
 				{
 					if (gametext_arr.length == 0) {
-						if (localsettings.raw_instruct_tags) {
+						if (!localsettings.placeholder_tags) {
 							newgen = get_instruct_endtag(false); //bot response as first msg
 						} else {
 							newgen = instructendplaceholder;
@@ -6618,13 +6854,6 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 			let truncated_context = concat_gametext(true, ""); //no need to truncate if memory is empty
 			truncated_context = truncated_context.replace(/\xA0/g,' '); //replace non breaking space nbsp
-
-			//trim trailing whitespace, and multiple newlines
-			if (localsettings.trimwhitespace) {
-				truncated_context = truncated_context.replace(/[\t ]+$/, '');
-				truncated_context = truncated_context.replace(/[\r\n]+/g, '\n');
-			}
-
 
 			//for adventure mode, inject hidden context, even more if there's nothing in memory
 			if (localsettings.opmode == 2  && localsettings.adventure_context_mod)
@@ -6884,7 +7113,14 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				if(localsettings.grammar && localsettings.grammar!="")
 				{
 					submit_payload.params.grammar = localsettings.grammar;
+					submit_payload.params.grammar_retain_state = document.getElementById("grammar_retain_state").checked;
 				}
+			}
+
+			if((custom_kobold_endpoint != "" && is_using_kcpp_with_streaming()))
+			{
+				lastcheckgenkey = "KCPP"+(Math.floor(1000 + Math.random() * 9000)).toString();
+				submit_payload.params.genkey = lastcheckgenkey;
 			}
 
 			//v2 api specific fields
@@ -6892,7 +7128,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 			if (!doNotGenerate)
 			{
-				dispatch_submit_generation(submit_payload);
+				dispatch_submit_generation(submit_payload, user_input_empty);
 			}
 			else
 			{
@@ -6903,7 +7139,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		}
 	}
 
-	function dispatch_submit_generation(submit_payload)
+	function dispatch_submit_generation(submit_payload, input_was_empty) //if input is not empty, always unban eos
 	{
 		console.log(submit_payload);
 		last_request_str = JSON.stringify(submit_payload);
@@ -6979,7 +7215,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				//version 1.2.4 and later supports unban tokens
 				if (kobold_endpoint_version && kobold_endpoint_version != "" && compare_version_str(kobold_endpoint_version, "1.2.3") > 0)
 				{
-					submit_payload.use_default_badwordsids = (localsettings.unban_tokens?false:true);
+					submit_payload.use_default_badwordsids = determine_if_ban_eos(input_was_empty);
 				}
 
 				let pseudostreaming = (determine_streaming_type()==1);
@@ -7117,7 +7353,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					"prompt": submit_payload.prompt,
 					"max_tokens_to_sample": submit_payload.params.max_length,
 					"model": custom_claude_model,
-					"top_k": (submit_payload.params.top_k<=0?-1:submit_payload.params.top_k),
+					"top_k": (submit_payload.params.top_k<1?300:submit_payload.params.top_k),
 					"temperature": submit_payload.params.temperature,
 					"top_p": submit_payload.params.top_p,
 				}
@@ -7162,6 +7398,45 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						else {
 							//error occurred, maybe captcha failed
 							console.error("error occurred in Claude generation");
+							clear_poll_flags();
+							render_gametext();
+							msgbox("Error occurred during text generation: " + formatError(data));
+						}
+					})
+					.catch((error) => {
+						console.error('Error:', error);
+						clear_poll_flags();
+						render_gametext();
+						msgbox("Error while submitting prompt: " + error);
+					});
+			}
+			else if (custom_palm_key != "")//handle for PaLM
+			{
+				let targetep = default_palm_base + custom_palm_key;
+				let payload = {"prompt":{"text":submit_payload.prompt},
+				"temperature":submit_payload.params.temperature,
+				"maxOutputTokens": submit_payload.params.max_length,
+				"topP": submit_payload.params.top_p,
+				"topK": (submit_payload.params.top_k<1?300:submit_payload.params.top_k),
+				"candidateCount":1};
+
+				fetch(targetep, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(payload),
+					referrerPolicy: 'no-referrer',
+				})
+					.then((response) => response.json())
+					.then((data) => {
+						console.log("sync finished response: " + JSON.stringify(data));
+						if (custom_palm_key != "" && data.candidates != null && data.candidates.length>0 && data.candidates[0].output != "") {
+							synchro_polled_response = data.candidates[0].output;
+						}
+						else {
+							//error occurred, maybe captcha failed
+							console.error("error occurred in PaLM generation");
 							clear_poll_flags();
 							render_gametext();
 							msgbox("Error occurred during text generation: " + formatError(data));
@@ -7219,7 +7494,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			}
 
 			//horde supports unban tokens
-			submit_payload.use_default_badwordsids = (localsettings.unban_tokens?false:true);
+			submit_payload.use_default_badwordsids = determine_if_ban_eos(input_was_empty);
 
 			fetch(selectedhorde.submit_endpoint, {
 				method: 'POST', // or 'PUT'
@@ -7440,7 +7715,6 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	}
 
 	function handle_incoming_text(gentxt, genworker, genmdl, genkudos) {
-
 		//handle stopping tokens if they got missed (eg. horde)
 		gentxt = trim_extra_stop_seqs(gentxt,true);
 
@@ -7451,6 +7725,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 		//do a second pass, this time removing the actual stop token
 		gentxt = trim_extra_stop_seqs(gentxt,false);
+
+		//trim trailing whitespace, and multiple newlines
+		if (localsettings.trimwhitespace) {
+			gentxt = gentxt.replace(/[\t\r\n ]+$/, '');
+			gentxt = gentxt.replace(/[\r\n]+/g, '\n');
+		}
 
 		//if we are in adventure mode, truncate to action if it appears
 		if (localsettings.opmode == 2)
@@ -7468,7 +7748,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		if (localsettings.opmode == 3) {
 			//sometimes the bot repeats its own name at the very start. if that happens, trim it away.
 			let oppomatch = localsettings.chatopponent + "\: ";
+			let oppomatchwithNL = "\n" + localsettings.chatopponent + "\: ";
 			let foundOppoName = gentxt.indexOf(oppomatch);
+			let foundOppoNameWithNL = gentxt.indexOf(oppomatchwithNL);
 			if(localsettings.chatopponent!="" && foundOppoName==0)
 			{
 				gentxt = gentxt.substring(oppomatch.length);
@@ -7483,6 +7765,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			else if (foundMyName2 != -1 && localsettings.chatname!="You") //added by henky request, trigger even without colon
 			{
 				splitresponse = gentxt.split("\n" + localsettings.chatname + " ");
+			}
+			else if (foundOppoNameWithNL > 0) //split by oppo name
+			{
+				splitresponse = gentxt.split("\n" + localsettings.chatopponent + "\: ");
 			}
 			else //if no name found
 			{
@@ -7720,8 +8006,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	{
 		++poll_ticks_passed;
 
-		//for horde requests, slow down by 3 times
-		if(!is_using_custom_ep() && poll_ticks_passed%3!=0)
+		//for horde requests, slow down by 3 times unless almost done
+		if(!is_using_custom_ep() && (horde_poll_nearly_completed?(poll_ticks_passed%2!=0):(poll_ticks_passed%3!=0)))
 		{
 			return;
 		}
@@ -7753,6 +8039,9 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								headers: {
 									'Content-Type': 'application/json',
 								},
+								body: JSON.stringify({
+								"genkey": lastcheckgenkey
+								}),
 								})
 								.then((response) => response.json())
 								.then((data) => {
@@ -7777,6 +8066,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						pending_response_id = "";
 						poll_in_progress = false;
 						let resp = synchro_polled_response;
+						last_reply_was_empty = (resp=="" || resp.trim()=="");
 						if (resp != null && resp != "") {
 							let gentxt = resp;
 							let genworker = "Custom Endpoint";
@@ -7834,6 +8124,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 												console.log("Finished " + pending_response_id + ": " + JSON.stringify(data));
 												pending_response_id = "";
 												poll_in_progress = false;
+												horde_poll_nearly_completed = false;
 												if (data.generations != null && data.generations.length > 0) {
 													let gentxt = data.generations[0].text;
 													let genworker = data.generations[0].worker_name;
@@ -7843,6 +8134,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 														handle_incoming_autosummary(gentxt);
 													}
 													else {
+														last_reply_was_empty = (gentxt=="" || gentxt.trim()=="");
 														handle_incoming_text(gentxt, genworker, genmdl, genkudos);
 													}
 												}
@@ -7860,6 +8152,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								else {
 									//still waiting, do nothing until next poll
 									poll_in_progress = false;
+									horde_poll_nearly_completed = false;
 									//depending on the queue_position, set loader color
 									let mtl = document.getElementById("maintxtloader");
 									if (mtl) {
@@ -7869,6 +8162,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 											mtl.classList.add("redloader");
 										} else if (data.processing == 1 && data.queue_position == 0) {
 											mtl.classList.add("greenloader");
+											if(data.wait_time<5)
+											{
+												horde_poll_nearly_completed = true;
+											}
 										}
 										let oln = document.getElementById("outerloadernum");
 										if(oln)
@@ -7925,6 +8222,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			if (oldInnerText != edited) {
 				gametext_arr = [];
 				redo_arr = [];
+				last_reply_was_empty = false;
 				retry_prev_text = "";
 				redo_prev_text = "";
 
@@ -8127,7 +8425,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		if (gametext_arr.length == 0 && synchro_pending_stream=="" && pending_response_id=="") {
 
 			if (perfdata == null) {
-				document.getElementById("gametext").innerHTML = "Welcome to <span class=\"color_cyan\">KoboldAI Lite</span>!<br>You are in <span class=\"color_red\">Offline Mode</span>.<br>You will still be able to load and edit stories, but not generate new text."
+				if(document.getElementById("connectstatus").innerHTML == "Offline Mode")
+				{
+					document.getElementById("gametext").innerHTML = "Welcome to <span class=\"color_cyan\">KoboldAI Lite</span>!<br>You are in <span class=\"color_red\">Offline Mode</span>.<br>You will still be able to load and edit stories, but not generate new text."
+				}else{
+					document.getElementById("gametext").innerHTML = "Welcome to <span class=\"color_cyan\">KoboldAI Lite</span>!<br><span class=\"color_orange\">Attempting to Connect...</span>"
+				}
 			} else {
 				let whorun = "";
 
@@ -8142,6 +8445,10 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				{
 					whorun = "<br>You're using the Spellbook by Scale AI API";
 				}
+				else if(custom_palm_key!="")
+				{
+					whorun = "<br>You're using the PaLM API";
+				}
 				else if(custom_claude_key!="")
 				{
 					whorun = "<br>You're using the Claude API";
@@ -8149,9 +8456,20 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				else {
 					whorun = "<br>There are <span class=\"color_orange\">" + selected_models.reduce((s, a) => s + a.count, 0) + "</span> <a class=\"color_green\" href=\"#\" onclick=\"get_and_show_workers()\">volunteer(s)</a> running selected models with a total queue length of <span class=\"color_orange\">"+ selected_models.reduce((s, a) => s + a.queued, 0) + "</span> tokens";
 				}
+				let nowmode = (localsettings.opmode==1?"Story Mode":(localsettings.opmode==2?"Adventure Mode":(localsettings.opmode==3?"Chat Mode":"Instruct Mode")));
+				let selmodelstr = "";
+				const maxmodelnames = 7;
+				if(selected_models.length>maxmodelnames)
+				{
+					let shortenedarr = selected_models.slice(0, maxmodelnames-1);
+					selmodelstr = shortenedarr.reduce((s, a) => s + (s == "" ? "" : ", ") + a.name, "") + " and " + (selected_models.length-(maxmodelnames-1)) + " others";
+				}else{
+					selmodelstr = selected_models.reduce((s, a) => s + (s == "" ? "" : ", ") + a.name, "");
+				}
+
 				document.getElementById("gametext").innerHTML = "Welcome to <span class=\"color_cyan\">KoboldAI Lite</span>!<br>You are using the models <span class=\"color_green\">"
-					+ selected_models.reduce((s, a) => s + (s == "" ? "" : ", ") + a.name, "") + "</span>" + (selected_workers.length == 0 ? "" : (" (Pinned to " + selected_workers.length + " worker IDs)"))
-					+ "." + whorun +".<br><br>Enter a prompt below to begin!" + "<br>Or, <a href=\"#\" class=\"color_blueurl\" onclick=\"display_scenarios()\">select a Quick Start Scenario by clicking here.</a><br>";
+					+ selmodelstr + "</span>" + (selected_workers.length == 0 ? "" : (" (Pinned to " + selected_workers.length + " worker IDs)"))
+					+ "." + whorun +".<br><br><b><span class=\"color_orange\">"+ nowmode +" Selected</span></b> - Enter a prompt below to begin!" + "<br>Or, <a href=\"#\" class=\"color_blueurl\" onclick=\"document.getElementById('loadfileinput').click()\">load a <b>JSON File</b> or a <b>Character Card</b> here.</a>" + "<br>Or, <a href=\"#\" class=\"color_blueurl\" onclick=\"display_scenarios()\">select a <b>Quick Start Scenario</b> here.</a><br>";
 			}
 
 			//kick out of edit mode
@@ -8763,7 +9081,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 		console.log("Clear story");
 		if (pending_response_id == "" && gametext_arr.length > 0) {
-
+			last_reply_was_empty = false;
 			while(gametext_arr.length > 0)
 			{
 				if(retry_prev_text!="")
@@ -8789,6 +9107,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	}
 	function btn_back() {
 		if (pending_response_id == "" && gametext_arr.length > 0) {
+			last_reply_was_empty = false;
 			if(retry_prev_text!="")
 			{
 				redo_prev_text = gametext_arr.pop();
@@ -8811,6 +9130,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 		console.log("Redo All story");
 		if (pending_response_id == "" && redo_arr.length > 0) {
+			last_reply_was_empty = false;
 			while(redo_arr.length > 0)
 			{
 				retry_prev_text = "";
@@ -8830,11 +9150,13 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	function btn_redo() {
 		if (pending_response_id == "") {
 			if (redo_arr.length > 0) {
+				last_reply_was_empty = false;
 				retry_prev_text = "";
 				let popped = redo_arr.pop();
 				gametext_arr.push(popped);
 				render_gametext();
 			}else if (redo_prev_text != "") {
+				last_reply_was_empty = false;
 				retry_prev_text = gametext_arr.pop();
 				gametext_arr.push(redo_prev_text);
 				redo_prev_text = "";
@@ -8846,6 +9168,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 	function btn_retry() {
 		if (pending_response_id == "" && (gametext_arr.length > 1 ||
 		(gametext_arr.length > 0 && (current_memory != "" || current_anote != "")))) {
+			last_reply_was_empty = false;
 			let boxtextstash = document.getElementById("input_text").value;
 			document.getElementById("input_text").value = "";
 			let temp = gametext_arr[gametext_arr.length-1];
@@ -8884,12 +9207,12 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 	class AestheticInstructUISettings {
 		constructor() {
-			this.bubbleColor_sys = 'rgba(20, 40, 40, 0.8)';
-			this.bubbleColor_you = '#29343a';
-			this.bubbleColor_AI = 'rgba(20, 20, 40, 1)';
+			this.bubbleColor_sys = 'rgb(18, 36, 36)';
+			this.bubbleColor_you = 'rgb(41, 52, 58)';
+			this.bubbleColor_AI = 'rgb(20, 20, 40)';
 
 			this.background_margin = [5, 5, 5, 0];
-			this.background_padding = [15, 15, 10, 10];
+			this.background_padding = [15, 15, 10, 5];
 			this.background_minHeight = 80;
 			this.centerHorizontally = false;
 
@@ -8910,13 +9233,13 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			this.use_uniform_colors = true; // Hides 'you, AI, sys' if set to true via settings UI.
 
 			for (let role of aestheticTextStyleRoles) {
-				this[`text_tcolor_${role}`] = 'rgba(255,255,255,1)';
-				this[`speech_tcolor_${role}`] = 'rgba(150, 150, 200, 1)';
-				this[`action_tcolor_${role}`] = 'rgba(255,255,255, 0.7)';
+				this[`text_tcolor_${role}`] = 'rgb(255, 255, 255)';
+				this[`speech_tcolor_${role}`] = 'rgb(150, 150, 200)';
+				this[`action_tcolor_${role}`] = 'rgb(178, 178, 178)';
 			}
 
-			this.code_block_background = 'black';
-			this.code_block_foreground = 'rgba(180, 35, 40, 1)';
+			this.code_block_background = 'rgb(0, 0, 0)';
+			this.code_block_foreground = 'rgb(180, 35, 40)';
 		}
 
 		padding() { return `${this.background_padding[2]}px ${this.background_padding[1]}px ${this.background_padding[3]}px ${this.background_padding[0]}px`; }
@@ -8949,6 +9272,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			colorPicker.style.position = 'absolute';
 			colorPicker.style.width = '100%';
 			colorPicker.style.height = '100%';
+			colorPicker.classList.add("colorpickerchild");
 			colorPicker.value = element.style[`${useBackground ? 'backgroundColor' : 'color'}`];
 			element.style.position = 'relative';
 			element.appendChild(colorPicker);
@@ -9082,13 +9406,13 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 			}
 			if (role != 'uniform') { aestheticInstructUISettings[`bubbleColor_${role}`] = document.getElementById(`${role}-bubble-colorselector`).style.backgroundColor; }
 		}
+		aestheticInstructUISettings.code_block_background = document.getElementById('code-block-background-colorselector').style.color;
+		aestheticInstructUISettings.code_block_foreground = document.getElementById('code-block-foreground-colorselector').style.color;
 
 		aestheticInstructUISettings.rounded_bubbles = document.getElementById('aui_rounded_bubbles').checked;
 		aestheticInstructUISettings.show_chat_names = document.getElementById('aui_show_chat_names').checked;
 		aestheticInstructUISettings.use_markdown = document.getElementById('instructModeMarkdown').checked;
 		aestheticInstructUISettings.use_uniform_colors = !document.getElementById('instructModeCustomized').checked;
-		aestheticInstructUISettings.code_block_background = document.getElementById('code-block-background-colorselector').style.color;
-		aestheticInstructUISettings.code_block_foreground = document.getElementById('code-block-foreground-colorselector').style.color;
 		aestheticInstructUISettings.font_size = document.getElementById('instruct-font-size').value;
 		aestheticInstructUISettings.border_style = document.getElementById('instructBorderStyle').value;
 		aestheticInstructUISettings.portrait_width_AI = document.getElementById('portrait_width_AI').value;
@@ -9116,18 +9440,24 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		// Parse color settings and apply to the related parts in the UI.
 		for (let role of aestheticTextStyleRoles) {
 			for (let type of aestheticTextStyleTypes) {
-				setElementColor(`${role}-${type}-colorselector`, aestheticInstructUISettings[`${type}_tcolor_${role}`]);
+				setElementColor(`${role}-${type}-colorselector`, aestheticInstructUISettings[`${type}_tcolor_${role}`], false);
 			}
-			if (role != 'uniform') { document.getElementById(`${role}-bubble-colorselector`).style.backgroundColor = aestheticInstructUISettings[`bubbleColor_${role}`]; }
+			if (role != 'uniform') {
+				setElementColor(`${role}-bubble-colorselector`, aestheticInstructUISettings[`bubbleColor_${role}`], true);
+			}
 		}
+		if(aestheticInstructUISettings.code_block_background=="rgb(0, 0, 0)")
+		{
+			console.log("oof");
+		}
+		setElementColor('code-block-background-colorselector', aestheticInstructUISettings.code_block_background, false);
+		setElementColor('code-block-foreground-colorselector', aestheticInstructUISettings.code_block_foreground, false);
 
 		// Apply the settings from the json file to the UI.
 		document.getElementById('aui_rounded_bubbles').checked = aestheticInstructUISettings.rounded_bubbles;
 		document.getElementById('aui_show_chat_names').checked = aestheticInstructUISettings.show_chat_names;
 		document.getElementById('instructModeMarkdown').checked = aestheticInstructUISettings.use_markdown;
 		document.getElementById('instructModeCustomized').checked = !aestheticInstructUISettings.use_uniform_colors;
-		document.getElementById('code-block-background-colorselector').style.color = aestheticInstructUISettings.code_block_background;
-		document.getElementById('code-block-foreground-colorselector').style.color = aestheticInstructUISettings.code_block_foreground;
 		document.getElementById('instruct-font-size').value = aestheticInstructUISettings.font_size;
 		document.getElementById('instructBorderStyle').value = aestheticInstructUISettings.border_style;
 		document.getElementById('portrait_width_AI').value = aestheticInstructUISettings.portrait_width_AI;
@@ -9153,11 +9483,23 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		});
 
 
-		function setElementColor(id, newColor) {
+		function setElementColor(id, newColor, isBackground) {
 			let element = document.getElementById(id);
 			if (!element) { console.warn(`Element with ID: ${id} not found.`); return; }
 
-			element.style.color = newColor;
+			if (isBackground) {
+				element.style.backgroundColor = newColor;
+			}
+			else {
+				element.style.color = newColor;
+			}
+
+			var childInput = element.querySelector('.colorpickerchild');
+			if (childInput && newColor.includes("rgb")) {
+				childInput.value = rgbToHex(newColor);
+			} else {
+				childInput.value = newColor;
+			}
 		}
 		function showOrHide(classID, value) {
 			if (value) { document.querySelectorAll(classID).forEach((x) => x.classList.remove('hidden')); }
@@ -9253,8 +9595,13 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		function applyStylizedCodeBlocks() {
 			let blocks = newbodystr.split(/(```[\s\S]*?\n[\s\S]*?```)/g);
 			for (var i = 0; i < blocks.length; i++) {
-				if (blocks[i].startsWith('```')) { blocks[i] = blocks[i].replace(/```[\s\S]*?\n([\s\S]*?)```/g, `</p><pre style='min-width:80%;margin:0px 40px 0px 20px;background-color:${as.code_block_background};color:${as.code_block_foreground}'>$1</pre><p>`); }
-				else { blocks[i] = blocks[i].replaceAll('```','`').replaceAll('``','`').replace(/`(.*?)`/g, `<code style='background-color:black'>$1</code>`); }
+				if (blocks[i].startsWith('```')) {
+					blocks[i] = blocks[i].replace(/```[\s\S]*?\n([\s\S]*?)```/g,
+					function (m,m2) {return `</p><pre style='min-width:80%;margin:0px 40px 0px 20px;background-color:${as.code_block_background};color:${as.code_block_foreground}'>${m2.replace(/[“”]/g, "\"")}</pre><p>`});
+				}
+				else {
+					blocks[i] = blocks[i].replaceAll('```', '`').replaceAll('``', '`').replace(/`(.*?)`/g, function (m,m2) {return `<code style='background-color:black'>${m2.replace(/[“”]/g, "\"")}</code>`;}); //remove fancy quotes too
+				}
 			}
 			return blocks.join('');
 		}
@@ -9377,7 +9724,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 		<div id="maineditbody" class="layer-container">
 			<div class="layer-bottom" id="gamescreen">
 				<span id="gametext" contenteditable="false" onclick="click_gametext()" onblur="merge_edit_field()">
-					<p>Connecting...</p>
+					<p id="tempgtloadtxt">Loading...</p>
+					<noscript><style>#tempgtloadtxt { display: none; } #gametext { white-space: normal!important; }</style><p>Sorry, Kobold Lite requires Javascript to function.</p></noscript>
 				</span>
 				<div class="hidden" id="wimenu">
 				</div>
@@ -9562,7 +9910,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 	<div class="popupcontainer flex hidden" id="customendpointcontainer">
 		<div class="popupbg flex"></div>
-		<div class="nspopup flexsize moderate">
+		<div class="nspopup flexsize higher">
 			<div class="popuptitlebar">
 				<div class="popuptitletext">Custom Remote Play Endpoint</div>
 			</div>
@@ -9572,6 +9920,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				<option value="1">OpenAI API</option>
 				<option value="2">Spellbook By Scale API</option>
 				<option value="3">Claude By Anthropic API</option>
+				<option value="4">PaLM By Google API</option>
 			</select>
 			</div>
 			<div id="koboldcustom" class="aidgpopuplistheader anotelabel">
@@ -9604,6 +9953,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					<option value="gpt-4">gpt-4</option>
 					<option value="gpt-4-32k">gpt-4-32k</option>
 				</select>
+				<input type="checkbox" id="oaiaddversion" onchange="" checked>
+				<div class="box-label" title="Add endpoint version">Add Endpoint Version</div>
 				<input type="checkbox" id="jailbreakprompt" onchange="togglejailbreak()">
 				<div class="box-label" title="Adds extra text to improve AI response">Improve Prompt (System Message Injection)</div>
 				<input class="form-control hidden" type="text" id="jailbreakprompttext" placeholder="(Enter System Message)"
@@ -9635,8 +9986,16 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					<option value="claude-2">claude-2</option>
 					<option value="claude-2.0">claude-2.0</option>
 				</select>
+				<input type="checkbox" id="claudeaddversion" onchange="" checked>
+				<div class="box-label" title="Add endpoint version">Add Endpoint Version</div>
 				<input type="checkbox" id="clauderenamecompat" onchange="">
 				<div class="box-label" title="Rename User and Bot tags to work with claude, force inject them otherwise">Claude Compatibility Rename Fix</div>
+			</div>
+			<div id="palmcustom" class="aidgpopuplistheader anotelabel hidden">
+				Uses PaLM Text Bison by Google.<br><br>
+				Note that KoboldAI Lite takes no responsibility for your usage or consequences of this feature.<br><br>
+				<span class="color_green" style="font-weight: bold;">Please input PaLM API Key.</span><br><br>
+				<input class="form-control" type="text" id="custom_palm_key" placeholder="PaLM API Key" value=""><br>
 			</div>
 			<div class="popupfooter">
 				<button type="button" class="btn btn-primary" onclick="connect_custom_endpoint()">Ok</button>
@@ -9838,16 +10197,16 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 							<table class="settingsmall text-center" style="border-spacing: 4px 2px;	border-collapse: separate;">
 								<tr>
 								<th>Your Name</th>
-								<th>AI Name <span class="helpicon">?<span class="helptext">The name of the person you want to chat with. Multiple opponents can be specified, creating a group chat, separate their names with ||$||</span></span></th>
+								<th>AI Name <span class="helpicon">?<span class="helptext">The name of the person you want to chat with. Multiple opponents can be specified, creating a group chat, separate their names using multiple lines.</span></span></th>
 								</tr>
 								<tr>
-								<td><input class="settinglabel miniinput" type="text" placeholder="(Enter Name)" value="" id="chatname" title="The name that you will be chatting as"></td>
-								<td><input class="settinglabel miniinput" type="text" placeholder="(Auto)" value="" id="chatopponent"  title="The name of the person you want to chat with"></td>
+								<td style="vertical-align: top;"><input class="settinglabel miniinput" type="text" placeholder="(Enter Name)" value="" id="chatname" title="The name that you will be chatting as"></td>
+								<td style="vertical-align: top;"><textarea class="settinglabel miniinput" style="resize: none;overflow:hidden;" id="chatopponent" placeholder="(Auto)" rows="1" wrap="off" title="The name of the person you want to chat with" oninput="handle_bot_name_input()" onchange="handle_bot_name_onchange()"></textarea></td>
 								</tr>
 							  </table>
 
 							<div class="settinglabel">
-							<div class="justifyleft settingsmall" title="Whether to allow multiple lines in AI responses. Not recommended.">Multiline Replies </div>
+							<div class="justifyleft settingsmall" title="Whether to allow multiple lines in AI responses.">Multiline Replies </div>
 							<input type="checkbox" id="multiline_replies" style="margin:0px 0 0;">
 							</div>
 							<div class="settinglabel">
@@ -9866,6 +10225,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								<option value="3">Metharme</option>
 								<option value="4">Llama 2 Chat</option>
 								<option value="5">Q & A</option>
+								<option value="6">ChatML</option>
 							</select>
 							<table class="settingsmall text-center" style="border-spacing: 4px 2px;	border-collapse: separate;">
 								<tr>
@@ -9877,9 +10237,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 								<td><input class="settinglabel miniinput" type="text" placeholder="\\n### Response:\\n" value="" id="instruct_endtag" onchange="edit_instruct_tag_format()" title="The sequence to end an instruction prompt"></td>
 								</tr>
 							</table>
-							<div class="justifyleft settingsmall">Raw Instruct Tags <span class="helpicon">?<span
-								class="helptext">If enabled, uses instruct tags verbatim. If disabled, uses universal instruct placeholders that get swapped on submit.</span></span> </div>
-							<input type="checkbox" id="raw_instruct_tags" style="margin:0px 0 0;">
+
 							<div class="justifyleft settingsmall">Enable Markdown <span class="helpicon">?<span
 								class="helptext">Allows the UI to use markdown formatting such as quotes and code blocks.</span></span> </div>
 							<input type="checkbox" id="instruct_has_markdown" style="margin:0px 0 0;">
@@ -9972,6 +10330,8 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 						<div class="settinglabel">
 							<div class="justifyleft settingsmall">Additional Configs <span class="helpicon">?<span class="helptext">Grammar Sampling (KCPP) - Allows you to constrain output to fit specific structures.</span></span></div>
 							<button id="setgrammar" type="button" class="btn btn-primary" style="padding:2px 3px;margin-top:2px;font-size:11px;" onclick="selectGrammar()">Set Grammar</button>
+							<div class="settingsmall" style="padding:2px 3px;margin-top:4px;" title="Do not reset grammar on generate. May not work with multiple users.">Retain </div>
+						   	<input type="checkbox" id="grammar_retain_state" style="padding:2px 3px;margin-top:6px;height: max-content;">
 						</div>
 					</div>
 				</div>
@@ -10021,13 +10381,14 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 					<div class="settingitem">
 						<div class="settinglabel">
-							<div class="justifyleft settingsmall" id="tokenstreaminglabel" title="Attempts to use token streaming if available.">Token Streaming </div>
-						   <input type="checkbox" id="tokenstreaming" style="margin:0px 0 0;">
+							<div class="justifyleft settingsmall" id="tokenstreaminglabel" title="">Token Streaming <span class="helpicon">?<span
+								class="helptext">Attempts to use token streaming if supported. Not available on Horde.</span></span></div>
+						   <input type="checkbox" id="tokenstreaming" style="margin:0px 0px 0px auto;">
 						</div>
 
 						<div id="idlesection" class="settinglabel">
 							<div class="justifyleft settingsmall" title="Allow the AI to send more responses if you are idle.">Idle Responses&nbsp;</div>
-							<select style="padding:1px; height:auto; width: 27px; appearance: none; font-size: 7pt;" class="form-control" id="idle_responses">
+							<select style="padding:1px; height:auto; width: 27px; appearance: none; font-size: 7pt; margin:0px 0px 0px auto;" class="form-control" id="idle_responses">
 								<option value="0">Off</option>
 								<option value="1">1x</option>
 								<option value="2">2x</option>
@@ -10047,16 +10408,28 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 
 
 						<div class="settinglabel">
-							<div class="justifyleft settingsmall" title="Trims incomplete sentences in AI output">Trim Sentences </div>
-						   <input type="checkbox" id="trimsentences" style="margin:0px 0 0;">
+							<div class="justifyleft settingsmall" title="">Trim Sentences <span class="helpicon">?<span
+								class="helptext">Trims incomplete sentences in AI output.</span></span></div>
+						   <input type="checkbox" id="trimsentences" style="margin:0px 0px 0px auto;">
 						</div>
 						<div class="settinglabel">
-							<div class="justifyleft settingsmall" title="Trim trailing whitespace at the end of context">Trim Whitespace </div>
-						   <input type="checkbox" id="trimwhitespace" style="margin:0px 0 0;">
+							<div class="justifyleft settingsmall" title="">Trim Whitespace <span class="helpicon">?<span
+								class="helptext">Compresses double newlines and removes trailing whitespace in AI output.</span></span></div>
+						   <input type="checkbox" id="trimwhitespace" style="margin:0px 0px 0px auto;">
 						</div>
 						<div class="settinglabel">
-							<div class="justifyleft settingsmall" title="Allow the EOS token and others to be used">Unban EOS Tokens </div>
-						   <input type="checkbox" id="unban_tokens" style="margin:0px 0 0;">
+							<div class="justifyleft settingsmall" title="">EOS Token Ban <span class="helpicon">?<span
+								class="helptext">Allow the End-Of-Stream (EOS) token and potentially other restricted special tokens to be generated.</span></span></div>
+						   <select style="padding:1px; height:auto; width: 34px; appearance: none; font-size: 7pt; margin:0px 0px 0px auto;" class="form-control" id="eos_ban_mode">
+								<option value="0">Auto</option>
+								<option value="1">Unban</option>
+								<option value="2">Ban</option>
+							</select>
+						</div>
+						<div class="settinglabel">
+							<div class="justifyleft settingsmall">Placeholder Tags <span class="helpicon">?<span
+								class="helptext">If enabled, uses universal {{user}} and {{[INPUT]}} placeholders that get swapped on submit. If disabled, uses plaintext chat or instruct tags verbatim.</span></span></div>
+						   <input type="checkbox" id="placeholder_tags" style="margin:0px 0px 0px auto;">
 						</div>
 					</div>
 
@@ -10064,23 +10437,23 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 					<div class="settingitem">
 						<div class="settinglabel">
 							<div class="justifyleft settingsmall" title="Autosaves your current story and settings on exit, reloads when you return">Persist Autosave Session </div>
-						   <input type="checkbox" id="persist_session" style="margin:0px 0 0;">
+						   <input type="checkbox" id="persist_session" style="margin:0px 0px 0px auto;">
 						</div>
 						<div class="settinglabel">
 							<div class="justifyleft settingsmall" title="Includes your current settings when saving or sharing your story">Save File Incl. Settings </div>
-						   <input type="checkbox" id="export_settings" style="margin:0px 0 0;">
+						   <input type="checkbox" id="export_settings" style="margin:0px 0px 0px auto;">
 						</div>
 						<div class="settinglabel">
 							<div class="justifyleft settingsmall"  title="Prompts to input a different filename when saving file.">Show Rename Save File </div>
-						   <input type="checkbox" id="prompt_for_savename" style="margin:0px 0 0;">
+						   <input type="checkbox" id="prompt_for_savename" style="margin:0px 0px 0px auto;">
 						</div>
 						<div class="settinglabel">
 							<div class="justifyleft settingsmall" title="Automatically scrolls the text window down when new text is generated">Autoscroll Text </div>
-						   <input type="checkbox" id="autoscroll" style="margin:0px 0 0;">
+						   <input type="checkbox" id="autoscroll" style="margin:0px 0px 0px auto;">
 						</div>
 						<div class="settinglabel">
 							<div class="justifyleft settingsmall" title="Inverts all colors, simple light mode">Inverted Colors </div>
-						   <input type="checkbox" id="invert_colors" style="margin:0px 0 0;">
+						   <input type="checkbox" id="invert_colors" style="margin:0px 0px 0px auto;">
 						</div>
 					</div>
 
@@ -10327,19 +10700,6 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 				<!-- Settings panel -->
 				<div style="background-color: #122b40;" onchange="refreshPreview()">
 					<div style="padding: 10px; width:350px; height:100%">
-						<!-- PRESET LOADING //TODO: Make exporting/importing work -->
-						<!-- <div class="hidden">
-							<div class="settinglabel" style="display: flex;flex-direction: column; margin-top:5px; border-top: solid 1px rgba(180, 180, 255, 0.2);">
-								<div class="justifyleft settingsmall" style="font-size: 14px; margin-bottom: 2px;">RAWRRR Presets</div>
-								<div class="ui-settings-inline">
-									<select class="form-control" id="presets" style="width:300px;height:24px;padding:0;" onchange="toggle_UI_preset()">
-										<option value="1" title="Known Working Settings">[Default]</option>
-										<option value="1000" title="Known Working Settings">[Custom]</option>
-									</select>
-									<button class="btn btn-primary" style="height:25px; font-size: 12px;text-align: center; margin-left: 10px;">Save</button>
-								</div>
-							</div>
-						</div> -->
 
 						<!-- BACKGROUND STYLE SETTINGS -->
 						<div>
@@ -10410,7 +10770,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 											<option value="Rounded">Rounded</option>
 											<option value="Rect">Rect</option>
 										</select>
-										<div id="reset-portrait" style="margin-left: 10px;"><a href="#" class="color_blueurl">(Reset Image)</a></div>
+										<div style="margin-left: 10px;"><a href="#" id="reset-portrait" class="color_blueurl">(Reset Image)</a></div>
 									</div>
 									<div class="ui-settings-inline">
 										<div style="margin-right:18px;">User Portrait: </div>
@@ -10486,7 +10846,7 @@ Kobold Lite is under the AGPL v3.0 License for the purposes of koboldcpp and Kob
 									</div>
 								</div>
 								<br>
-									<div id="reset-all-aesthetic-instruct" style="margin-left: 10px;"><a href="#" class="color_blueurl">(Reset All Styles)</a></div>
+									<div style="margin-left: 10px;"><a href="#" id="reset-all-aesthetic-instruct" class="color_blueurl">(Reset All Styles)</a></div>
 							</div>
 						</div>
 
