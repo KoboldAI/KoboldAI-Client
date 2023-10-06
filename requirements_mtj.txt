@@ -16,6 +16,7 @@ python-socketio==5.7.2
 flask-cloudflared==0.0.10
 flask-ngrok
 flask-cors
+Werkzeug==2.3.7
 eventlet==0.33.3
 dnspython==2.2.1
 lupa==1.10
