@@ -232,7 +232,7 @@ class HFInferenceModel(InferenceModel):
         self.model_type = str(self.model_config.model_type)
         
         # These are model specific tokenizer overrides if a model has bad defaults
-        if self.model_type == "llama":
+        if self.model_type == "llama" or self.model_type == "mistral":
             # Note: self.tokenizer is a GenericTokenizer, and self.tokenizer.tokenizer is the actual LlamaTokenizer
             self.tokenizer.add_bos_token = False
             self.tokenizer.legacy = False

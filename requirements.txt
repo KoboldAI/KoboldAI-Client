@@ -1,6 +1,6 @@
-transformers[sentencepiece]==4.33.1
+transformers[sentencepiece]==4.34.0
 huggingface_hub==0.16.4
-optimum[onnxruntime]==1.12.0
+optimum[onnxruntime]==1.13.2
 safetensors==0.3.3
 Flask==2.3.3
 Flask-SocketIO==5.3.2
@@ -41,9 +41,12 @@ git+https://github.com/0cc4m/hf_bleeding_edge/
 einops
 peft==0.3.0
 scipy
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32' and python_version == '3.10'
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.1/auto_gptq-0.4.1+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32' and python_version == '3.10'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
+https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
 windows-curses; sys_platform == 'win32'
 pynvml
+flash_attn==2.3.0
+xformers==0.0.21
+exllamav2==0.0.4
