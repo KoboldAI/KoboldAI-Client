@@ -27,6 +27,7 @@ dependencies:
     - torch==1.12.1+rocm5.1.1
     - flask-cloudflared==0.0.10
     - flask-ngrok
+    - Werkzeug==2.3.7
     - lupa==1.10
     - transformers==4.24.0
     - huggingface_hub==0.12.1
