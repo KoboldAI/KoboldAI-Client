@@ -2008,11 +2008,12 @@ function selected_model_info(sent_data) {
 				slider_number.onchange = function() { document.getElementById(this.id.replace("_text", "")).value = this.value;};
 
 				var slider = new_setting.querySelector('#blank_model_settings_slider');
-				slider.value = item['default'];
 				slider.min = item['min'];
 				slider.max = item['max'];
+				slider.step = item["step"];
 				slider.setAttribute("data_type", item['unit']);
 				slider.id = loader + "|" + item['id'] + "_value";
+				slider.value = item['default'];
 				if ('check' in item) {
 					slider.check_data = item['check'];
 					slider_number.check_data = item['check'];
