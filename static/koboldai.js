@@ -3602,6 +3602,7 @@ function stream_tokens(tokens) {
 
 			streamBuffer.textContent += streaming.buffer[0];
 			streaming.buffer = streaming.buffer.slice(1);
+			streamBuffer.scrollIntoView({ block: "end" });
 		}
 
 		streaming.typeyTimeout = setTimeout(_char, 10);
@@ -3621,6 +3622,7 @@ function stream_tokens(tokens) {
 		streaming.buffer += tokens[0];
 	} else {
 		streamBuffer.textContent += tokens[0];
+		streamBuffer.scrollIntoView({ block: "end" });
 	}
 }
 
