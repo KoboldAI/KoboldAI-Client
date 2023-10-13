@@ -687,8 +687,9 @@ class settings(object):
 
 class model_settings(settings):
     local_only_variables = ['apikey', 'default_preset']
-    no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
+    no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns',
+                         'loaded_layers', 'total_layers', 'loaded_checkpoints', 'total_checkpoints',
+                         'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset',
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
                          'badwordsids', 'uid_presets', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
     settings_name = "model"
@@ -705,6 +706,8 @@ class model_settings(settings):
         self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
         self.loaded_layers = 0     # Used in UI 2 to show model loading progress
         self.total_layers = 0      # Same as above
+        self.loaded_checkpoints = 0
+        self.total_checkpoints = 0
         self.total_download_chunks = 0 # tracks how much of the model has downloaded for the UI 2
         self.downloaded_chunks = 0 #as above
         self._tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time

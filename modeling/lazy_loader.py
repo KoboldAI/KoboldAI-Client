@@ -52,7 +52,8 @@ import zipfile
 import pickle
 import torch
 import os
-from typing import Any, Callable, Dict, Optional, Tuple, Type
+import json
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from torch.nn import Module
 from torch.storage import UntypedStorage
@@ -398,6 +399,18 @@ def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, miss
                 if input_name not in self._modules and input_name not in local_state:
                     unexpected_keys.append(key)
 
+def get_sharded_torch_checkpoints(dir: str) -> List[str]:
+    try:
+        with open(os.path.join(dir, "pytorch_model.bin.index.json")) as file:
+            j = json.load(file)
+    except FileNotFoundError:
+        return []
+
+    try:
+        return list(set(j["weight_map"].values()))
+    except KeyError:
+        return []
+
 @contextlib.contextmanager
 def use_lazy_load(
     enable=True,
@@ -410,6 +423,8 @@ def use_lazy_load(
         return
 
     begin_time = time.time()
+    utils.koboldai_vars.total_checkpoints = 0
+    utils.koboldai_vars.loaded_checkpoints = 0
 
     try:
         LazyloadPatches.__enter__()
@@ -421,6 +436,14 @@ def use_lazy_load(
         old_torch_load = torch.load
 
         def torch_load(f, map_location=None, pickle_module=pickle, **pickle_load_args):
+            if not utils.koboldai_vars.total_checkpoints:
+                checkpoints = get_sharded_torch_checkpoints(os.path.dirname(f))
+                # `checkpoints` may be empty if there is an error--return 1 in
+                # this case. Either there was no checkpoint index file (most
+                # common case), or there was a compatibility issue while reading
+                # it.
+                utils.koboldai_vars.total_checkpoints = len(checkpoints) or 1
+
             model_dict = old_torch_load(
                 f=f,
                 map_location=map_location,
