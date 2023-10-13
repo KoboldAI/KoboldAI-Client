@@ -340,7 +340,8 @@ class model_backend(InferenceModel):
 
             self._post_token_gen(self.generator.sequence)
 
-            utils.koboldai_vars.generated_tkns += 1
+            #This is taken care of in the core stopper class that's called below. If you're not using core stoppers then it should remain here
+            #utils.koboldai_vars.generated_tkns += 1
 
             # Apply stoppers
             do_stop = False
