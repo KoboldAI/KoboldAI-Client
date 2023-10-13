@@ -326,6 +326,7 @@ class LazyloadPatches:
                         fp16_statistics=fp16_statistics,
                     )
 
+        utils.koboldai_vars.loaded_checkpoints += 1
         return error_msgs, offload_index, state_dict_index
 
 
