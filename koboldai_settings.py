@@ -1247,9 +1247,9 @@ class undefined_settings(settings):
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
-                            'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
+                            'sp', '_horde_pid', 'inference_config', 'image_pipeline', 'summary_model_config',
                             'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui', 'colab_arg']
-    no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
+    no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'summary_model_config',
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'on_colab'
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
@@ -1334,6 +1334,7 @@ class system_settings(settings):
         self.image_pipeline = None
         self.summarizer = None
         self.summary_tokenizer = None
+        self.summary_model_config = {}
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
