@@ -140,7 +140,7 @@ class model_backend(HFInferenceModel):
         def mtj_settings_callback() -> dict:
             sampler_order = utils.koboldai_vars.sampler_order[:]
             if (
-                len(sampler_order) < 7
+                len(sampler_order) < 9
             ):  # Add repetition penalty at beginning if it's not present
                 sampler_order = [6] + sampler_order
             return {
@@ -154,6 +154,8 @@ class model_backend(HFInferenceModel):
                 "repetition_penalty": float(utils.koboldai_vars.rep_pen),
                 "rpslope": float(utils.koboldai_vars.rep_pen_slope),
                 "rprange": int(utils.koboldai_vars.rep_pen_range),
+                "eps_cutoff": float(utils.koboldai_vars.eps_cutoff),
+                "eta_cutoff": float(utils.koboldai_vars.eta_cutoff),
             }
 
         tpu_mtj_backend.socketio = utils.socketio
@@ -293,6 +295,8 @@ class model_backend(HFInferenceModel):
                 tfs=gen_settings.tfs,
                 typical=gen_settings.typical,
                 top_a=gen_settings.top_a,
+                eps_cutoff=gen_settings.eps_cutoff,
+                eta_cutoff=gen_settings.eta_cutoff,
                 numseqs=batch_count,
                 repetition_penalty=gen_settings.rep_pen,
                 rpslope=gen_settings.rep_pen_slope,

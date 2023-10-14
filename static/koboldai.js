@@ -250,6 +250,8 @@ map1.set('Tail Free Sampling', 3)
 map1.set('Typical Sampling', 4)
 map1.set('Temperature', 5)
 map1.set('Repetition Penalty', 6)
+map1.set('Epsilon Sampling', 7)
+map1.set('Eta Sampling', 8)
 const map2 = new Map()
 map2.set(0, 'Top K Sampling')
 map2.set(1, 'Top A Sampling')
@@ -258,6 +260,8 @@ map2.set(3, 'Tail Free Sampling')
 map2.set(4, 'Typical Sampling')
 map2.set(5, 'Temperature')
 map2.set(6, 'Repetition Penalty')
+map2.set(7, 'Epsilon Sampling')
+map2.set(8, 'Eta Sampling')
 var calc_token_usage_timeout;
 var game_text_scroll_timeout;
 var auto_loader_timeout;

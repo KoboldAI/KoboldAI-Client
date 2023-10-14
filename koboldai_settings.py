@@ -614,7 +614,7 @@ class settings(object):
             start_time = time.time()
             if key in self.__dict__ and key not in self.no_save_variables:
                 if key == 'sampler_order':
-                    if(len(value) < 7):
+                    if(len(value) < 9):
                         value = [6] + value
                 elif key == 'autosave':
                     autosave = value
@@ -669,8 +669,9 @@ class model_settings(settings):
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
                          'badwordsids', 'uid_presets', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
     settings_name = "model"
-    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 1.0, "rep_pen_range": 2048, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
-                        "sampler_order": [6,0,1,2,3,4,5]}
+    default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 1.0, "rep_pen_range": 2048,
+                        "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0, "eps_cutoff": 0.0, "eta_cutoff": 0.0,
+                        "sampler_order": [6,0,7,1,3,8,4,2,5]}
     def __init__(self, socketio, koboldai_vars):
         self.enable_whitelist = False
         self._socketio = socketio
@@ -721,12 +722,14 @@ class model_settings(settings):
         self.top_a       = 0.0     # Default generator top-a
         self.tfs         = 1.0     # Default generator tfs (tail-free sampling)
         self.typical     = 1.0     # Default generator typical sampling threshold
+        self.eps_cutoff  = 0.0     # Default generator epsilon_cutoff
+        self.eta_cutoff  = 0.0     # Default generator eta_cutoff
         self.numseqs     = 1       # Number of sequences to ask the generator to create
         self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
         self.badwordsids = []
         self.fp32_model  = False  # Whether or not the most recently loaded HF model was in fp32 format
         self.modeldim    = -1     # Embedding dimension of your model (e.g. it's 4096 for GPT-J-6B and 2560 for GPT-Neo-2.7B)
-        self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
+        self.sampler_order = [6, 0, 1, 2, 3, 4, 5, 7, 8]
         self.newlinemode = "n"
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
@@ -758,6 +761,8 @@ class model_settings(settings):
             self.top_a = 0.0
             self.tfs = 1.0
             self.typical = 1.0
+            self.eps_cutoff = 0.0
+            self.eta_cutoff = 0.0
             self.rep_pen_range = 1024
             self.rep_pen_slope = 0.7
             
@@ -2763,6 +2768,8 @@ default_preset = {
         "rep_pen": 1.1,
         "rep_pen_range": 1024,
         "rep_pen_slope": 0.7,
+        "eps_cutoff": 0.0,
+        "eta_cutoff": 0.0,
         "sampler_order": [
             6,
             0,
@@ -2770,7 +2777,9 @@ default_preset = {
             2,
             3,
             4,
-            5
+            5,
+            7,
+            8
         ]
     }
 badwordsids_default = [[6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
