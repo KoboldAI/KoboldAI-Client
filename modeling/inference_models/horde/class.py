@@ -29,19 +29,22 @@ class model_backend(InferenceModel):
         super().__init__()
         self.url = "https://horde.koboldai.net"
         self.key = "0000000000"
-        self.models = self.get_cluster_models()
+        self.models = []
         self.model_name = "Horde"
         self.model = []
+        self.request_id = None
         
 
         # Do not allow API to be served over the API
         self.capabilties = ModelCapabilities(api_host=False)
 
     def is_valid(self, model_name, model_path, menu_path):
+        self.models = self.get_cluster_models()
         logger.debug("Horde Models: {}".format(self.models))
         return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
     
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+        self.models = self.get_cluster_models()
         if os.path.exists("settings/horde.model_backend.settings") and 'base_url' not in vars(self):
             with open("settings/horde.model_backend.settings", "r") as f:
                 temp = json.load(f)
@@ -222,18 +225,18 @@ class model_backend(InferenceModel):
             logger.error(errmsg)
             raise HordeException(errmsg)
 
-        request_id = req_status["id"]
-        logger.debug("Horde Request ID: {}".format(request_id))
+        self.request_id = req_status["id"]
+        logger.debug("Horde Request ID: {}".format(self.request_id))
 
         # We've sent the request and got the ID back, now we need to watch it to see when it finishes
-        finished = False
+        self.finished = False
 
         cluster_agent_headers = {"Client-Agent": client_agent}
 
-        while not finished:
+        while not self.finished:
             try:
                 req = requests.get(
-                    f"{self.url}/api/v2/generate/text/status/{request_id}",
+                    f"{self.url}/api/v2/generate/text/status/{self.request_id}",
                     headers=cluster_agent_headers,
                 )
             except requests.exceptions.ConnectionError:
@@ -260,15 +263,16 @@ class model_backend(InferenceModel):
                 logger.error(errmsg)
                 raise HordeException(errmsg)
 
-            finished = req_status["done"]
+            self.finished = req_status["done"]
             utils.koboldai_vars.horde_wait_time = req_status["wait_time"]
             utils.koboldai_vars.horde_queue_position = req_status["queue_position"]
             utils.koboldai_vars.horde_queue_size = req_status["waiting"]
 
-            if not finished:
+            if not self.finished:
                 logger.debug(req_status)
                 time.sleep(1)
 
+        self.request_id = None
         logger.debug("Last Horde Status Message: {}".format(req_status))
 
         if req_status["faulted"]:
@@ -287,3 +291,33 @@ class model_backend(InferenceModel):
             is_whole_generation=True,
             single_line=single_line,
         )
+
+    def abort_generation(self, abort=True):
+        logger.info("Attempting to stop horde gen")
+        self.finished = True
+        try:
+            # Create request
+            client_agent = "KoboldAI:2.0.0:koboldai.org"
+            cluster_headers = {
+                "apikey": self.key,
+                "Client-Agent": client_agent,
+            }
+            req = requests.delete(
+                f"{self.url}/v2/generate/text/status/{self.request_id}",
+                headers=cluster_headers,
+            )
+        except requests.exceptions.ConnectionError:
+            errmsg = f"Horde unavailable. Please try again later"
+            logger.error(errmsg)
+            raise HordeException(errmsg)
+
+        if req.status_code == 503:
+            errmsg = f"KoboldAI API Error: No available KoboldAI servers found in Horde to fulfil this request using the selected models or other properties."
+            logger.error(errmsg)
+            raise HordeException(errmsg)
+        elif not req.ok:
+            errmsg = f"KoboldAI API Error: Failed to get a standard reply from the Horde. Please check the console."
+            logger.error(req.url)
+            logger.error(errmsg)
+            logger.error(req.text)
+            raise HordeException(errmsg)

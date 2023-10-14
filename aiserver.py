@@ -2654,9 +2654,8 @@ def get_message(msg):
         if(koboldai_vars.mode == "play"):
             if(koboldai_vars.aibusy):
                 if(msg.get('allowabort', False)):
-                    koboldai_vars.abort = True
+                    model.abort_generation()
                 return
-            koboldai_vars.abort = False
             koboldai_vars.lua_koboldbridge.feedback = None
             if(koboldai_vars.chatmode):
                 if(type(msg['chatname']) is not str):
@@ -2676,9 +2675,8 @@ def get_message(msg):
     elif(msg['cmd'] == 'retry'):
         if(koboldai_vars.aibusy):
             if(msg.get('allowabort', False)):
-                koboldai_vars.abort = True
+                model.abort_generation()
             return
-        koboldai_vars.abort = False
         if(koboldai_vars.chatmode):
             if(type(msg['chatname']) is not str):
                 raise ValueError("Chatname must be a string")
@@ -3344,7 +3342,7 @@ def actionsubmit(
                 # Clear the startup text from game screen
                 emit('from_server', {'cmd': 'updatescreen', 'gamestarted': False, 'data': 'Please wait, generating story...'}, broadcast=True, room="UI_1")
                 calcsubmit("", gen_mode=gen_mode) # Run the first action through the generator
-                if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
+                if(not model.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -3370,13 +3368,13 @@ def actionsubmit(
                     refresh_story()
                     if(len(koboldai_vars.actions) > 0):
                         emit('from_server', {'cmd': 'texteffect', 'data': koboldai_vars.actions.get_last_key() + 1}, broadcast=True, room="UI_1")
-                    if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not model.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+                    if(not model.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"], flash=False)
                         refresh_story()
                         data = ""
@@ -3410,7 +3408,7 @@ def actionsubmit(
             if(not no_generate and not koboldai_vars.noai and koboldai_vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
                 calcsubmit("", gen_mode=gen_mode)
-                if(not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
+                if(not model.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and len(koboldai_vars.genseqs) == 0):
                     data = ""
                     force_submit = True
                     disable_recentrng = True
@@ -3431,13 +3429,13 @@ def actionsubmit(
                 genout = [{"generated_text": x['text']} for x in koboldai_vars.actions.get_current_options()]
                 if(len(genout) == 1):
                     genresult(genout[0]["generated_text"])
-                    if(not no_generate and not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None):
+                    if(not no_generate and not model.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None):
                         data = ""
                         force_submit = True
                         disable_recentrng = True
                         continue
                 else:
-                    if(not no_generate and not koboldai_vars.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
+                    if(not no_generate and not model.abort and koboldai_vars.lua_koboldbridge.restart_sequence is not None and koboldai_vars.lua_koboldbridge.restart_sequence > 0):
                         genresult(genout[koboldai_vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
                         data = ""
                         force_submit = True
@@ -6204,7 +6202,7 @@ def UI_2_submit(data):
 def UI_2_abort(data):
     if koboldai_vars.debug:
         print("got abort")
-    koboldai_vars.abort = True
+    model.abort_generation()
 
  
 #==================================================================#
