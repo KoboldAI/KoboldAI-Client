@@ -657,6 +657,7 @@ logger.add(UI_2_log_history, serialize=True, colorize=True, enqueue=True, level=
 
 #logger.add("log_file_1.log", rotation="500 MB")    # Automatically rotate too big file
 koboldai_vars = koboldai_settings.koboldai_vars(socketio)
+koboldai_settings.koboldai_vars_main = koboldai_vars
 utils.koboldai_vars = koboldai_vars
 utils.socketio = socketio
 
@@ -1734,11 +1735,7 @@ def load_model(model_backend, initial_load=False):
     if koboldai_vars.model != 'ReadOnly':
         emit('from_server', {'cmd': 'model_load_status', 'data': "Loading {}".format(model_backends[model_backend].model_name if "model_name" in vars(model_backends[model_backend]) else model_backends[model_backend].id)}, broadcast=True)
         #Have to add a sleep so the server will send the emit for some reason
-        time.sleep(0.1)
-
-    if 'model' in globals():
-        model.unload()
-    
+        time.sleep(0.1)    
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
@@ -3928,7 +3925,8 @@ def generate(txt, minimum, maximum, found_entries=None, gen_mode=GenerationMode.
         return
 
     for i in range(koboldai_vars.numseqs):
-        koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(genout[i, -1].item())
+        if len(genout[i]) > 0:
+            koboldai_vars.lua_koboldbridge.generated[i+1][koboldai_vars.generated_tkns] = int(genout[i, -1].item())
         koboldai_vars.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
 
     execute_outmod()
@@ -6335,6 +6333,9 @@ def UI_2_resubmit_model_info(data):
 @socketio.on('load_model')
 @logger.catch
 def UI_2_load_model(data):
+    logger.debug("Unloading previous model")
+    if 'model' in globals():
+        model.unload()
     logger.debug("Loading model with user input of: {}".format(data))
     model_backends[data['plugin']].set_input_parameters(data)
     load_model(data['plugin'])
@@ -7355,7 +7356,7 @@ def generate_image(prompt: str) -> Optional[Image.Image]:
     if koboldai_vars.img_gen_priority == 4:
         # Check if stable-diffusion-webui API option selected and use that if found.
         return text2img_api(prompt)
-    elif ((not koboldai_vars.hascuda or not os.path.exists("functional_models/stable-diffusion")) and koboldai_vars.img_gen_priority != 0) or  koboldai_vars.img_gen_priority == 3:
+    elif ((not koboldai_vars.hascuda or not os.path.exists("functional_models/stable-diffusion/model_index.json")) and koboldai_vars.img_gen_priority != 0) or koboldai_vars.img_gen_priority == 3:
         # If we don't have a GPU, use horde if we're allowed to
         return text2img_horde(prompt)
 
@@ -7381,7 +7382,10 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     logger.debug("Generating Image")
     from diffusers import StableDiffusionPipeline
     if koboldai_vars.image_pipeline is None:
-        pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "XpucT/Deliberate", safety_checker=None, torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("cuda")
+        if not os.path.exists("functional_models/stable-diffusion/model_index.json"):
+            from huggingface_hub import snapshot_download
+            snapshot_download("XpucT/Deliberate", local_dir="functional_models/stable-diffusion", local_dir_use_symlinks=False, cache_dir="cache/", ignore_patterns=["*.safetensors"])
+        pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "functional_models/stable-diffusion", safety_checker=None, torch_dtype=torch.float16).to("cuda")
     else:
         pipe = koboldai_vars.image_pipeline.to("cuda")
     logger.debug("time to load: {}".format(time.time() - start_time))
@@ -7992,7 +7996,7 @@ def model_info():
 @require_allowed_ip
 @logger.catch
 def show_vars():
-    if args.no_ui:
+    if args.no_ui or koboldai_vars.host:
         return redirect('/api/latest')
     json_data = {}
     json_data['story_settings'] = json.loads(koboldai_vars.to_json("story_settings"))
@@ -8563,6 +8567,8 @@ def put_model(body: ModelSelectionSchema):
             backend = "Huggingface"
 
     try:
+        if 'model' in globals():
+            model.unload()
         load_model(backend)
     except Exception as e:
         koboldai_vars.model = old_model

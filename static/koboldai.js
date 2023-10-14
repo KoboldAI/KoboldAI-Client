@@ -4963,11 +4963,17 @@ function toggle_flyout_right(x) {
 		x.classList.remove("change");
 		document.getElementById("rightSideMenu").classList.remove("open");
 		document.getElementById("main-grid").classList.remove("story_menu-open");
+		//need to set the layer priority back down
+		document.getElementById("rightSideMenu").classList.remove("high_z");
+		document.getElementById("story_menu_icon").classList.remove("high_z");
 	} else {
 		x.classList.add("change");
 		document.getElementById("rightSideMenu").classList.add("open");
 		document.getElementById("main-grid").classList.add("story_menu-open");
 		document.getElementById("story_menu_pin").classList.remove("hidden");
+		//need to set the layer priority up (due to mobile overlap
+		document.getElementById("rightSideMenu").classList.add("high_z");
+		document.getElementById("story_menu_icon").classList.add("high_z");
 	}
 }
 

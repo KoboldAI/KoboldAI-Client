@@ -25,6 +25,8 @@ enable_whitelist = False
 if importlib.util.find_spec("tortoise") is not None:
     from tortoise import api
     from tortoise.utils.audio import load_voices
+    
+password_vars = ["horde_api_key", "privacy_password", "img_gen_api_password"]
 
 def clean_var_for_emit(value):
     if isinstance(value, KoboldStoryRegister) or isinstance(value, KoboldWorldInfo):
@@ -37,7 +39,7 @@ def clean_var_for_emit(value):
         return value
 
 def process_variable_changes(socketio, classname, name, value, old_value, debug_message=None):
-    global multi_story
+    global multi_story, koboldai_vars_main
     if serverstarted and name != "serverstarted":
         transmit_time = str(datetime.datetime.now())
         if debug_message is not None:
@@ -83,14 +85,20 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
             else:
                 #If we got a variable change from a thread other than what the app is run it, eventlet seems to block and no further messages are sent. Instead, we'll rely the message to the app and have the main thread send it
                 if not has_request_context():
-                    data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, {"include_self":True, "broadcast":True, "room":room}]
+                    if not koboldai_vars_main.host or name not in password_vars:
+                        data = ["var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, {"include_self":True, "broadcast":True, "room":room}]
+                    else:
+                        data = ["var_changed", {"classname": classname, "name": name, "old_value": "*" * len(old_value) if old_value is not None else "", "value": "*" * len(value) if value is not None else "", "transmit_time": transmit_time}, {"include_self":True, "broadcast":True, "room":room}]
                     if queue is not None:
                         #logger.debug("Had to use queue")
                         queue.put(data)
                         
                 else:
                     if socketio is not None:
-                        socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
+                        if not koboldai_vars_main.host or name not in password_vars:
+                            socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
+                        else:
+                            socketio.emit("var_changed", {"classname": classname, "name": name, "old_value":  "*" * len(old_value) if old_value is not None else "", "value": "*" * len(value) if value is not None else "", "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
 
 class koboldai_vars(object):
     def __init__(self, socketio):
@@ -1370,6 +1378,8 @@ class system_settings(settings):
                         bridge_data.horde_url = self._koboldai_var.horde_url
                         bridge_data.api_key = self._koboldai_var.horde_api_key
                         bridge_data.scribe_name = self._koboldai_var.horde_worker_name
+                        bridge_data.max_length = self._koboldai_var.genamt
+                        bridge_data.max_context_length = self._koboldai_var.max_length
                         bridge_data.disable_terminal_ui = self._koboldai_var.host
                         if bridge_data.worker_name == "My Awesome Instance":
                             bridge_data.worker_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
@@ -1774,7 +1784,7 @@ class KoboldStoryRegister(object):
         self.show_options(len(self.get_current_options()) > 1)
 
         if len(self.get_current_options()) == 1:
-            logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
+            logger.debug("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
             self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
 
     def use_option(self, option_number, action_step=None):
