@@ -941,7 +941,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.5",
+    version="1.2.6",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -1162,7 +1162,7 @@ def loadmodelsettings():
         koboldai_vars.nobreakmodel = js["nobreakmodel"]
     if("sampler_order" in js):
         sampler_order = js["sampler_order"]
-        if(len(sampler_order) < 7):
+        if(len(sampler_order) < 8):
             sampler_order = [6] + sampler_order
         koboldai_vars.sampler_order = sampler_order
     if("temp" in js):
@@ -1260,7 +1260,7 @@ def processsettings(js):
         koboldai_vars.andepth = js["andepth"]
     if("sampler_order" in js):
         sampler_order = js["sampler_order"]
-        if(len(sampler_order) < 7):
+        if(len(sampler_order) < 8):
             sampler_order = [6] + sampler_order
         koboldai_vars.sampler_order = sampler_order
     if("temp" in js):
@@ -2948,7 +2948,7 @@ def get_message(msg):
         sendUSStatItems()
     elif(msg['cmd'] == 'samplers'):
         sampler_order = msg["data"]
-        sampler_order_min_length = 8
+        sampler_order_min_length = 6
         sampler_order_max_length = 9
         if(not isinstance(sampler_order, list)):
             raise ValueError(f"Sampler order must be a list, but got a {type(sampler_order)}")
@@ -8214,7 +8214,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all input formatting options default to `false` instead of the value in the KoboldAI GUI"})
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     quiet: Optional[bool] = fields.Boolean(metadata={"description": "When enabled, Generated output will not be displayed in the console."})
-    sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=8), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 8 and the array must be a permutation of the first N non-negative integers."})
+    sampler_order: Optional[List[int]] = fields.List(fields.Integer(), validate=[validate.Length(min=6), permutation_validator], metadata={"description": "Sampler order to be used. If N is the length of this array, then N must be greater than or equal to 8 and the array must be a permutation of the first N non-negative integers."})
     sampler_seed: Optional[int] = fields.Integer(validate=validate.Range(min=0, max=2**64 - 1), metadata={"description": "RNG seed to use for sampling. If not specified, the global RNG will be used."})
     sampler_full_determinism: Optional[bool] = fields.Boolean(metadata={"description": "If enabled, the generated text will always be the same as long as you use the same RNG seed, input and settings. If disabled, only the *sequence* of generated texts that you get when repeatedly generating text will be the same given the same RNG seed, input and settings."})
     stop_sequence: Optional[List[str]] = fields.List(fields.String(),metadata={"description": "An array of string sequences where the API will stop generating further tokens. The returned text WILL contain the stop sequence."})
