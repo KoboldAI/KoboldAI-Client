@@ -8194,7 +8194,7 @@ class GenerationOutputSchema(KoboldSchema):
     results: List[GenerationResultSchema] = fields.List(fields.Nested(GenerationResultSchema), required=True, metadata={"description": "Array of generated outputs."})
 
 class StoryNumsChunkSchema(KoboldSchema):
-    num: int = fields.Integer(required=True, metadata={"description": "Guaranteed to not equal the `num` of any other active story chunk. Equals 0 iff this is the first action of the story (the prompt)."})
+    num: int = fields.Integer(required=True, metadata={"description": "Guaranteed to not equal the `num` of any other active story chunk. Equals 0 if this is the first action of the story (the prompt)."})
 
 class StoryChunkSchema(StoryNumsChunkSchema, KoboldSchema):
     text: str = fields.String(required=True, metadata={"description": "The text inside this story chunk."})
