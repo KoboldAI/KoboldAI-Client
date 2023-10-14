@@ -890,8 +890,6 @@ return function(_python, _bridged)
     ---@field reppen number
     ---@field reppenslope number
     ---@field reppenrange number
-    ---@field eps_cutoff number
-    ---@field eta_cutoff number
     ---@field tknmax integer
     ---@field widepth integer
     ---@field useprompt boolean

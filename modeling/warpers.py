@@ -68,8 +68,6 @@ def update_settings():
     RepetitionPenalty.rep_pen_range = koboldai_vars.rep_pen_range
     RepetitionPenalty.rep_pen_slope = koboldai_vars.rep_pen_slope
     RepetitionPenalty.use_alt_rep_pen = koboldai_vars.use_alt_rep_pen
-    Epsilon.epsilon = koboldai_vars.eps_cutoff
-    Eta.eta = koboldai_vars.eta_cutoff
 
 
 class Warper:
@@ -105,8 +103,6 @@ class Warper:
             4: Typical,
             5: Temperature,
             6: RepetitionPenalty,
-            7: Epsilon,
-            8: Eta,
         }[warper_id]
 
     @classmethod
@@ -544,92 +540,3 @@ class RepetitionPenalty(Warper):
     @classmethod
     def value_is_valid(cls) -> bool:
         return cls.rep_pen != 1.0
-    
-class Epsilon(Warper):
-    """
-    Eta sampling, as described in https://arxiv.org/pdf/2210.15191.pdf
-    """
-
-    epsilon: float = 0.0
-
-    @classmethod
-    def torch(cls, scores: torch.Tensor) -> torch.Tensor:
-        # Probably the simplest sampler there is, just remove tokens with probs under a threshold
-        probs = scores.softmax(dim=-1)
-
-        indices_to_remove = probs < (cls.epsilon * 1e-4)
-        
-        # hack to avoid nulling out all the logits for misconfigured sampler param
-        # equivalent to keep_min_k=1, as is default in hf transformers implementation
-        # implemented this way to be more easily modifiable to fallback to topk for a configurable k
-        if(torch.all(indices_to_remove)):
-            topk_prob = torch.max(probs)
-            indices_to_remove = probs < topk_prob
-
-        scores = scores.masked_fill(indices_to_remove, -torch.inf)
-        return scores
-
-    @classmethod
-    def jax_dynamic(cls, scores: np.array) -> np.array:
-        probabilities = np.array(jax.nn.softmax(scores), copy=True)
-
-        indices_to_remove = probabilities < (cls.epsilon * 1e-4)
-        if(np.all(indices_to_remove)):
-            topk_prob = np.max(probabilities)
-            indices_to_remove = probabilities < topk_prob
-
-        return np.where(
-            indices_to_remove, -np.inf, scores
-        )
-
-    @classmethod
-    def value_is_valid(cls) -> bool:
-        return cls.epsilon > 0.0
-
-class Eta(Warper):
-    """
-    Eta sampling, as described in https://arxiv.org/pdf/2210.15191.pdf
-    """
-
-    eta: float = 0.0
-
-    @classmethod
-    def torch(cls, scores: torch.Tensor) -> torch.Tensor:
-        shifted_logits = torch.log_softmax(scores, dim=-1)
-        probs = shifted_logits.exp()
-
-        neg_entropy = (probs * shifted_logits).nansum(dim=-1, keepdim=True)
-        epsilon = torch.min(torch.tensor(cls.eta * 1e-4), torch.sqrt(torch.tensor(cls.eta*1e-4))*torch.exp(neg_entropy))
-
-        indices_to_remove = probs < epsilon
-
-        # hack to avoid nulling out all the logits for misconfigured sampler param
-        # equivalent to keep_min_k=1, as is default in hf transformers implementation
-        # implemented this way to be more easily modifiable to fallback to topk for a configurable k
-        if(torch.all(indices_to_remove)):
-            topk_prob = torch.max(probs)
-            indices_to_remove = probs < topk_prob
-
-        scores = scores.masked_fill(indices_to_remove, -torch.inf)
-        return scores
-
-    @classmethod
-    def jax_dynamic(cls, scores: np.array) -> np.array:
-        shifted_logits = jax.nn.log_softmax(scores)
-        probabilities = np.exp(shifted_logits)
-        neg_entropy = np.nansum(probabilities * shifted_logits)
-        epsilon = min(cls.eta * 1e-4, np.sqrt(cls.eta*1e-4)*np.exp(neg_entropy))
-
-        indices_to_remove = probabilities < epsilon
-        if(np.all(indices_to_remove)):
-            topk_prob = np.max(probabilities)
-            indices_to_remove = probabilities < topk_prob
-
-        return np.where(
-            indices_to_remove, -np.inf, scores
-        )
-
-    @classmethod
-    def value_is_valid(cls) -> bool:
-        return cls.eta > 0.0
-
