@@ -21,6 +21,7 @@ ECHO Runtime launching in subfolder mode
 call miniconda3\condabin\activate
 pip install git+https://github.com/neonbjb/tortoise-tts progressbar inflect librosa rotary-embedding-torch unidecode lazy_loader llvmlite numba joblib decorator audioread msgpack pooch scikit-learn soundfile soxr platformdirs threadpoolctl pydantic-core annotated-types pydantic --no-dependencies
 pip install torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install -r requirements.txt --no-dependencies
 cmd /k
 pause
 exit
