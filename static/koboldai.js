@@ -3877,12 +3877,13 @@ function change_image(data) {
 
 	$el("#image-loading").classList.add("hidden");
 
-	if (data != undefined) {
+	if (data.img != undefined) {
 		var image = new Image();
-		image.src = 'data:image/png;base64,'+data;
+		image.src = 'data:image/png;base64,'+data.img;
 		image.classList.add("action_image");
 		image.setAttribute("context-menu", "generated-image");
 		image.addEventListener("click", imgGenView);
+		image.setAttribute('action_id', data.action_id);
 		image_area.appendChild(image);
 	}
 }
@@ -7398,11 +7399,12 @@ function imgGenDownload() {
 function imgGenClear() {
 	const image = $el(".action_image");
 	if (!image) return;
+	action_id = image.getAttribute('action_id');
 	image.remove();
 
 	const container = $el("#action\\ image");
 	container.removeAttribute("tooltip");
-	socket.emit("clear_generated_image", {});
+	socket.emit("clear_generated_image", {'action_id': action_id});
 }
 
 function imgGenRetry() {

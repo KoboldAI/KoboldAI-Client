@@ -7585,8 +7585,11 @@ def text2img_api(prompt, art_guide="") -> Image.Image:
 @socketio.on("clear_generated_image")
 @logger.catch
 def UI2_clear_generated_image(data):
-    koboldai_vars.picture = ""
-    koboldai_vars.picture_prompt = ""
+    if 'action_id' in data and data['action_id'] is not None:
+        koboldai_vars.actions.clear_picture(data['action_id'])
+    else:
+        koboldai_vars.picture = ""
+        koboldai_vars.picture_prompt = ""
 
 #==================================================================#
 # Retrieve previous images
@@ -7599,7 +7602,9 @@ def UI_2_get_story_image(data):
     print(filename)
     if filename is not None:
         with open(filename, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode("utf-8") 
+            return {'img': base64.b64encode(image_file.read()).decode("utf-8"), 'action_id': action_id}
+    else:
+        return {'img': None, 'action_id': action_id}
 
 #@logger.catch
 def get_items_locations_from_text(text):

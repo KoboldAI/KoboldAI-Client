@@ -2244,6 +2244,12 @@ class KoboldStoryRegister(object):
             self.actions[action_id]['picture_filename'] = filename
             self.actions[action_id]['picture_prompt'] = prompt
     
+    def clear_picture(self, action_id):
+        action_id = int(action_id)
+        if action_id in self.actions:
+            del self.actions[action_id]['picture_filename']
+            del self.actions[action_id]['picture_prompt']
+    
     def get_picture(self, action_id):
         if action_id == -1:
             if self.story_settings.prompt_picture_filename == "":
