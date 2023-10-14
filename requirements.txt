@@ -50,4 +50,4 @@ windows-curses; sys_platform == 'win32'
 pynvml
 flash_attn==2.3.0
 xformers==0.0.21
-exllamav2==0.0.4omegaconf
+omegaconf
