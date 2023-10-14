@@ -1,4 +1,28 @@
 #!/bin/bash
 bin/micromamba run -r runtime -n koboldai pip install git+https://github.com/neonbjb/tortoise-tts OmegaConf deepspeed
 bin/micromamba run -r runtime -n koboldai pip install torchaudio --index-url https://download.pytorch.org/whl/cu118
-bin/micromamba run -r runtime -n koboldai pip install -r requirements.txt --no-dependencies
+
+export PYTHONNOUSERSITE=1
+git submodule update --init --recursive
+if [[ $1 = "cuda" || $1 = "CUDA" ]]; then
+wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+bin/micromamba create -f environments/huggingface.yml -r runtime -n koboldai -y
+# Weird micromamba bug causes it to fail the first time, running it twice just to be safe, the second time is much faster
+bin/micromamba create -f environments/huggingface.yml -r runtime -n koboldai -y
+exit
+fi
+if [[ $1 = "rocm" || $1 = "ROCM" ]]; then
+wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+bin/micromamba create -f environments/rocm.yml -r runtime -n koboldai-rocm -y
+# Weird micromamba bug causes it to fail the first time, running it twice just to be safe, the second time is much faster
+bin/micromamba create -f environments/rocm.yml -r runtime -n koboldai-rocm -y
+exit
+fi
+if [[ $1 = "ipex" || $1 = "IPEX" ]]; then
+wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+bin/micromamba create -f environments/ipex.yml -r runtime -n koboldai-ipex -y
+# Weird micromamba bug causes it to fail the first time, running it twice just to be safe, the second time is much faster
+bin/micromamba create -f environments/ipex.yml -r runtime -n koboldai-ipex -y
+exit
+fi
+echo Please specify either CUDA or ROCM or IPEX
