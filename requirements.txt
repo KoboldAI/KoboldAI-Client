@@ -48,6 +48,7 @@ https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu
 https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
 windows-curses; sys_platform == 'win32'
 pynvml
-flash_attn==2.3.0
+https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.0/flash_attn-2.3.0+cu118torch2.0cxx11abiFALSE-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
+https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.0/flash_attn-2.3.0+cu118torch2.0cxx11abiFALSE-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
 xformers==0.0.21
 exllamav2==0.0.4
