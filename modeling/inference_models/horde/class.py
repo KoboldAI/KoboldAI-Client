@@ -39,13 +39,7 @@ class model_backend(InferenceModel):
         self.capabilties = ModelCapabilities(api_host=False)
 
     def is_valid(self, model_name, model_path, menu_path):
-        try:
-            if utils.koboldai_vars.horde_api_key is not "0000000000":
-                self.models = self.get_cluster_models()
-            logger.debug("Horde Models: {}".format(self.models))
-            return model_name == "CLUSTER" or model_name in [x['value'] for x in self.models]
-        except:
-            return False
+        return model_name == "CLUSTER"
     
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         self.models = self.get_cluster_models()
