@@ -98,9 +98,9 @@ def replaceblanklines(txt):
 #==================================================================#
 def removespecialchars(txt, koboldai_vars=None):
     if koboldai_vars is None or koboldai_vars.actionmode == 0:
-        txt = re.sub(r"[#/@%<>{}+=~|\^]", "", txt)
+        txt = re.sub(r"[/@%<>{}+=~|\^]", "", txt)
     else:
-        txt = re.sub(r"[#/@%{}+=~|\^]", "", txt)
+        txt = re.sub(r"[/@%{}+=~|\^]", "", txt)
     return txt
 
 #==================================================================#

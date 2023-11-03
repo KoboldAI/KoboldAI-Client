@@ -100,7 +100,7 @@
 				</div>
 			</div><br>
 			<div class="statusbar_outer_horde var_sync_alt_system_aibusy var_sync_alt_model_horde_wait_time" id="status_bar_horde">
-				<div class="statusbar_inner_horde" style="width:100%">
+				<div class="statusbar_inner_horde" style="width:100%" onclick="socket.emit('abort','');">
 					<div>&nbsp;</div>
 					<div>Queue <span class="var_sync_model_horde_queue_position"></span> of <span class="var_sync_model_horde_queue_size"></span></div>
 					<div><span class="var_sync_model_horde_wait_time"></span> sec left</div>
