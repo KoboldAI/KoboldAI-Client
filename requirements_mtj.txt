@@ -35,3 +35,4 @@ ijson
 ftfy
 pydub
 sentencepiece
+omegaconf

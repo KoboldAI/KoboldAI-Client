@@ -21,6 +21,7 @@ queue = None
 multi_story = False
 global enable_whitelist
 enable_whitelist = False
+slow_tts_message_shown = False
 
 if importlib.util.find_spec("tortoise") is not None:
     from tortoise import api
@@ -99,6 +100,28 @@ def process_variable_changes(socketio, classname, name, value, old_value, debug_
                             socketio.emit("var_changed", {"classname": classname, "name": name, "old_value": clean_var_for_emit(old_value), "value": clean_var_for_emit(value), "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
                         else:
                             socketio.emit("var_changed", {"classname": classname, "name": name, "old_value":  "*" * len(old_value) if old_value is not None else "", "value": "*" * len(value) if value is not None else "", "transmit_time": transmit_time}, include_self=True, broadcast=True, room=room)
+
+def basic_send(socketio, classname, event, data):
+    #Get which room we'll send the messages to
+    global multi_story
+    if multi_story:
+        if classname != 'story':
+            room = 'UI_2'
+        else:
+            if has_request_context():
+                room = 'default' if 'story' not in session else session['story']
+            else:
+                logger.error("We tried to access the story register outside of an http context. Will not work in multi-story mode")
+                return
+    else:
+        room = "UI_2"
+    if not has_request_context():
+        if queue is not None:
+            #logger.debug("Had to use queue")
+            queue.put([event, data, {"broadcast":True, "room":room}])
+    else:
+        if socketio is not None:
+            socketio.emit(event, data, include_self=True, broadcast=True, room=room)
 
 class koboldai_vars(object):
     def __init__(self, socketio):
@@ -1420,6 +1443,7 @@ class KoboldStoryRegister(object):
         self.make_audio_thread_slow = None
         self.make_audio_queue_slow = multiprocessing.Queue()
         self.probability_buffer = None
+        self.audio_status = {}
         for item in sequence:
             self.append(item)
     
@@ -1577,6 +1601,13 @@ class KoboldStoryRegister(object):
 
             if "Original Text" not in json_data["actions"][item]:
                 json_data["actions"][item]["Original Text"] = json_data["actions"][item]["Selected Text"]
+                
+            if "audio_gen" not in json_data["actions"][item]:
+                json_data["actions"][item]["audio_gen"] = 0
+                
+            if "image_gen" not in json_data["actions"][item]:
+                json_data["actions"][item]["image_gen"] = False
+
 
             temp[int(item)] = json_data['actions'][item]
             if int(item) >= self.action_count-100: #sending last 100 items to UI
@@ -2056,9 +2087,14 @@ class KoboldStoryRegister(object):
         return action_text_split
     
     def gen_audio(self, action_id=None, overwrite=True):
-        if self.story_settings.gen_audio and self._koboldai_vars.experimental_features:
-            if action_id is None:
-                action_id = self.action_count
+        if action_id is None:
+            action_id = self.action_count
+        if overwrite:
+            if action_id != -1:
+                self.actions[action_id]["audio_gen"] = 0
+                basic_send(self._socketio, "story", "set_audio_status", {"id": action_id, "action": self.actions[action_id]})
+        if self.story_settings.gen_audio:
+            
 
             if self.tts_model is None:
                 language = 'en'
@@ -2075,33 +2111,41 @@ class KoboldStoryRegister(object):
                 
             if overwrite or not os.path.exists(filename):
                 if action_id == -1:
-                    self.make_audio_queue.put((self._koboldai_vars.prompt, filename))
+                    self.make_audio_queue.put((self._koboldai_vars.prompt, filename, action_id))
                 else:
-                    self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename))
-                if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
-                    self.make_audio_thread_slow = threading.Thread(target=self.create_wave_slow, args=(self.make_audio_queue_slow, ))
-                    self.make_audio_thread_slow.start()
+                    self.make_audio_queue.put((self.actions[action_id]['Selected Text'], filename, action_id))
+                if self.make_audio_thread is None or not self.make_audio_thread.is_alive():
+                    self.make_audio_thread = threading.Thread(target=self.create_wave, args=(self.make_audio_queue, ))
+                    self.make_audio_thread.start()
+            elif not overwrite and os.path.exists(filename):
+                if action_id != -1:
+                    self.actions[action_id]["audio_gen"] = 1
             
             if overwrite or not os.path.exists(filename_slow):
                 if action_id == -1:
-                    self.make_audio_queue_slow.put((self._koboldai_vars.prompt, filename_slow))
+                    self.make_audio_queue_slow.put((self._koboldai_vars.prompt, filename_slow, action_id))
                 else:
-                    self.make_audio_queue_slow.put((self.actions[action_id]['Selected Text'], filename_slow))
+                    self.make_audio_queue_slow.put((self.actions[action_id]['Selected Text'], filename_slow, action_id))
                 if self.make_audio_thread_slow is None or not self.make_audio_thread_slow.is_alive():
                     self.make_audio_thread_slow = threading.Thread(target=self.create_wave_slow, args=(self.make_audio_queue_slow, ))
                     self.make_audio_thread_slow.start()
+            elif not overwrite and os.path.exists(filename_slow):
+                if action_id != -1:
+                    self.actions[action_id]["audio_gen"] = 2
+                    basic_send(self._socketio, "story", "set_audio_status", {"id": action_id, "action": self.actions[action_id]})
+                    
                 
     def create_wave(self, make_audio_queue):
         import pydub
         sample_rate = 24000
         speaker = 'en_5'
         while not make_audio_queue.empty():
-            (text, filename) = make_audio_queue.get()
+            (text, filename, action_id) = make_audio_queue.get()
             logger.info("Creating audio for {}".format(os.path.basename(filename)))
             if text.strip() == "":
                 shutil.copy("data/empty_audio.ogg", filename)
             else:
-                if len(text) > 2000:
+                if len(text) > 1000:
                     text = self.sentence_re.findall(text)
                 else:
                     text = [text]
@@ -2116,27 +2160,44 @@ class KoboldStoryRegister(object):
                         output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                     else:
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
-                output.export(filename, format="ogg", bitrate="16k")
+                if output is not None:
+                    output.export(filename, format="ogg", bitrate="16k")
+            if action_id != -1 and self.actions[action_id]["audio_gen"] == 0:
+                self.actions[action_id]["audio_gen"] = 1
+                basic_send(self._socketio, "story", "set_audio_status", {"id": action_id, "action": self.actions[action_id]})
     
     def create_wave_slow(self, make_audio_queue_slow):
         import pydub
+        global slow_tts_message_shown
         sample_rate = 24000
         speaker = 'train_daws'
+        if importlib.util.find_spec("tortoise") is None and not slow_tts_message_shown:
+            logger.info("Disabling slow (and higher quality) tts as it's not installed")
+            slow_tts_message_shown=True
         if self.tortoise is None and importlib.util.find_spec("tortoise") is not None:
-           self.tortoise=api.TextToSpeech()
+           self.tortoise=api.TextToSpeech(use_deepspeed=os.environ.get('deepspeed', "false").lower()=="true", kv_cache=os.environ.get('kv_cache', "true").lower()=="true", half=True)
         
         if importlib.util.find_spec("tortoise") is not None:
             voice_samples, conditioning_latents = load_voices([speaker])
             while not make_audio_queue_slow.empty():
                 start_time = time.time()
-                (text, filename) = make_audio_queue_slow.get()
+                (text, filename, action_id) = make_audio_queue_slow.get()
                 text_length = len(text)
                 logger.info("Creating audio for {}".format(os.path.basename(filename)))
                 if text.strip() == "":
                     shutil.copy("data/empty_audio.ogg", filename)
                 else:
-                    if len(text) > 20000:
+                    if len(self.tortoise.tokenizer.encode(text)) > 400:
                         text = self.sentence_re.findall(text)
+                        i=0
+                        while i <= len(text)-2:
+                            if len(self.tortoise.tokenizer.encode(text[i] + text[i+1])) < 400:
+                                text[i] = text[i] + text[i+1]
+                                del text[i+1]
+                            else:
+                                i+=1
+                                    
+                        
                     else:
                         text = [text]
                 output = None
@@ -2147,11 +2208,16 @@ class KoboldStoryRegister(object):
                         output = pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
                     else:
                         output = output + pydub.AudioSegment(np.int16(audio * 2 ** 15).tobytes(), frame_rate=sample_rate, sample_width=2, channels=channels)
-                output.export(filename, format="ogg", bitrate="16k")
+                if output is not None:
+                    output.export(filename, format="ogg", bitrate="16k")
+                if action_id != -1:
+                    self.actions[action_id]["audio_gen"] = 2
+                    basic_send(self._socketio, "story", "set_audio_status", {"id": action_id, "action": self.actions[action_id]})
                 logger.info("Slow audio took {} for {} characters".format(time.time()-start_time, text_length))
     
     def gen_all_audio(self, overwrite=False):
-        if self.story_settings.gen_audio and self._koboldai_vars.experimental_features:
+        if self.story_settings.gen_audio:
+            logger.info("Generating audio for any missing actions")
             for i in reversed([-1]+list(self.actions.keys())):
                 self.gen_audio(i, overwrite=False)
         #else:

@@ -22,6 +22,7 @@ dependencies:
   - termcolor
   - Pillow
   - psutil
+  - ffmpeg
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/rocm5.2
     - torch==1.13.1+rocm5.2
@@ -48,3 +49,4 @@ dependencies:
     - windows-curses; sys_platform == 'win32'
     - pynvml
     - https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+rocm5.4.2-cp38-cp38-linux_x86_64.whl
+    - omegaconf

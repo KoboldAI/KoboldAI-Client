@@ -22,6 +22,7 @@ dependencies:
   - termcolor
   - Pillow
   - psutil
+  - ffmpeg
   - pip:
     - --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
     - torch==2.0.1a0; sys_platform == 'linux'
@@ -59,3 +60,4 @@ dependencies:
     - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - windows-curses; sys_platform == 'win32'
     - pynvml
+    - omegaconf

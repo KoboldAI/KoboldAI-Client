@@ -54,7 +54,7 @@
 			</div>
 
 			<div class="gametext" id="Selected Text" contenteditable="false" tabindex="0" onkeyup="return set_edit(event);">
-				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext" chunk="-1"></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
+				<span id="story_prompt" class="var_sync_story_prompt var_sync_alt_story_prompt_in_ai rawtext" chunk="-1" onfocus='set_image_action(-1);'></span></div><!--don't move the /div down or it'll cause odd spacing issues in the UI--->
 		</div>
 
 		<!------------ Sequences --------------------->
@@ -107,8 +107,13 @@
 				</div>
 			</div><br>
 			<span class="tts_controls hidden var_sync_alt_story_gen_audio">
+				<div class="audio_status" id="audio_status">
+				</div>
+				<div>
 					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='play_pause_tts()' aria-label="play"><span id="play_tts" class="material-icons-outlined" style="font-size: 1.4em;">play_arrow</span></button>
 					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='stop_tts()' aria-label="play"><span id="stop_tts" class="material-icons-outlined" style="font-size: 1.4em;">stop</span></button>
+					<button type="button" class="btn action_button" style="width: 30px; padding: 0px;" onclick='download_tts()' aria-label="play"><span id="download_tts" class="material-icons-outlined" style="font-size: 1.4em;">download</span></button>
+				</div>
 			</span>
 			<button type="button" class="btn action_button submit var_sync_alt_system_aibusy" system_aibusy=False id="btnsubmit" onclick="storySubmit();" context-menu="submit-button">Submit</button>
 			<button type="button" class="btn action_button submited var_sync_alt_system_aibusy"  system_aibusy=False id="btnsent"><img id="thinking" src="static/thinking.gif" class="force_center" onclick="socket.emit('abort','');"></button>

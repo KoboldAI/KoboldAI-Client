@@ -7586,6 +7586,19 @@ def UI2_clear_generated_image(data):
     koboldai_vars.picture = ""
     koboldai_vars.picture_prompt = ""
 
+#==================================================================#
+# Retrieve previous images
+#==================================================================#
+@socketio.on("get_story_image")
+@logger.catch
+def UI_2_get_story_image(data):
+    action_id = data['action_id']
+    (filename, prompt) = koboldai_vars.actions.get_picture(action_id)
+    print(filename)
+    if filename is not None:
+        with open(filename, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode("utf-8") 
+
 #@logger.catch
 def get_items_locations_from_text(text):
     # load model and tokenizer
@@ -7921,10 +7934,70 @@ def UI_2_audio():
         start_time = time.time()
         while not os.path.exists(filename) and time.time()-start_time < 60: #Waiting up to 60 seconds for the file to be generated
             time.sleep(0.1)
-    return send_file(
-             filename, 
-             mimetype="audio/ogg")
+    if os.path.exists(filename):
+        return send_file(
+                filename, 
+                mimetype="audio/ogg")
+    show_error_notification("Error generating audio chunk", f"Something happened. Maybe check the log?")
 
+#==================================================================#
+# Download complete audio file
+#==================================================================#
+@socketio.on("gen_full_audio")
+def UI_2_gen_full_audio(data):
+    from pydub import AudioSegment
+    if args.no_ui:
+        return redirect('/api/latest')
+    
+    logger.info("Generating complete audio file")
+    combined_audio = None
+    complete_filename = os.path.join(koboldai_vars.save_paths.generated_audio, "complete.ogg")
+    for action_id in range(-1, koboldai_vars.actions.action_count+1):
+        filename = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}.ogg")
+        filename_slow = os.path.join(koboldai_vars.save_paths.generated_audio, f"{action_id}_slow.ogg")
+        
+        
+        if os.path.exists(filename_slow):
+            if combined_audio is None:
+                combined_audio = AudioSegment.from_file(filename_slow, format="ogg")
+            else:
+                combined_audio = combined_audio + AudioSegment.from_file(filename_slow, format="ogg")
+        elif os.path.exists(filename):
+            if combined_audio is None:
+                combined_audio = AudioSegment.from_file(filename, format="ogg")
+            else:
+                combined_audio = combined_audio + AudioSegment.from_file(filename, format="ogg")
+        else:
+            logger.info("Action {} has no audio. Generating now".format(action_id))
+            koboldai_vars.actions.gen_audio(action_id)
+            while not os.path.exists(filename) and time.time()-start_time < 60: #Waiting up to 60 seconds for the file to be generated
+                time.sleep(0.1)
+            if os.path.exists(filename):
+                if combined_audio is None:
+                    combined_audio = AudioSegment.from_file(filename, format="ogg")
+                else:
+                    combined_audio = combined_audio + AudioSegment.from_file(filename, format="ogg")
+            else:
+                show_error_notification("Error generating audio chunk", f"Something happened. Maybe check the log?")
+        
+    logger.info("Sending audio file")
+    file_handle = combined_audio.export(complete_filename, format="ogg")
+    return True
+    
+
+@app.route("/audio_full")
+@require_allowed_ip
+@logger.catch
+def UI_2_audio_full():
+    logger.info("Downloading complete audio file")
+    complete_filename = os.path.join(koboldai_vars.save_paths.generated_audio, "complete.ogg")
+    if os.path.exists(complete_filename):
+        return send_file(
+                 complete_filename, 
+                 as_attachment=True,
+                 download_name = koboldai_vars.story_name,
+                 mimetype="audio/ogg")
+             
 
 #==================================================================#
 # Download of the image for an action
