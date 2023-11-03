@@ -7382,7 +7382,7 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     if koboldai_vars.image_pipeline is None:
         if not os.path.exists("functional_models/stable-diffusion/model_index.json"):
             from huggingface_hub import snapshot_download
-            snapshot_download("mpeterwilli/deliberate-2", local_dir="functional_models/stable-diffusion", local_dir_use_symlinks=False, cache_dir="cache/", ignore_patterns=["*.safetensors"])
+            snapshot_download("peterwilli/deliberate-2", local_dir="functional_models/stable-diffusion", local_dir_use_symlinks=False, cache_dir="cache/", ignore_patterns=["*.safetensors"])
         pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "functional_models/stable-diffusion", safety_checker=None, torch_dtype=torch.float16).to("cuda")
     else:
         pipe = koboldai_vars.image_pipeline.to("cuda")
