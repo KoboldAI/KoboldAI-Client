@@ -26,11 +26,11 @@ class Stoppers:
                 f"Inconsistency detected between KoboldAI Python and Lua backends ({utils.koboldai_vars.generated_tkns} != {utils.koboldai_vars.lua_koboldbridge.generated_cols})"
             )
 
-        if utils.koboldai_vars.abort or (
+        if model.abort or (
             utils.koboldai_vars.inference_config.stop_at_genamt
             and utils.koboldai_vars.generated_tkns >= utils.koboldai_vars.genamt
         ):
-            utils.koboldai_vars.abort = False
+            model.abort = False
             model.gen_state["regeneration_required"] = False
             model.gen_state["halt"] = False
             return True

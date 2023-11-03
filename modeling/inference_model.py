@@ -171,6 +171,7 @@ class InferenceModel:
     """Root class for all models."""
 
     def __init__(self) -> None:
+        self.abort = False
         self.gen_state = {}
         self.post_token_hooks = []
         self.stopper_hooks = []
@@ -669,6 +670,9 @@ class InferenceModel:
         for hook in self.post_token_hooks:
             hook(self, input_ids)
 
+    def abort_generation(self, abort=True):
+        self.abort=abort
+    
     def get_supported_gen_modes(self) -> List[GenerationMode]:
         """Returns a list of compatible `GenerationMode`s for the current model.
 
