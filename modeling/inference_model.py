@@ -13,6 +13,7 @@ import transformers
 from transformers import (
     GPT2Tokenizer,
     AutoTokenizer,
+    LlamaTokenizer,
 )
 from modeling.stoppers import Stoppers
 from modeling.tokenizer import GenericTokenizer
@@ -251,9 +252,10 @@ class InferenceModel:
                 location, use_fast=False, **std_kwargs
             ),
             lambda: AutoTokenizer.from_pretrained(location, **std_kwargs),
-            # Fallback to GPT2Tokenizer
+            # Attempt more basic GPT2 Tokenizer
             lambda: GPT2Tokenizer.from_pretrained(location, **std_kwargs),
-            lambda: GPT2Tokenizer.from_pretrained("gpt2", **std_kwargs),
+            # Fallback to generic LLaMA Tokenizer
+            lambda: LlamaTokenizer.from_pretrained("KoboldAI/llama2-tokenizer", use_fast=False, **std_kwargs),
         ]
 
         for i, try_get_tokenizer in enumerate(suppliers):

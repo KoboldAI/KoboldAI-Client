@@ -273,6 +273,7 @@ model_menu = {
         MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER, model_backend="Read Only"),
     ],
     'instructlist': [
+        MenuModel("Tiefighter 13B", "KoboldAI/LLaMA2-13B-Tiefighter", "12GB*"),   
         MenuModel("Holomax 13B", "KoboldAI/LLaMA2-13B-Holomax", "12GB*"),        
         MenuModel("Mythomax 13B", "Gryphe/MythoMax-L2-13b", "12GB*"),
         MenuModel("Chronos-Hermes V2 13B", "Austism/chronos-hermes-13b-v2", "12GB*"),
@@ -283,6 +284,7 @@ model_menu = {
         ],
     'adventurelist': [
         MenuFolder("Instruct models may perform better than the models below (Using Instruct mode)", "instructlist"),
+        MenuModel("Tiefighter 13B (Instruct Hybrid)", "KoboldAI/LLaMA2-13B-Tiefighter", "12GB*"),
         MenuModel("Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "20GB*"),
         MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "12GB"),
         MenuModel("Spring Dragon 13B", "Henk717/spring-dragon", "12GB*"),
@@ -298,6 +300,7 @@ model_menu = {
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'novellist': [
+        MenuModel("Tiefighter 13B (Instruct Hybrid)", "KoboldAI/LLaMA2-13B-Tiefighter", "12GB*"),
         MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"),
         MenuModel("Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"),
         MenuModel("Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"),
