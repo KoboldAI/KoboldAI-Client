@@ -1608,11 +1608,11 @@ class KoboldStoryRegister(object):
             if "image_gen" not in json_data["actions"][item]:
                 json_data["actions"][item]["image_gen"] = False
 
+            action_id = int(item)
+            temp[action_id] = json_data['actions'][item]
+            if action_id >= self.action_count-100: #sending last 100 items to UI
+                data_to_send.append({"id": action_id, 'action':  temp[action_id]})
 
-            temp[int(item)] = json_data['actions'][item]
-            if int(item) >= self.action_count-100: #sending last 100 items to UI
-                data_to_send.append({"id": item, 'action':  temp[int(item)]})
-        
         process_variable_changes(self._socketio, "story", 'actions', data_to_send, None)
         
         self.actions = temp
