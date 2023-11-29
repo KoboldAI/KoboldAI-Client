@@ -8562,6 +8562,7 @@ def post_generate(body: GenerationInputSchema):
               tfs: 1.0
               top_a : 0.0
               top_k : 0
+              typical: 1.0
               quiet: False
 
       responses:
