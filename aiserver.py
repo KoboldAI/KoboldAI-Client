@@ -8554,6 +8554,16 @@ def post_generate(body: GenerationInputSchema):
                 Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze.
               top_p: 0.9
               temperature: 0.5
+              max_context_length: 2048
+              rep_pen: 1.1
+              rep_pen_range: 2048
+              rep_pen_slope: 1.0
+              max_length: 100
+              tfs: 1.0
+              top_a : 0.0
+              top_k : 0
+              quiet: False
+
       responses:
         200:
           description: Successful request
