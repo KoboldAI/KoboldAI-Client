@@ -29,6 +29,10 @@ dependencies:
     - intel-extension-for-pytorch==2.1.10+xpu
     - mkl==2024.0.0
     - mkl-dpcpp==2024.0.0
+    - oneccl-bind-pt==2.1.100+xpu; sys_platform == 'linux'
+    - impi-devel==2021.11.0; sys_platform == 'linux'
+    - oneccl-devel==2021.11.1; sys_platform == 'linux'
+    - deepspeed; sys_platform == 'linux'
     - openvino
     - onnxruntime-openvino
     - flask-cloudflared==0.0.10
