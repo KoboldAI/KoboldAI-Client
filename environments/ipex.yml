@@ -27,8 +27,6 @@ dependencies:
     - --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/xpu/us/
     - torch==2.1.0a0
     - intel-extension-for-pytorch==2.1.10+xpu
-    - oneccl-bind-pt==2.1.100+xpu; sys_platform == 'linux'
-    - deepspeed; sys_platform == 'linux'
     - openvino
     - onnxruntime-openvino
     - flask-cloudflared==0.0.10
@@ -57,8 +55,6 @@ dependencies:
     - einops
     - peft==0.3.0
     - scipy
-    - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
-    - https://github.com/0cc4m/exllama/releases/download/0.0.7/exllama-0.0.7-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - windows-curses; sys_platform == 'win32'
     - pynvml
     - omegaconf
