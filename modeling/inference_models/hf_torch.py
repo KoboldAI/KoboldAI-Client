@@ -426,7 +426,11 @@ class HFTorchInferenceModel(HFInferenceModel):
 
                     if hasattr(torch, "xpu") and torch.xpu.is_available and os.environ.get('DISABLE_IPEX_OPTIMIZE', None) is None:
                         import intel_extension_for_pytorch as ipex
-                        model = ipex.optimize_transformers(model.eval(), dtype=torch.float16, device="xpu", inplace=True)
+                        model = model.to(memory_format=torch.channels_last)
+                        if hasattr(ipex, "optimize_transformers"):
+                            model = ipex.optimize_transformers(model.eval(), dtype=torch.float16, device="xpu", inplace=True)
+                        else:
+                            model = ipex.optimize(model.eval(), dtype=torch.float16, inplace=True)
             except Exception as e:
                 # ...but fall back to stock HF if lazyloader fails.
                 if utils.args.panic:
@@ -445,7 +449,11 @@ class HFTorchInferenceModel(HFInferenceModel):
 
                 if hasattr(torch, "xpu") and torch.xpu.is_available and os.environ.get('DISABLE_IPEX_OPTIMIZE', None) is None:
                     import intel_extension_for_pytorch as ipex
-                    model = ipex.optimize_transformers(model.eval(), dtype=torch.float16, device="xpu", inplace=True)
+                    model = model.to(memory_format=torch.channels_last)
+                    if hasattr(ipex, "optimize_transformers"):
+                        model = ipex.optimize_transformers(model.eval(), dtype=torch.float16, device="xpu", inplace=True)
+                    else:
+                        model = ipex.optimize(model.eval(), dtype=torch.float16, inplace=True)
 
             if not self.lazy_load and not self.breakmodel:
                 # We need to move the model to the desired device

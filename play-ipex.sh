@@ -4,7 +4,17 @@ if [ ! -f "runtime/envs/koboldai-ipex/bin/python" ]; then
 ./install_requirements.sh ipex
 fi
 
-export LD_LIBRARY_PATH=$(realpath "runtime/envs/koboldai-ipex")/lib/:$LD_LIBRARY_PATH
+#Set OneAPI environmet if it's not set by the user
+if [ ! -x "$(command -v sycl-ls)" ]
+then
+    echo "Setting OneAPI environment"
+    if [[ -z "$ONEAPI_ROOT" ]]
+    then
+        ONEAPI_ROOT=/opt/intel/oneapi
+    fi
+    source $ONEAPI_ROOT/setvars.sh
+fi
+
 export LD_PRELOAD=/usr/lib/libstdc++.so
 export NEOReadDebugKeys=1
 export ClDeviceGlobalMemSizeAvailablePercent=100
