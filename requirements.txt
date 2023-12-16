@@ -1,13 +1,13 @@
-transformers[sentencepiece]==4.34.0
-huggingface_hub==0.16.4
-optimum[onnxruntime]==1.13.2
-safetensors==0.3.3
+transformers[sentencepiece]==4.36.1
+huggingface_hub==0.19.4
+optimum[onnxruntime]==1.16.1
+safetensors==0.4.1
 Flask==2.3.3
 Flask-SocketIO==5.3.2
 Werkzeug==2.3.7
 python-socketio==5.7.2
 requests
-torch == 2.0.*
+torch == 2.1.*
 flask-cloudflared==0.0.10
 flask-ngrok
 flask-cors
@@ -17,7 +17,7 @@ lupa==1.10
 markdown
 bleach==4.1.0
 protobuf
-accelerate==0.21.0
+accelerate==0.25.0
 flask-session==0.5.0
 marshmallow>=3.13
 apispec-webframeworks
@@ -40,15 +40,15 @@ pytest-metadata==2.0.4
 requests-mock==1.10.0
 git+https://github.com/0cc4m/hf_bleeding_edge/
 einops
-peft==0.3.0
+peft==0.7.1
 scipy
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32' and python_version == '3.10'
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
-https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
+https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.5.1%2Bcu118-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
+https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.5.1%2Bcu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32' and python_version == '3.10'
+https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.5.1%2Bcu118-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
+https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.5.1%2Bcu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
 windows-curses; sys_platform == 'win32'
 pynvml
-https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.0/flash_attn-2.3.0+cu118torch2.0cxx11abiFALSE-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
-https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.0/flash_attn-2.3.0+cu118torch2.0cxx11abiFALSE-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
-xformers==0.0.21
+https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.6/flash_attn-2.3.6+cu118torch2.1cxx11abiFALSE-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
+https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.6/flash_attn-2.3.6+cu118torch2.1cxx11abiFALSE-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
+xformers==0.0.23.post1
 omegaconf
