@@ -1,14 +1,10 @@
 from __future__ import annotations
 try:
-    import time, json
     import torch
-    import requests
     import numpy as np
     from typing import List, Optional, Union
     import os
-    import glob
     from pathlib import Path
-    import re
     import warnings
     import gc
 
@@ -29,7 +25,8 @@ try:
     from modeling.tokenizer import GenericTokenizer
 
 
-    from exllamav2.model import ExLlamaV2, ExLlamaV2Cache, ExLlamaV2Config
+    from exllamav2.cache import ExLlamaV2Cache
+    from exllamav2.model import ExLlamaV2, ExLlamaV2Config
     from transformers import LlamaTokenizer
     from exllamav2.generator import ExLlamaV2StreamingGenerator
     load_failed = False
@@ -102,7 +99,6 @@ class model_backend(InferenceModel):
         if not self.get_local_model_path():
             from huggingface_hub import snapshot_download
             target_dir = "models/" + self.model_name.replace("/", "_")
-            print(self.model_name)
             snapshot_download(self.model_name, local_dir=target_dir, local_dir_use_symlinks=False, cache_dir="cache/", revision=utils.koboldai_vars.revision)
         self.model = self._get_model(self.get_local_model_path(), {})
         #TODO support GPU split
@@ -174,7 +170,8 @@ class model_backend(InferenceModel):
         # actual encoded result we want without the prefix space behavior.
         original_encode = type(self.tokenizer.tokenizer).encode
         def encode_wrapper(self, text, *args, **kwargs):
-            if type(text) is str:
+            comma_result = original_encode(self, ',')
+            if type(text) is str and comma_result[0] == 1919:
                 text = ',' + text
                 result = original_encode(self, text, *args, **kwargs)
                 result = result[1:]
@@ -285,46 +282,48 @@ class model_backend(InferenceModel):
 
         self.generator._gen_begin_reuse(gen_in, None)
 
-        for i in range(max_new):
-            logits = self.model.forward(self.generator.sequence_ids[:, -1:], self.generator.cache)
-            for bad_word_id in bad_words_ids:
-                logits[:, :, bad_word_id] = -10000.0
+        with torch.inference_mode():
+            for i in range(max_new):
+                logits = self.model.forward(self.generator.sequence_ids[:, -1:], self.generator.cache)
+                for bad_word_id in bad_words_ids:
+                    if bad_word_id < logits.shape[-1]:
+                        logits[:, :, bad_word_id] = -10000.0
 
-            logits = torch.unsqueeze(logits[0, -1, :], 0)
+                logits = torch.unsqueeze(logits[0, -1, :], 0)
 
-            scores = self._apply_warpers(logits, gen_in)
+                scores = self._apply_warpers(logits, gen_in)
 
-            scores = torch.softmax(scores, dim=-1)
+                scores = torch.softmax(scores, dim=-1)
 
-            # Work around a bug in torch.multinomial (https://github.com/pytorch/pytorch/issues/48841)
-            # With low probability, multinomial can return an element with zero weight. Since this
-            # happens infrequently, just sample repeatedly until all tokens have non-zero probability.
-            for _ in range(100):
-                token = torch.multinomial(scores, 1)
-                # Verify that all selected tokens correspond to positive probabilities.
-                if (scores.gather(1, token) > 0).all():
+                # Work around a bug in torch.multinomial (https://github.com/pytorch/pytorch/issues/48841)
+                # With low probability, multinomial can return an element with zero weight. Since this
+                # happens infrequently, just sample repeatedly until all tokens have non-zero probability.
+                for _ in range(100):
+                    token = torch.multinomial(scores, 1)
+                    # Verify that all selected tokens correspond to positive probabilities.
+                    if (scores.gather(1, token) > 0).all():
+                        break
+
+                if (token == self.tokenizer.eos_token_id).any():
                     break
 
-            if (token == self.tokenizer.eos_token_id).any():
-                break
+                if self.generator.sequence_ids is None:
+                    self.generator.sequence_ids = token
+                else:
+                    self.generator.sequence_ids = torch.cat([self.generator.sequence_ids, token.cpu()], dim=1)
 
-            if self.generator.sequence_ids is None:
-                self.generator.sequence_ids = token
-            else:
-                self.generator.sequence_ids = torch.cat([self.generator.sequence_ids, token.cpu()], dim=1)
+                self._post_token_gen(self.generator.sequence_ids)
 
-            self._post_token_gen(self.generator.sequence_ids)
+                utils.koboldai_vars.generated_tkns += 1
 
-            utils.koboldai_vars.generated_tkns += 1
-
-            # Apply stoppers
-            do_stop = False
-            for stopper in self.stopper_hooks:
-                do_stop = stopper(self, self.generator.sequence_ids)
+                # Apply stoppers
+                do_stop = False
+                for stopper in self.stopper_hooks:
+                    do_stop = stopper(self, self.generator.sequence_ids)
+                    if do_stop:
+                        break
                 if do_stop:
                     break
-            if do_stop:
-                break
 
         seq = self.generator.sequence_ids[:, gen_in.size(1):]
 
