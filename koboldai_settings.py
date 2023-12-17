@@ -1340,6 +1340,7 @@ class system_settings(settings):
         self.seen_messages = []
         self.git_repository = ""
         self.git_branch = ""
+        self._disable_load = False
         
         
         @dataclass
