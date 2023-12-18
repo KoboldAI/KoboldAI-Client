@@ -15,7 +15,6 @@ then
     source $ONEAPI_ROOT/setvars.sh
 fi
 
-export LD_PRELOAD=/usr/lib/libstdc++.so
 export NEOReadDebugKeys=1
 export ClDeviceGlobalMemSizeAvailablePercent=100
 
