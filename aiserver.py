@@ -70,7 +70,6 @@ import transformers.generation_utils
 
 global tpu_mtj_backend
 
-torch.cuda.empty_cache()
 
 if lupa.LUA_VERSION[:2] != (5, 4):
     logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
