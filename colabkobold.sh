@@ -108,7 +108,7 @@ if [ "$init" != "skip" ]; then
     cd /content
     if [ ! -z ${git+x} ]; then
         if [ "$git" == "Official" ]; then
-            git=https://github.com/koboldai/KoboldAI-Client
+            git=https://github.com/kruftindustries/KoboldAI-Client
         fi
         if [ "$git" == "United" ]; then
             git=https://github.com/henk717/KoboldAI-Client
@@ -117,7 +117,7 @@ if [ "$init" != "skip" ]; then
             git=https://github.com/henk717/KoboldAI-Client
         fi
     else
-        git=https://github.com/koboldai/KoboldAI-Client
+        git=https://github.com/kruftindustries/KoboldAI-Client
     fi
 
     mkdir /content/KoboldAI-Client
