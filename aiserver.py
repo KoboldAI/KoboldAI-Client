@@ -2001,7 +2001,7 @@ def patch_transformers():
 
 
     # Allow bad words filter to ban <|endoftext|> token
-    import transformers.generation_logits_process
+    import transformers.generation.logits_process
     def new_init(self, bad_words_ids: List[List[int]], eos_token_id: int):
         return new_init.old_init(self, bad_words_ids, -1)
     new_init.old_init = transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__
