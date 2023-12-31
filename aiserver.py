@@ -2004,8 +2004,8 @@ def patch_transformers():
     import transformers.generation.logits_process
     def new_init(self, bad_words_ids: List[List[int]], eos_token_id: int):
         return new_init.old_init(self, bad_words_ids, -1)
-    new_init.old_init = transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__
-    transformers.generation_logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
+    new_init.old_init = transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__
+    transformers.generation.logits_process.NoBadWordsLogitsProcessor.__init__ = new_init
 
     class TokenStreamer(StoppingCriteria):
         # A StoppingCriteria is used here because it seems to run after
