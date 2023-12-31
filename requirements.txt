@@ -53,3 +53,7 @@ https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.6/flash_attn
 https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.6/flash_attn-2.3.6+cu118torch2.1cxx11abiFALSE-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
 xformers==0.0.23.post1
 omegaconf
+https://github.com/casper-hansen/AutoAWQ/releases/download/v0.1.8/autoawq-0.1.8+cu118-cp310-cp310-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.10'
+https://github.com/casper-hansen/AutoAWQ/releases/download/v0.1.8/autoawq-0.1.8+cu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32' and python_version == '3.10'
+https://github.com/casper-hansen/AutoAWQ/releases/download/v0.1.8/autoawq-0.1.8+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux' and python_version == '3.8'
+https://github.com/casper-hansen/AutoAWQ/releases/download/v0.1.8/autoawq-0.1.8+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32' and python_version == '3.8'
