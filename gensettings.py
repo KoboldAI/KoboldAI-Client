@@ -399,7 +399,7 @@ gensettingstf = [
     {
  	"uitype": "toggle",
  	"unit": "bool",
- 	"label": "Ban Bad Tokens",
+ 	"label": "Optimize Writing",
  	"id": "setusedefaultbadwordsids",
  	"min": 0,
  	"max": 1,

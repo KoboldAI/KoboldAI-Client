@@ -273,6 +273,7 @@ model_menu = {
         MenuModel("Read Only (No AI)", "ReadOnly", model_type=MenuModelType.OTHER, model_backend="Read Only"),
     ],
     'instructlist': [
+        MenuModel("Tiefighter 13B", "KoboldAI/LLaMA2-13B-Tiefighter", "12GB*"),   
         MenuModel("Holomax 13B", "KoboldAI/LLaMA2-13B-Holomax", "12GB*"),        
         MenuModel("Mythomax 13B", "Gryphe/MythoMax-L2-13b", "12GB*"),
         MenuModel("Chronos-Hermes V2 13B", "Austism/chronos-hermes-13b-v2", "12GB*"),
@@ -283,6 +284,7 @@ model_menu = {
         ],
     'adventurelist': [
         MenuFolder("Instruct models may perform better than the models below (Using Instruct mode)", "instructlist"),
+        MenuModel("Tiefighter 13B (Instruct Hybrid)", "KoboldAI/LLaMA2-13B-Tiefighter", "12GB*"),
         MenuModel("Skein 20B", "KoboldAI/GPT-NeoX-20B-Skein", "20GB*"),
         MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "12GB"),
         MenuModel("Spring Dragon 13B", "Henk717/spring-dragon", "12GB*"),
@@ -298,6 +300,7 @@ model_menu = {
         MenuFolder("Return to Main Menu", "mainmenu"),
         ],
     'novellist': [
+        MenuModel("Tiefighter 13B (Instruct Hybrid)", "KoboldAI/LLaMA2-13B-Tiefighter", "12GB*"),
         MenuModel("Nerys OPT 13B V2 (Hybrid)", "KoboldAI/OPT-13B-Nerys-v2", "32GB"),
         MenuModel("Nerys FSD 13B V2 (Hybrid)", "KoboldAI/fairseq-dense-13B-Nerys-v2", "32GB"),
         MenuModel("Janeway FSD 13B", "KoboldAI/fairseq-dense-13B-Janeway", "32GB"),
@@ -941,7 +944,7 @@ tags = [
 api_version = None  # This gets set automatically so don't change this value
 
 api_v1 = KoboldAPISpec(
-    version="1.2.5",
+    version="1.2.6",
     prefixes=["/api/v1", "/api/latest"],
     tags=tags,
 )
@@ -8267,7 +8270,7 @@ class GenerationInputSchema(SamplerSettingsSchema):
     frmtrmblln: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, replaces all occurrences of two or more consecutive newlines in the output with one newline.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     frmtrmspch: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes `#/@%{}+=~|\^<>` from the output.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     singleline: Optional[bool] = fields.Boolean(metadata={"description": "Output formatting option. When enabled, removes everything after the first line of the output, including the newline.\n\nIf `disable_output_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
-    use_default_badwordsids: bool = fields.Boolean(load_default=True, metadata={"description": "Ban tokens that commonly worsen the writing experience for continuous story writing"})
+    use_default_badwordsids: bool = fields.Boolean(load_default=False, metadata={"description": "Ban tokens that commonly worsen the writing experience for continuous story writing"})
     disable_input_formatting: bool = fields.Boolean(load_default=True, metadata={"description": "When enabled, all input formatting options default to `false` instead of the value in the KoboldAI GUI"})
     frmtadsnsp: Optional[bool] = fields.Boolean(metadata={"description": "Input formatting option. When enabled, adds a leading space to your input if there is no trailing whitespace at the end of the previous action.\n\nIf `disable_input_formatting` is `true`, this defaults to `false` instead of the value in the KoboldAI GUI."})
     quiet: Optional[bool] = fields.Boolean(metadata={"description": "When enabled, Generated output will not be displayed in the console."})
@@ -8570,6 +8573,17 @@ def post_generate(body: GenerationInputSchema):
                 Niko the kobold stalked carefully down the alley, his small scaly figure obscured by a dusky cloak that fluttered lightly in the cold winter breeze.
               top_p: 0.9
               temperature: 0.5
+              max_context_length: 2048
+              rep_pen: 1.1
+              rep_pen_range: 2048
+              rep_pen_slope: 1.0
+              max_length: 100
+              tfs: 1.0
+              top_a : 0.0
+              top_k : 0
+              typical: 1.0
+              quiet: False
+
       responses:
         200:
           description: Successful request
