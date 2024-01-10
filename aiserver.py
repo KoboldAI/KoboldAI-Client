@@ -1907,7 +1907,7 @@ def index():
     if args.no_ui:
         return redirect('/api/latest')
     else:
-        return render_template('index.html', hide_ai_menu=args.noaimenu)
+        return render_template('index.html', hide_ai_menu=args.noaimenu or koboldai_vars.disable_model_load)
 @app.route('/api', strict_slashes=False)
 @require_allowed_ip
 def api():

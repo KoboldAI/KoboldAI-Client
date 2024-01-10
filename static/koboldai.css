@@ -3592,6 +3592,11 @@ body.NotConnected {
 	display: none;
 }
 
+.settings_button[system_disable_model_load="true"] {
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
 @font-face {
   font-family: 'Material Icons Outlined';
   font-style: normal;
