@@ -220,6 +220,7 @@ class LazyloadPatches:
 # BEGIN PATCH
         utils.bar = tqdm(total=len(state_dict), desc="Loading model tensors", file=utils.UIProgressBarFile(), position=1)
         utils.koboldai_vars.total_layers = len(state_dict)
+        utils.koboldai_vars.loaded_layers = 0
 
         for param_name, param in sorted(
             state_dict.items(),
@@ -325,6 +326,7 @@ class LazyloadPatches:
                         fp16_statistics=fp16_statistics,
                     )
 
+        utils.koboldai_vars.loaded_checkpoints += 1
         return error_msgs, offload_index, state_dict_index
 
 

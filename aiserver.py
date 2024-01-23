@@ -1477,7 +1477,7 @@ def general_startup(override_args=None):
     parser.add_argument("--cacheonly", action='store_true', help="Does not save the model to the models folder when it has been downloaded in the cache")
     parser.add_argument("--customsettings", help="Preloads arguements from json file. You only need to provide the location of the json file. Use customsettings.json template file. It can be renamed if you wish so that you can store multiple configurations. Leave any settings you want as default as null. Any values you wish to set need to be in double quotation marks")
     parser.add_argument("--no_ui", action='store_true', default=False, help="Disables the GUI and Socket.IO server while leaving the API server running.")
-    parser.add_argument("--summarizer_model", action='store', default="philschmid/bart-large-cnn-samsum", help="Huggingface model to use for summarization. Defaults to sshleifer/distilbart-cnn-12-6")
+    parser.add_argument("--summarizer_model", action='store', default="pszemraj/led-large-book-summary", help="Huggingface model to use for summarization. Defaults to pszemraj/led-large-book-summary")
     parser.add_argument("--max_summary_length", action='store', default=75, help="Maximum size for summary to send to image generation")
     parser.add_argument("--multi_story", action='store_true', default=False, help="Allow multi-story mode (experimental)")
     parser.add_argument("--peft", type=str, help="Specify the path or HuggingFace ID of a Peft to load it. Not supported on TPU. (Experimental)") 
@@ -7586,8 +7586,11 @@ def text2img_api(prompt, art_guide="") -> Image.Image:
 @socketio.on("clear_generated_image")
 @logger.catch
 def UI2_clear_generated_image(data):
-    koboldai_vars.picture = ""
-    koboldai_vars.picture_prompt = ""
+    if 'action_id' in data and data['action_id'] is not None:
+        koboldai_vars.actions.clear_picture(data['action_id'])
+    else:
+        koboldai_vars.picture = ""
+        koboldai_vars.picture_prompt = ""
 
 #==================================================================#
 # Retrieve previous images
@@ -7600,7 +7603,9 @@ def UI_2_get_story_image(data):
     print(filename)
     if filename is not None:
         with open(filename, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode("utf-8") 
+            return {'img': base64.b64encode(image_file.read()).decode("utf-8"), 'action_id': action_id}
+    else:
+        return {'img': None, 'action_id': action_id}
 
 #@logger.catch
 def get_items_locations_from_text(text):
@@ -7651,16 +7656,19 @@ def get_items_locations_from_text(text):
 #==================================================================#
 def summarize(text, max_length=100, min_length=30, unload=True):
     from transformers import pipeline as summary_pipeline
+    from transformers import AutoConfig
     start_time = time.time()
     if koboldai_vars.summarizer is None:
         if os.path.exists("functional_models/{}".format(args.summarizer_model.replace('/', '_'))):
             koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
             koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+            koboldai_vars.summary_model_config = AutoConfig.from_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
         else:
             koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
             koboldai_vars.summarizer = AutoModelForSeq2SeqLM.from_pretrained(args.summarizer_model, cache_dir="cache")
             koboldai_vars.summary_tokenizer.save_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
             koboldai_vars.summarizer.save_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
+            koboldai_vars.summary_model_config = AutoConfig.from_pretrained(args.summarizer_model, cache_dir="cache")
 
     #Try GPU accel
     if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
@@ -7674,9 +7682,27 @@ def summarize(text, max_length=100, min_length=30, unload=True):
     #Actual sumarization
     start_time = time.time()
     #make sure text is less than 1024 tokens, otherwise we'll crash
-    if len(koboldai_vars.summary_tokenizer.encode(text)) > 1000:
-        text = koboldai_vars.summary_tokenizer.decode(koboldai_vars.summary_tokenizer.encode(text)[:1000])
-    output = tpool.execute(summarizer, text, max_length=max_length, min_length=min_length, do_sample=False)[0]['summary_text']
+    max_tokens = koboldai_vars.summary_model_config.max_encoder_position_embeddings if hasattr(koboldai_vars.summary_model_config, 'max_encoder_position_embeddings') else 1024
+    logger.info("Using max summary tokens of {}".format(max_tokens))
+    if len(koboldai_vars.summary_tokenizer.encode(text)) > max_tokens:
+        text_list = koboldai_vars.actions.sentence_re.findall(text)
+        i=0
+        while i <= len(text_list)-2:
+            if len(koboldai_vars.summary_tokenizer.encode(text_list[i] + text_list[i+1])) < max_tokens:
+                text_list[i] = text_list[i] + text_list[i+1]
+                del text_list[i+1]
+            else:
+                i+=1
+                    
+        
+    else:
+        text_list = [text]
+    
+    output = []
+    logger.info("Summarizing with {} chunks of length {}".format(len(text_list), [len(koboldai_vars.summary_tokenizer.encode(x)) for x in text_list]))
+    for text in text_list:
+        output.append(tpool.execute(summarizer, text, max_length=max_length, min_length=min_length, do_sample=False)[0]['summary_text'])
+    output = " ".join(output)
     logger.debug("Time to summarize: {}".format(time.time()-start_time))
     #move model back to CPU to save precious vram
     torch.cuda.empty_cache()
@@ -7696,40 +7722,33 @@ def summarize(text, max_length=100, min_length=30, unload=True):
 @socketio.on("refresh_auto_memory")
 @logger.catch
 def UI_2_refresh_auto_memory(data):
+    max_output_length=500
+    from transformers import AutoConfig
     koboldai_vars.auto_memory = "Generating..."
     if koboldai_vars.summary_tokenizer is None:
-        if os.path.exists("models/{}".format(args.summarizer_model.replace('/', '_'))):
-            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+        if os.path.exists("functional_models/{}".format(args.summarizer_model.replace('/', '_'))):
+            koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
+            koboldai_vars.summary_model_config = AutoConfig.from_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), cache_dir="cache")
         else:
             koboldai_vars.summary_tokenizer = AutoTokenizer.from_pretrained(args.summarizer_model, cache_dir="cache")
-    #first, let's get all of our game text and split it into sentences
-    sentences = [x[0] for x in koboldai_vars.actions.to_sentences()]
-    sentences_lengths = [len(koboldai_vars.summary_tokenizer.encode(x)) for x in sentences]
+            koboldai_vars.summary_model_config = AutoConfig.from_pretrained(args.summarizer_model, cache_dir="cache")
+    max_tokens = koboldai_vars.summary_model_config.max_encoder_position_embeddings if hasattr(koboldai_vars.summary_model_config, 'max_encoder_position_embeddings') else 1024
+
+    #first, let's get all of our game text
+    sentences = "".join([x[0] for x in koboldai_vars.actions.to_sentences()])
     
     pass_number = 1
-    while len(koboldai_vars.summary_tokenizer.encode("".join(sentences))) > 1000:
-        #Now let's split them into 1000 token chunks
-        summary_chunks = [""]
-        summary_chunk_lengths = [0]
-        for i in range(len(sentences)):
-            if summary_chunk_lengths[-1] + sentences_lengths[i] <= 1000:
-                summary_chunks[-1] += sentences[i]
-                summary_chunk_lengths[-1] += sentences_lengths[i]
-            else:
-                summary_chunks.append(sentences[i])
-                summary_chunk_lengths.append(sentences_lengths[i])
-        new_sentences = []
-        i=0
-        for summary_chunk in summary_chunks:
-            logger.debug("summarizing chunk {}".format(i))
-            new_sentences.extend(re.split("(?<=[.!?])\s+", summarize(summary_chunk, unload=False)))
-            i+=1
+    while len(koboldai_vars.summary_tokenizer.encode(sentences)) > max_tokens:
+        new_sentences = summarize(sentences, unload=False, max_length=max_output_length)
         logger.debug("Pass {}:\nSummarized to {} sentencees from {}".format(pass_number, len(new_sentences), len(sentences)))
         sentences = new_sentences
-        koboldai_vars.auto_memory += "Pass {}:\n{}\n\n".format(pass_number, "\n".join(sentences))
+        koboldai_vars.auto_memory += "Pass {}:\n{}\n\n".format(pass_number, sentences)
         pass_number+=1
     logger.debug("OK, doing final summarization")
-    output = summarize(" ".join(sentences))
+    if len(koboldai_vars.summary_tokenizer.encode(sentences)) > max_output_length:
+        output = summarize(sentences, max_length=max_output_length)
+    else:
+        output = sentences
     koboldai_vars.auto_memory += "\n\n Final Result:\n" + output
 
 
