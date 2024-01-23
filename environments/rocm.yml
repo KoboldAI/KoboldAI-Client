@@ -42,7 +42,7 @@ dependencies:
     - ijson
     - ftfy
     - pydub
-    - diffusers
+    - diffusers==0.24
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - einops
     - peft==0.7.1

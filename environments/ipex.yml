@@ -52,7 +52,7 @@ dependencies:
     - ijson
     - ftfy
     - pydub
-    - diffusers
+    - diffusers==0.24
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.5.1%2Bcu118-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl; sys_platform == 'linux'
     - https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.5.1%2Bcu118-cp310-cp310-win_amd64.whl; sys_platform == 'win32'

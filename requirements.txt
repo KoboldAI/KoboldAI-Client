@@ -26,7 +26,7 @@ loguru
 termcolor
 git+https://github.com/VE-FORBRYDERNE/mkultra
 Pillow
-diffusers
+diffusers==0.24
 psutil
 ansi2html
 flask_compress
