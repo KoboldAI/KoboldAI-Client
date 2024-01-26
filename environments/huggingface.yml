@@ -49,7 +49,7 @@ dependencies:
     - https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.40.0.post4-py3-none-win_amd64.whl; sys_platform == 'win32'
     - ftfy
     - pydub
-    - diffusers
+    - diffusers==0.24
     - git+https://github.com/0cc4m/hf_bleeding_edge/
     - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
     - https://github.com/0cc4m/GPTQ-for-LLaMa/releases/download/0.0.6/gptq_koboldai-0.0.6-cp38-cp38-win_amd64.whl; sys_platform == 'win32'

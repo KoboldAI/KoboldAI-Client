@@ -2008,11 +2008,12 @@ function selected_model_info(sent_data) {
 				slider_number.onchange = function() { document.getElementById(this.id.replace("_text", "")).value = this.value;};
 
 				var slider = new_setting.querySelector('#blank_model_settings_slider');
-				slider.value = item['default'];
 				slider.min = item['min'];
 				slider.max = item['max'];
+				slider.step = item["step"];
 				slider.setAttribute("data_type", item['unit']);
 				slider.id = loader + "|" + item['id'] + "_value";
+				slider.value = item['default'];
 				if ('check' in item) {
 					slider.check_data = item['check'];
 					slider_number.check_data = item['check'];
@@ -3602,6 +3603,7 @@ function stream_tokens(tokens) {
 
 			streamBuffer.textContent += streaming.buffer[0];
 			streaming.buffer = streaming.buffer.slice(1);
+			streamBuffer.scrollIntoView({ block: "end" });
 		}
 
 		streaming.typeyTimeout = setTimeout(_char, 10);
@@ -3621,6 +3623,7 @@ function stream_tokens(tokens) {
 		streaming.buffer += tokens[0];
 	} else {
 		streamBuffer.textContent += tokens[0];
+		streamBuffer.scrollIntoView({ block: "end" });
 	}
 }
 
@@ -3874,12 +3877,13 @@ function change_image(data) {
 
 	$el("#image-loading").classList.add("hidden");
 
-	if (data != undefined) {
+	if (data.img != undefined) {
 		var image = new Image();
-		image.src = 'data:image/png;base64,'+data;
+		image.src = 'data:image/png;base64,'+data.img;
 		image.classList.add("action_image");
 		image.setAttribute("context-menu", "generated-image");
 		image.addEventListener("click", imgGenView);
+		image.setAttribute('action_id', data.action_id);
 		image_area.appendChild(image);
 	}
 }
@@ -7395,11 +7399,12 @@ function imgGenDownload() {
 function imgGenClear() {
 	const image = $el(".action_image");
 	if (!image) return;
+	action_id = image.getAttribute('action_id');
 	image.remove();
 
 	const container = $el("#action\\ image");
 	container.removeAttribute("tooltip");
-	socket.emit("clear_generated_image", {});
+	socket.emit("clear_generated_image", {'action_id': action_id});
 }
 
 function imgGenRetry() {

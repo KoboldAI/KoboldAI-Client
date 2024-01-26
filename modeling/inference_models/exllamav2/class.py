@@ -1,5 +1,6 @@
 from __future__ import annotations
 try:
+    import time, json
     import torch
     import numpy as np
     from typing import List, Optional, Union
@@ -314,7 +315,8 @@ class model_backend(InferenceModel):
 
                 self._post_token_gen(self.generator.sequence_ids)
 
-                utils.koboldai_vars.generated_tkns += 1
+                #utils.koboldai_vars.generated_tkns += 1
+
 
                 # Apply stoppers
                 do_stop = False
@@ -349,6 +351,12 @@ class model_backend(InferenceModel):
         return tokenizer
 
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
+        saved_data = {'max_ctx': 2048, 'compress_emb': 1, 'ntk_alpha': 1}
+        if os.path.exists("settings/{}.exllama.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
+            with open("settings/{}.exllama.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
+                temp = json.load(f)
+                for key in temp:
+                    saved_data[key] = temp[key]
         requested_parameters = []
         gpu_count = torch.cuda.device_count()
         layer_count = self.model_config["n_layer"] if isinstance(self.model_config, dict) else self.model_config.num_layers if hasattr(self.model_config, "num_layers") else self.model_config.n_layer if hasattr(self.model_config, "n_layer") else self.model_config.num_hidden_layers if hasattr(self.model_config, 'num_hidden_layers') else None
@@ -361,7 +369,7 @@ class model_backend(InferenceModel):
             "min": 2048,
             "max": 16384,
             "step": 512,
-            "default": 2048,
+            "default": saved_data['max_ctx'],
             "tooltip": "The maximum context size the model supports",
             "menu_path": "Configuration",
             "extra_classes": "",
@@ -376,7 +384,7 @@ class model_backend(InferenceModel):
             "min": 1,
             "max": 8,
             "step": 0.25,
-            "default": 1,
+            "default": saved_data['compress_emb'],
             "tooltip": "If the model requires compressed embeddings, set them here",
             "menu_path": "Configuration",
             "extra_classes": "",
@@ -391,7 +399,7 @@ class model_backend(InferenceModel):
             "min": 1,
             "max": 32,
             "step": 0.25,
-            "default": 1,
+            "default": saved_data['ntk_alpha'],
             "tooltip": "NTK alpha value",
             "menu_path": "Configuration",
             "extra_classes": "",
@@ -419,3 +427,20 @@ class model_backend(InferenceModel):
 
         self.model_name = parameters['custom_model_name'] if 'custom_model_name' in parameters else parameters['id']
         self.path = parameters['path'] if 'path' in parameters else None
+        
+    def _save_settings(self):
+        with open(
+            "settings/{}.exllamav2.model_backend.settings".format(
+                self.model_name.replace("/", "_")
+            ),
+            "w",
+        ) as f:
+            json.dump(
+                {
+                    "max_ctx": self.model_config.max_seq_len,
+                    "compress_emb": self.model_config.compress_pos_emb,
+                    "ntk_alpha": self.model_config.alpha_value
+                },
+                f,
+                indent="",
+            )

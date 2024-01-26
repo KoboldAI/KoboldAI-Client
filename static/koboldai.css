@@ -3593,8 +3593,7 @@ body.NotConnected {
 }
 
 .settings_button[system_disable_model_load="true"] {
-	cursor: not-allowed;
-	pointer-events: none;
+	display:none
 }
 
 @font-face {
