@@ -163,7 +163,6 @@ class model_backend(InferenceModel):
 
         self.tokenizer = self._get_tokenizer(self.get_local_model_path())
         self.model.kai_model = self
-        self.badwordsids = koboldai_settings.badwordsids_default
         utils.koboldai_vars.modeldim = self.model.get_input_embeddings().embedding_dim
 
         # Patch Huggingface stuff to use our samplers
@@ -260,7 +259,6 @@ class model_backend(InferenceModel):
                     len(prompt_tokens) + max_new, utils.koboldai_vars.max_length
                 ),
                 repetition_penalty=1.0,
-                bad_words_ids=self.badwordsids + additional_bad_words_ids,
                 use_cache=True,
                 num_return_sequences=batch_count,
             )
