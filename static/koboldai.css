@@ -1,3 +1,14 @@
+/*
+Mobile Detection:
+@media only screen and (max-aspect-ratio: 5/6) {
+	
+Low Res Detection:
+@media only screen and (max-width: 1023px) {
+
+
+*/
+
+
 /*----------------Global Colors------------------*/
 @media only screen and (max-aspect-ratio: 5/6) {
 	:root {
@@ -175,7 +186,6 @@ border-top-right-radius: var(--tabs_rounding);
 	scrollbar-color: var(--scrollbar-color);
 }
 
-
 .setting_tile_area {
 	padding-left: 10px;
 	padding-right: 10px;
@@ -184,6 +194,19 @@ border-top-right-radius: var(--tabs_rounding);
 	flex-wrap: wrap;
 	animation: 1s 1 normal grow-backY;
 }
+
+
+@media only screen and (max-width: 1023px) {
+	.setting_tile_area {
+		padding-left: 10px;
+		padding-right: 10px;
+		display: flex;
+		flex-direction: column;
+		flex-wrap: wrap;
+		animation: 1s 1 normal grow-backY;
+	}
+}
+
 
 #Images {
 	padding-left: 10px;
@@ -206,7 +229,6 @@ border-top-right-radius: var(--tabs_rounding);
 	justify-content: space-between;
 }
 
-
 .setting_container {
 	display: grid;
 	grid-template-areas: "label value"
@@ -221,6 +243,24 @@ border-top-right-radius: var(--tabs_rounding);
 	padding: 2px;
 	margin: 2px;
 	width: calc(50% - 4px);
+}
+
+@media only screen and (max-width: 1023px) {
+	.setting_container {
+		display: grid;
+		grid-template-areas: "label value"
+							 "item item"
+							 "minlabel maxlabel";
+		grid-template-rows: 20px 23px 20px;
+		grid-template-columns: 147px 30px;
+		row-gap: 0.2em;
+		background-color: var(--setting_background);
+		color: var(--setting_text);
+		border-radius: var(--radius_settings_background);
+		padding: 2px;
+		margin: 2px;
+		width: 185px;
+	}
 }
 
 /*Couldn't find a way to give this settings a specific class, so bruteforce it is. Well, until someone smarter than me can fix this. -GuiAworld*/
@@ -499,6 +539,23 @@ border-top-right-radius: var(--tabs_rounding);
 	transition: left 0.5s;
 	cursor: pointer;
 }
+
+@media only screen and (max-aspect-ratio: 5/6) {
+	.search_icon {
+		position: absolute;
+		top:8px;
+		color: var(--text);
+		left: calc(var(--flyout_menu_width) - 25px);
+		z-index:21;
+		width: 25px;
+		height: 25px;
+		display: inline-block;
+		transition: left 0.5s;
+		cursor: pointer;
+	}
+}
+
+
 
 .SideMenu {
 	height: 100%;
@@ -2080,10 +2137,11 @@ body {
 .popup .popup_list_area {
 	overflow-x: hidden;
 	overflow-y: scroll;
-	flex-grow: 1;
+	/*flex-grow: 1;*/
 	flex-shrink: 1;
 	flex-basis: auto;
 	color: var(--popup_item_color_text);
+	min-height: 50%;
 	
 }
 
@@ -2241,7 +2299,6 @@ body {
 
 .loadmodelsettings {
 	overflow-y: auto;
-	max-height: 50%;
 }
 
 
@@ -3872,3 +3929,50 @@ select {
 	text-decoration: underline dotted red;
 }
 
+@media only screen and (max-width: 1023px) {
+	.story_popup_footer {
+		flex-direction: column
+	}
+}
+
+
+#load-model {
+	display: grid;
+	grid-template-areas: "header"
+						 "table_header"
+						 "breadcrumbs"
+						 "model_list"
+						 "plugin"
+						 "model_settings"
+						 "ok";
+	grid-template-rows: 26px 38px max-content 1fr max-content auto 34px;
+	overflow-x: scroll;
+}
+
+#load-model .title {
+	grid-area: header;
+}
+
+#load-model #modelspecifier {
+	grid-area: table_header;
+}
+
+#load-model #loadmodellistbreadcrumbs {
+	grid-area: breadcrumbs;
+}
+
+#load-model #loadmodellistcontent {
+	grid-area: model_list;
+}
+
+#load-model #loadmodelplugin {
+	grid-area: plugin;
+}
+
+#load-model #loadmodelsettings {
+	grid-area: model_settings;
+}
+
+#load-model .popup_load_cancel {
+	grid-area: ok;
+}
