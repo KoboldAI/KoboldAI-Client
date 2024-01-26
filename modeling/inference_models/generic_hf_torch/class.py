@@ -112,6 +112,7 @@ class model_backend(HFTorchInferenceModel):
         
         if not hasattr(self.model_config, 'quantization_config'):
             if self.quantization == "8bit":
+                utils.koboldai_vars.disable_model_load = True
                 tf_kwargs.update({
                     "quantization_config":BitsAndBytesConfig(
                         load_in_8bit=True,
@@ -120,6 +121,7 @@ class model_backend(HFTorchInferenceModel):
                 })
 
             if self.quantization == "4bit" or utils.koboldai_vars.colab_arg:
+                utils.koboldai_vars.disable_model_load = True # Hiding scope here is a little larger, but since we must hide the button on Colab anyway thats ok - Henk
                 tf_kwargs.update({
                     "quantization_config":BitsAndBytesConfig(
                         load_in_4bit=True,
