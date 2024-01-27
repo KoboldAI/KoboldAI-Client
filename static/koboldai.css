@@ -416,6 +416,7 @@ border-top-right-radius: var(--tabs_rounding);
 	padding: 5px;
 	padding-top: 0px;
 	font-size: calc(0.8em + var(--font_size_adjustment));
+	text-align: left;
 }
 
 .setting_maxlabel {
@@ -2091,7 +2092,7 @@ body {
 		position: absolute;
 		top: 10vh;
 		left: 10%;
-		z-index: 999;
+		z-index: 999999;
 		width: 80%;
 		height: 80vh;
 		border-radius: 15px;
@@ -2108,11 +2109,26 @@ body {
 		position: absolute;
 		top: 10vh;
 		left: 25%;
-		z-index: 999;
+		z-index: 999999;
 		width: 50%;
 		height: 80vh;
 		border-radius: 15px;
 		box-shadow: var(--popup_shadow);
+		background-color: var(--popup_background_color);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+}
+
+@media only screen and (max-width: 359px) {
+	.popup {
+		position: absolute;
+		top: 0%;
+		left: 0%;
+		z-index: 999999;
+		width: 100%;
+		height: 100%;
 		background-color: var(--popup_background_color);
 		display: flex;
 		flex-direction: column;
