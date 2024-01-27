@@ -83,7 +83,7 @@ input[type="range"]::-ms-fill-upper {
 	padding: 0;
 	padding-left: 40px;
 	line-height: 24px;
-	height: 26px;
+	min-height: 26px;
 	overflow: hidden;
 	font-size: calc(12px + var(--font_size_adjustment));
 	font-family: verdana;
@@ -2233,6 +2233,9 @@ body {
 	color: var(--popup_title_bar_color_text);
 	background-color: var(--popup_title_bar_color);
 	padding: 0 10px 0 10px;
+	position: absolute;
+	width: 100%;
+    bottom: 0;
 }
 
 
@@ -2412,11 +2415,22 @@ body {
 #context-viewer {
 	display: flex;
 	flex-direction: column;
-
 	width: 50%;
 	height: 75%;
 	padding-bottom: 10px;
 	background-color: var(--popup_background_color);
+}
+
+@media only screen and (max-width: 1023px) {
+	#context-viewer {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		height: calc(100% - 40px);
+		margin-top: 40px;
+		padding-bottom: 10px;
+		background-color: var(--popup_background_color);
+	}
 }
 
 #context-viewer-header {
@@ -2782,6 +2796,21 @@ body {
 
 	display: flex;
 	flex-direction: column;
+}
+
+@media only screen and (max-width: 1023px) {
+	#debug-file-prompt {
+		width: 100%;
+		max-width: 300px;
+		height: 100%;
+		max-height: 80%;
+		background-color: var(--flyout_background_pinned);
+		padding: 10px;
+		border-radius: 4px;
+
+		display: flex;
+		flex-direction: column;
+	}
 }
 
 #debug-file-prompt > div {
