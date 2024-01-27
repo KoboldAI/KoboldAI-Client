@@ -3096,7 +3096,7 @@ body {
 	width: 100vw;
 	height: 100vh;
 
-	z-index: 20;
+	z-index: 100;
 }
 
 .popup-close {
