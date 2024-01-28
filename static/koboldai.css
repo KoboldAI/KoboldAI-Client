@@ -1,3 +1,14 @@
+/*
+Mobile Detection:
+@media only screen and (max-aspect-ratio: 5/6) {
+	
+Low Res Detection:
+@media only screen and (max-width: 1023px) {
+
+
+*/
+
+
 /*----------------Global Colors------------------*/
 @media only screen and (max-aspect-ratio: 5/6) {
 	:root {
@@ -72,7 +83,7 @@ input[type="range"]::-ms-fill-upper {
 	padding: 0;
 	padding-left: 40px;
 	line-height: 24px;
-	height: 26px;
+	min-height: 26px;
 	overflow: hidden;
 	font-size: calc(12px + var(--font_size_adjustment));
 	font-family: verdana;
@@ -175,7 +186,6 @@ border-top-right-radius: var(--tabs_rounding);
 	scrollbar-color: var(--scrollbar-color);
 }
 
-
 .setting_tile_area {
 	padding-left: 10px;
 	padding-right: 10px;
@@ -184,6 +194,19 @@ border-top-right-radius: var(--tabs_rounding);
 	flex-wrap: wrap;
 	animation: 1s 1 normal grow-backY;
 }
+
+
+@media only screen and (max-width: 1023px) {
+	.setting_tile_area {
+		padding-left: 10px;
+		padding-right: 10px;
+		display: flex;
+		flex-direction: column;
+		flex-wrap: wrap;
+		animation: 1s 1 normal grow-backY;
+	}
+}
+
 
 #Images {
 	padding-left: 10px;
@@ -206,7 +229,6 @@ border-top-right-radius: var(--tabs_rounding);
 	justify-content: space-between;
 }
 
-
 .setting_container {
 	display: grid;
 	grid-template-areas: "label value"
@@ -221,6 +243,24 @@ border-top-right-radius: var(--tabs_rounding);
 	padding: 2px;
 	margin: 2px;
 	width: calc(50% - 4px);
+}
+
+@media only screen and (max-width: 1023px) {
+	.setting_container {
+		display: grid;
+		grid-template-areas: "label value"
+							 "item item"
+							 "minlabel maxlabel";
+		grid-template-rows: 20px 23px 20px;
+		grid-template-columns: 147px 30px;
+		row-gap: 0.2em;
+		background-color: var(--setting_background);
+		color: var(--setting_text);
+		border-radius: var(--radius_settings_background);
+		padding: 2px;
+		margin: 2px;
+		width: 185px;
+	}
 }
 
 /*Couldn't find a way to give this settings a specific class, so bruteforce it is. Well, until someone smarter than me can fix this. -GuiAworld*/
@@ -376,6 +416,7 @@ border-top-right-radius: var(--tabs_rounding);
 	padding: 5px;
 	padding-top: 0px;
 	font-size: calc(0.8em + var(--font_size_adjustment));
+	text-align: left;
 }
 
 .setting_maxlabel {
@@ -499,6 +540,23 @@ border-top-right-radius: var(--tabs_rounding);
 	transition: left 0.5s;
 	cursor: pointer;
 }
+
+@media only screen and (max-aspect-ratio: 5/6) {
+	.search_icon {
+		position: absolute;
+		top:8px;
+		color: var(--text);
+		left: calc(var(--flyout_menu_width) - 25px);
+		z-index:21;
+		width: 25px;
+		height: 25px;
+		display: inline-block;
+		transition: left 0.5s;
+		cursor: pointer;
+	}
+}
+
+
 
 .SideMenu {
 	height: 100%;
@@ -2034,7 +2092,7 @@ body {
 		position: absolute;
 		top: 10vh;
 		left: 10%;
-		z-index: 999;
+		z-index: 999999;
 		width: 80%;
 		height: 80vh;
 		border-radius: 15px;
@@ -2051,11 +2109,26 @@ body {
 		position: absolute;
 		top: 10vh;
 		left: 25%;
-		z-index: 999;
+		z-index: 999999;
 		width: 50%;
 		height: 80vh;
 		border-radius: 15px;
 		box-shadow: var(--popup_shadow);
+		background-color: var(--popup_background_color);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+}
+
+@media only screen and (max-width: 359px) {
+	.popup {
+		position: absolute;
+		top: 0%;
+		left: 0%;
+		z-index: 999999;
+		width: 100%;
+		height: 100%;
 		background-color: var(--popup_background_color);
 		display: flex;
 		flex-direction: column;
@@ -2080,10 +2153,11 @@ body {
 .popup .popup_list_area {
 	overflow-x: hidden;
 	overflow-y: scroll;
-	flex-grow: 1;
+	/*flex-grow: 1;*/
 	flex-shrink: 1;
 	flex-basis: auto;
 	color: var(--popup_item_color_text);
+	min-height: 50%;
 	
 }
 
@@ -2159,6 +2233,9 @@ body {
 	color: var(--popup_title_bar_color_text);
 	background-color: var(--popup_title_bar_color);
 	padding: 0 10px 0 10px;
+	position: absolute;
+	width: 100%;
+    bottom: 0;
 }
 
 
@@ -2241,7 +2318,6 @@ body {
 
 .loadmodelsettings {
 	overflow-y: auto;
-	max-height: 50%;
 }
 
 
@@ -2339,11 +2415,22 @@ body {
 #context-viewer {
 	display: flex;
 	flex-direction: column;
-
 	width: 50%;
 	height: 75%;
 	padding-bottom: 10px;
 	background-color: var(--popup_background_color);
+}
+
+@media only screen and (max-width: 1023px) {
+	#context-viewer {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		height: calc(100% - 40px);
+		margin-top: 40px;
+		padding-bottom: 10px;
+		background-color: var(--popup_background_color);
+	}
 }
 
 #context-viewer-header {
@@ -2711,6 +2798,21 @@ body {
 	flex-direction: column;
 }
 
+@media only screen and (max-width: 1023px) {
+	#debug-file-prompt {
+		width: 100%;
+		max-width: 300px;
+		height: 100%;
+		max-height: 80%;
+		background-color: var(--flyout_background_pinned);
+		padding: 10px;
+		border-radius: 4px;
+
+		display: flex;
+		flex-direction: column;
+	}
+}
+
 #debug-file-prompt > div {
 	display: flex;
 	text-align: center;
@@ -2994,7 +3096,7 @@ body {
 	width: 100vw;
 	height: 100vh;
 
-	z-index: 20;
+	z-index: 100;
 }
 
 .popup-close {
@@ -3872,3 +3974,50 @@ select {
 	text-decoration: underline dotted red;
 }
 
+@media only screen and (max-width: 1023px) {
+	.story_popup_footer {
+		flex-direction: column
+	}
+}
+
+
+#load-model {
+	display: grid;
+	grid-template-areas: "header"
+						 "table_header"
+						 "breadcrumbs"
+						 "model_list"
+						 "plugin"
+						 "model_settings"
+						 "ok";
+	grid-template-rows: 26px 38px max-content 1fr max-content auto 34px;
+	overflow-x: scroll;
+}
+
+#load-model .title {
+	grid-area: header;
+}
+
+#load-model #modelspecifier {
+	grid-area: table_header;
+}
+
+#load-model #loadmodellistbreadcrumbs {
+	grid-area: breadcrumbs;
+}
+
+#load-model #loadmodellistcontent {
+	grid-area: model_list;
+}
+
+#load-model #loadmodelplugin {
+	grid-area: plugin;
+}
+
+#load-model #loadmodelsettings {
+	grid-area: model_settings;
+}
+
+#load-model .popup_load_cancel {
+	grid-area: ok;
+}
