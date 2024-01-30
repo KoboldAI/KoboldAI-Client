@@ -1,1 +1,1 @@
-"C:\Program Files\Microsoft VS Code\code" .
+commandline "C:\Program Files\Microsoft VS Code\code" .

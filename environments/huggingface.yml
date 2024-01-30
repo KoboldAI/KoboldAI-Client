@@ -62,8 +62,8 @@ dependencies:
     - scipy
     - https://github.com/0cc4m/exllama/releases/download/0.0.8/exllama-0.0.8-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
     - https://github.com/0cc4m/exllama/releases/download/0.0.8/exllama-0.0.8-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
-    - https://github.com/turboderp/exllamav2/releases/download/v0.0.10/exllamav2-0.0.10+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
-    - https://github.com/turboderp/exllamav2/releases/download/v0.0.10/exllamav2-0.0.10+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
+    - https://github.com/turboderp/exllamav2/releases/download/v0.0.12/exllamav2-0.0.12+cu118-cp38-cp38-linux_x86_64.whl; sys_platform == 'linux'
+    - https://github.com/turboderp/exllamav2/releases/download/v0.0.12/exllamav2-0.0.12+cu118-cp38-cp38-win_amd64.whl; sys_platform == 'win32'
     - windows-curses; sys_platform == 'win32'
     - pynvml
     - xformers==0.0.23.post1
