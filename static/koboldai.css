@@ -2227,7 +2227,7 @@ body {
 	color: var(--popup_selected_color_text);
 }
 
-.popup .popup_load_cancel {
+.popup .popup_load_cancel:not(#loadmodelsettings) {
 	text-align: center;
 	vertical-align: bottom;
 	color: var(--popup_title_bar_color_text);
@@ -2236,6 +2236,15 @@ body {
 	position: absolute;
 	width: 100%;
     bottom: 0;
+}
+
+#loadmodelsettings {
+	text-align: center;
+	vertical-align: bottom;
+	color: var(--popup_title_bar_color_text);
+	background-color: var(--popup_title_bar_color);
+	padding: 0 10px 0 10px;
+	width: 100%;
 }
 
 
