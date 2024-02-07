@@ -8,6 +8,7 @@ try:
 
     import torch
     from torch.nn import Embedding
+    from transformers import AutoConfig, GPTQConfig
     from transformers.utils import WEIGHTS_NAME, WEIGHTS_INDEX_NAME, TF2_WEIGHTS_NAME, TF2_WEIGHTS_INDEX_NAME, TF_WEIGHTS_NAME, FLAX_WEIGHTS_NAME, FLAX_WEIGHTS_INDEX_NAME, SAFE_WEIGHTS_NAME, SAFE_WEIGHTS_INDEX_NAME
 
     import utils
@@ -31,10 +32,47 @@ class model_backend(HFTorchInferenceModel):
         self.disable = load_failed
         self.has_xpu = bool(hasattr(torch, "xpu") and torch.xpu.is_available())
 
+    def init_model_config(self) -> None:
+        # Get the model_type from the config or assume a model type if it isn't present
+        try:
+            self.model_config = AutoConfig.from_pretrained(
+                self.get_local_model_path() or self.model_name,
+                revision=utils.koboldai_vars.revision,
+                cache_dir="cache",
+            )
+
+            self.model_type = self.model_config.model_type
+            self.gptq_model = False
+
+        except ValueError:
+            self.model_type = {
+                "NeoCustom": "gpt_neo",
+                "GPT2Custom": "gpt2",
+            }.get(self.model)
+
+            if not self.model_type:
+                logger.warning(
+                    "No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)"
+                )
+                self.model_type = "gpt_neo"
+
+
     def _get_model(self, location: str, tf_kwargs: Dict):
         tf_kwargs["revision"] = utils.koboldai_vars.revision
         tf_kwargs["cache_dir"] = "cache"
-        tf_kwargs["load_in_4bit"] = True
+        if self.quantization == "4bit":
+            tf_kwargs["load_in_4bit"] = True
+            tf_kwargs.pop("load_in_low_bit", None)
+        else:
+            tf_kwargs["load_in_low_bit"] = self.quantization
+            tf_kwargs.pop("load_in_4bit", None)
+
+        if (self.has_xpu or not self.usegpu) and hasattr(self.model_config, "quantization_config"):
+            # setting disable_exllama here doesn't do anything?
+            self.model_config.quantization_config.pop("disable_exllama", None)
+            tf_kwargs["quantization_config"] = GPTQConfig(disable_exllama=True, **self.model_config.quantization_config)
+            # BigDL breaks without this:
+            tf_kwargs["quantization_config"].use_exllama = False
 
         tf_kwargs.pop("low_cpu_mem_usage", None)
 
@@ -59,7 +97,7 @@ class model_backend(HFTorchInferenceModel):
         except Exception as e:
             traceback_string = traceback.format_exc().lower()
 
-            if "out of memory" in traceback_string:
+            if "out of host memory" in traceback_string or "out of memory" in traceback_string:
                 raise RuntimeError(
                     "One of your GPUs ran out of memory when KoboldAI tried to load your model."
                 )
@@ -133,11 +171,36 @@ class model_backend(HFTorchInferenceModel):
         return
 
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
-        return super().get_requested_parameters(model_name, model_path, menu_path, parameters)
+        requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters)
+        if os.path.exists("settings/{}.hf_bigdl.model_backend.settings".format(model_name.replace("/", "_"))) and 'base_url' not in vars(self):
+            with open("settings/{}.hf_bigdl.model_backend.settings".format(model_name.replace("/", "_")), "r") as f:
+                temp = json.load(f)
+        else:
+            temp = {}
+        requested_parameters.append({
+            "uitype": "dropdown",
+            "unit": "text",
+            "label": "Quantization",
+            "id": "quantization",
+            "default": temp['quantization'] if 'quantization' in temp else '4bit',
+            "tooltip": "Whether or not to use BnB's 4-bit or 8-bit mode",
+            "menu_path": "Layers",
+            "children": [{'text': '4-bit', 'value': '4bit'}, {'text': '8-bit', 'value': 'sym_int8'},
+                         {'text': '16-bit', 'value':'bf16'},  {'text': 'FP16', 'value':'fp16'},
+                         {'text': 'SYM INT4', 'value':'sym_int4'}, {'text': 'ASYM INT4', 'value':'asym_int4'},
+                         {'text': 'NF3', 'value':'nf3'}, {'text': 'NF4', 'value':'nf4'},
+                         {'text': 'FP4', 'value':'fp4'}, {'text': 'FP8', 'value':'fp8'},
+                         {'text': 'FP8 E4M3', 'value':'fp8_e4m3'}, {'text': 'FP8 E5M2', 'value':'fp8_e5m2'},
+                         {'text': 'SYM INT5', 'value':'sym_int5'},{'text': 'ASYM INT5', 'value':'asym_int5'}],
+            "extra_classes": "",
+            "refresh_model_inputs": False
+                                            })
+        return requested_parameters
 
     def set_input_parameters(self, parameters):
         super().set_input_parameters(parameters)
         self.usegpu = parameters['use_gpu'] if 'use_gpu' in parameters else False
+        self.quantization = parameters['quantization'] if 'quantization' in parameters else '4bit'
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         utils.koboldai_vars.allowsp = True
@@ -331,10 +394,9 @@ class model_backend(HFTorchInferenceModel):
         ) as f:
             json.dump(
                 {
-                    "layers": self.layers if "layers" in vars(self) else [],
-                    "disk_layers": self.disk_layers
-                    if "disk_layers" in vars(self)
-                    else 0,
+
+                    "quantization": self.quantization,
+                    'use_gpu': self.usegpu,
                 },
                 f,
                 indent="",
