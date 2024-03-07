@@ -186,6 +186,7 @@ if [ "$init" != "skip" ]; then
     fi
     
     # Make sure Colab has the system dependencies
+    sudo apt update
     sudo apt install netbase aria2 -y
     npm install -g localtunnel
 fi
