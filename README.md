@@ -1,7 +1,10 @@
 ## Looking for KoboldCpp?
 KoboldAI is named after the KoboldAI software, currently our newer most popular program is KoboldCpp.
+
 If you are reading this message you are on the page of the original KoboldAI sofware.
+
 Prefer using KoboldCpp with GGUF models and the latest API features? You can visit https://koboldai.org/cpp
+
 Need support for newer models such as Llama based models using the Huggingface / Exllama (safetensors/pytorch) platforms? Check out KoboldAI's development version KoboldAI United at https://koboldai.org/united
 
 ## KoboldAI - Your gateway to GPT writing
