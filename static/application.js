@@ -2375,7 +2375,7 @@ $(document).ready(function(){
 			$("body").addClass("connected");
 		} else if (msg.cmd == "streamtoken") {
 			// Sometimes the stream_token messages will come in too late, after
-			// we have recieved the full text. This leads to some stray tokens
+			// we have received the full text. This leads to some stray tokens
 			// appearing after the output. To combat this, we only allow tokens
 			// to be displayed after requesting and before recieving text.
 			if (ignore_stream) return;
