@@ -1,12 +1,10 @@
-## Looking for KoboldCpp?
-KoboldAI is named after the KoboldAI software, currently our newer most popular program is KoboldCpp.
+> [!WARNING]  
+> You are currently on the page of the old software which will not run modern models.
+> You are probably looking for KoboldCpp downloadable at https://koboldai.org/cpp
 
-If you are reading this message you are on the page of the original KoboldAI sofware.
+This old legacy KoboldAI product is currently not maintained, if you want to use the latest models please switch to [KoboldCpp](https://koboldcpp.net)
 
-Prefer using KoboldCpp with GGUF models and the latest API features? You can visit https://koboldai.org/cpp
-
-Need support for newer models such as Llama based models using the Huggingface / Exllama (safetensors/pytorch) platforms? Check out KoboldAI's development version KoboldAI United at https://koboldai.org/united
-
+----
 ## KoboldAI - Your gateway to GPT writing
 
 This is a browser-based front-end for AI-assisted writing with multiple local & remote AI models. It offers the standard array of tools, including Memory, Author's Note, World Info, Save & Load, adjustable AI settings, formatting options, and the ability to import existing AI Dungeon adventures. You can also turn on Adventure mode and play the game like AI Dungeon Unleashed.
